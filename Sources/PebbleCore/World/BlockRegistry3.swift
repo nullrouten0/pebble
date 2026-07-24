@@ -116,8 +116,10 @@ func registerFunctionalToEnd() {
     registerBlock("heavy_weighted_pressure_plate", shape: .pressurePlate, tex: .named("iron_block"), opaque: false, solid: false, fullCube: false, hardness: 0.5, tool: .pickaxe, requiresTool: true, sound: "metal", piston: .destroy)
     registerBlock("tripwire_hook", shape: .tripwireHook, tex: .named("tripwire_hook"), opaque: false, solid: false, fullCube: false, hardness: 0, sound: "wood", piston: .destroy)
     registerBlock("tripwire", shape: .tripwire, tex: .named("tripwire"), opaque: false, solid: false, fullCube: false, hardness: 0, piston: .destroy, drops: .item("string"), ao: false)
-    registerBlock("piston", shape: .piston, tex: texCol("piston_top", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .block)
-    registerBlock("sticky_piston", shape: .piston, tex: texCol("piston_top_sticky", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .block)
+    // Retracted piston bases are movable (flying machines depend on this);
+    // the redstone mover rejects the extended state dynamically.
+    registerBlock("piston", shape: .piston, tex: texCol("piston_top", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .normal)
+    registerBlock("sticky_piston", shape: .piston, tex: texCol("piston_top_sticky", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .normal)
     registerBlock("piston_head", shape: .pistonHead, tex: texCol("piston_top", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .block, drops: .none)
     registerBlock("moving_piston", tex: .named("piston_side"), opaque: false, solid: false, fullCube: false, hardness: -1, piston: .block, drops: .none)
     registerBlock("observer", tex: texCol("observer_top", "observer_side"),

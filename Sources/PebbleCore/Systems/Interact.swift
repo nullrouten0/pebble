@@ -548,14 +548,29 @@ func resolveLoot(_ world: World, _ be: BlockEntityData) {
 
 private func useBed(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int, _ c: Int) -> Bool {
     let world = ctx.world, player = ctx.player
+    let id = c >> 4
+    let facing = c & 3
+    let head = (c & 4) != 0
+    let dx = [0, 0, -1, 1][facing]
+    let dz = [-1, 1, 0, 0][facing]
+    let hx = head ? x : x + dx
+    let hz = head ? z : z + dz
+    let fx = head ? x - dx : x
+    let fz = head ? z - dz : z
+    let headExists = (world.getBlock(hx, y, hz) >> 4) == id
+    let footExists = (world.getBlock(fx, y, fz) >> 4) == id
+    let useX = headExists ? hx : x
+    let useZ = headExists ? hz : z
     if world.dim != .overworld {
         // bed explodes!
-        world.setBlock(x, y, z, 0)
-        explodeFn?(world, Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 5, true, nil)
+        if headExists { world.setBlock(hx, y, hz, 0) }
+        if footExists { world.setBlock(fx, y, fz, 0) }
+        explodeFn?(world, Double(hx + fx) * 0.5 + 0.5, Double(y) + 0.5,
+                   Double(hz + fz) * 0.5 + 0.5, 5, true, nil)
         return true
     }
     // set spawn
-    player.spawnPoint = (x, y, z)
+    player.spawnPoint = (useX, y, useZ)
     player.spawnDim = 0
     // sleep if night
     if world.isDay() && world.rainLevel < 0.9 {
@@ -575,8 +590,8 @@ private func useBed(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int, _ c: Int) 
         return true
     }
     player.sleepTicks = 1
-    player.bedPos = (x, y, z)
-    player.setPos(Double(x) + 0.5, Double(y) + 0.6, Double(z) + 0.5)
+    player.bedPos = (useX, y, useZ)
+    player.setPos(Double(useX) + 0.5, Double(y) + 0.6, Double(useZ) + 0.5)
     return true
 }
 

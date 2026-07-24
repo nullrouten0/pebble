@@ -308,7 +308,39 @@ public func shapeBoxes(_ cell: Int, _ get: CellGetter, _ out: inout [AABB], _ fo
         } else {
             out.append(aabb(6 / 16, 0, 6 / 16, 10 / 16, 10 / 16, 10 / 16))
         }
-    case .lever, .button:
+    case .lever:
+        if forCollision { return }
+        let attach = meta & 7
+        let powered = (meta & 8) != 0
+        // Build a floor-mounted lever, then axis-map it onto the face it is
+        // attached to.  The old single upright box ignored both attachment and
+        // powered state, so wall levers floated and toggling one had no visual
+        // effect.
+        func mounted(_ b: AABB) -> AABB {
+            switch attach {
+            case Dir.up:
+                return aabb(b.x0, 1 - b.y1, b.z0, b.x1, 1 - b.y0, b.z1)
+            case Dir.north:
+                return aabb(b.x0, b.z0, b.y0, b.x1, b.z1, b.y1)
+            case Dir.south:
+                return aabb(b.x0, b.z0, 1 - b.y1, b.x1, b.z1, 1 - b.y0)
+            case Dir.west:
+                return aabb(b.y0, b.z0, b.x0, b.y1, b.z1, b.x1)
+            case Dir.east:
+                return aabb(1 - b.y1, b.z0, b.x0, 1 - b.y0, b.z1, b.x1)
+            default:
+                return b
+            }
+        }
+        out.append(mounted(aabb(4 / 16, 0, 4 / 16, 12 / 16, 3 / 16, 12 / 16)))
+        let lean = powered ? 1.0 : -1.0
+        for i in 0..<4 {
+            let y0 = Double(3 + i * 3) / 16
+            let y1 = Double(6 + i * 3) / 16
+            let cz = 0.5 + lean * Double(i) * 1.2 / 16
+            out.append(mounted(aabb(7 / 16, y0, cz - 1 / 16, 9 / 16, y1, cz + 1 / 16)))
+        }
+    case .button:
         if forCollision { return }
         out.append(aabb(5 / 16, 0, 5 / 16, 11 / 16, 6 / 16, 11 / 16))
     case .pressurePlate:

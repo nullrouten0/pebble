@@ -2136,12 +2136,15 @@ public final class GameCore {
         var eyeY = iy + (p.sneaking ? 1.27 : PLAYER_EYE)
         var cx = ix, cz = iz
         // view bobbing — phase/amp advance in tickViewBob (20Hz), interpolate here
-        if settings.viewBobbing && p.vehicle == nil {
+        // View bob is a first-person camera effect. Applying the same lateral
+        // translation to the third-person chase camera made the player appear
+        // to weave left/right while running.
+        if settings.viewBobbing && p.vehicle == nil && perspective == 0 {
             let bp = prevBobPhase + (bobPhase - prevBobPhase) * partial
             let ba = prevBobAmp + (bobAmp - prevBobAmp) * partial
-            eyeY += abs(detSin(bp * .pi)) * ba * 1.2
-            cx += detSin(bp * .pi) * ba * 0.3 * detCos(p.yaw)
-            cz += detSin(bp * .pi) * ba * 0.3 * detSin(p.yaw)
+            eyeY += abs(detSin(bp * .pi)) * ba * 0.55
+            cx += detSin(bp * .pi) * ba * 0.16 * detCos(p.yaw)
+            cz += detSin(bp * .pi) * ba * 0.16 * detSin(p.yaw)
         }
         var yaw = p.yaw, pitch = p.pitch
         if perspective == 2 {

@@ -88,6 +88,25 @@ func registerAllModels() {
         s.fill(4, 24, 4, 4, 0x3a3a3a, 0.1)                // shoes
     }, packTex: ["entity/player/wide/steve.png"]))
 
+    // Equipped layer drawn over the third-person player model.  This remains a
+    // separate model so first-person/entity rendering and saved entity types do
+    // not change.
+    M2("elytra", MobModel(
+        texW: 64, texH: 32,
+        parts: [
+            part("wingR", (-2, 23, 2), box(-10, -20, 0, 10, 20, 2, 22, 0)),
+            part("wingL", (2, 23, 2), box(0, -20, 0, 10, 20, 2, 22, 0)),
+        ],
+        anim: "elytra", scale: 1,
+        paint: { s in
+            // The vanilla/Faithful elytra unwrap begins at U=22; U=0 is
+            // transparent padding, so using the generic box origin left the
+            // equipped layer effectively invisible even with valid geometry.
+            s.box(22, 0, 10, 20, 2, 0x7a6c74, 0.08)
+            s.fill(24, 3, 6, 14, 0x8d7f87, 0.08)
+        },
+        packTex: ["entity/elytra.png"]))
+
     // VILLAGER-LIKE
     M2("villager", villagerModelPacked(["entity/villager/villager.png"]) { s in
         s.box(0, 0, 8, 10, 8, 0xb88a68)

@@ -1285,6 +1285,7 @@ final class WorldRenderer {
             pose.open = (ent as? Shulker)?.peekAmount ?? 0
             pose.hanging = ent.type == "bat" && ent.onGround
             pose.alpha = deathFlip > 0 ? 1 - deathFlip * 0.6 : 1
+            pose.elytraFlying = (ent as? Player)?.elytraFlying ?? false
             // blob shadow under living entities (incl. the player in 3rd person);
             // fade out as the entity rises above the ground beneath it.
             if liv != nil, let gy = groundYUnder(ix, iy, iz), iy - gy <= 6 {
@@ -1298,6 +1299,14 @@ final class WorldRenderer {
                                 time: timeSec, dayLight: dayLight,
                                 fog: (fog.0, fog.1, fog.2),
                                 gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            if let player = ent as? Player, let chest = player.armor[1],
+               itemDef(chest.id).name == "elytra" {
+                entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
+                                    viewProj: viewProj, camPos: camPos, name: "elytra", p: pose,
+                                    time: timeSec, dayLight: dayLight,
+                                    fog: (fog.0, fog.1, fog.2),
+                                    gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            }
             // end crystal beams + lightning via line overlay
             if let c = ent as? EndCrystal, let bt = c.beamTarget {
                 drawBoxOutline(enc, viewProj, [(

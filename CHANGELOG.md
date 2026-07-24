@@ -3,6 +3,23 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.0.6 — 2026-07-23 — gameplay and rendering fixes (#15, #16)
+
+- **Doors and beds now render as coherent two-block objects.** Each half samples
+  the correct portion of its composite texture, beds drop only one item, and
+  using, exploding, or naturally destroying a bed consistently addresses both
+  halves.
+- **Levers now look and move like mounted controls.** Their base and handle
+  follow the face they are attached to, use focused texture regions, and visibly
+  change pose when switched.
+- **Slime and honey blocks now move their attached payloads with pistons.**
+  Sticky-piston retraction preserves the full adhesion set, and retracted piston
+  bases can move so basic flying machines work.
+- **Equipped elytra are visible in third person.** A textured wing layer now
+  follows the player and changes pose during elytra flight.
+- **Running no longer makes the third-person camera weave.** View bobbing is
+  restricted to first person and its remaining motion is substantially milder.
+
 ## 1.0.5 — 2026-07-03 — keybind fix (#13)
 
 - **Shift and Control can now be assigned to keybinds.** On macOS the modifier

@@ -247,6 +247,25 @@ public final class World {
         // used by pistons/explosions for Destroy-behavior blocks
         let cell = getBlock(x, y, z)
         if cell == 0 { return }
+        let id = cell >> 4
+        let shape = Shape(rawValue: SHAPE_OF[id]) ?? .cube
+        // Natural destruction bypasses the player-breaking path, so clean up
+        // the matching half here as well. Otherwise pistons, fluids, and mob
+        // griefing can leave floating door tops or orphaned bed heads.
+        if shape == .door {
+            let otherY = (cell & 8) != 0 ? y - 1 : y + 1
+            if (getBlock(x, otherY, z) >> 4) == id {
+                setBlock(x, otherY, z, 0)
+            }
+        } else if shape == .bed {
+            let facing = cell & 3
+            let head = (cell & 4) != 0
+            let ox = x + (head ? -1 : 1) * [0, 0, -1, 1][facing]
+            let oz = z + (head ? -1 : 1) * [-1, 1, 0, 0][facing]
+            if (getBlock(ox, y, oz) >> 4) == id {
+                setBlock(ox, y, oz, 0)
+            }
+        }
         setBlock(x, y, z, isWaterlogged(UInt16(cell)) ? (Int(B.water) << 4) : 0)
         hooks.addParticles("block", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 12, 0.4, cell)
     }

@@ -139,6 +139,11 @@ check("lightEmitOf sea_pickle x4", lightEmitOf(cell(B.sea_pickle, 3)) == 15)
 check("water replaceable", REPLACEABLE[Int(B.water)] == 1)
 check("stone opaque", OPAQUE[Int(B.stone)] == 1)
 check("glass not opaque", OPAQUE[Int(B.glass)] == 0)
+let bedDropCtx = DropCtx(random: { 0 })
+let bedDrops = blockDefs[Int(B.white_bed)].drops
+check("two-block bed drops exactly once",
+      bedDrops?(0, bedDropCtx).map(\.item) == ["white_bed"] &&
+      bedDrops?(4, bedDropCtx).isEmpty == true)
 
 // ---------------------------------------------------------------------------
 section("item registry (vs goldens)")
@@ -851,6 +856,52 @@ if let g = loadJSON("mesh-goldens.json") {
     check("mesh-goldens.json loadable", false, "not found — run from the repo root (goldens/)")
 }
 
+// Targeted multi-part block regression: both block seams must sample the
+// midpoint of their composite texture, and powered levers must change pose.
+do {
+    let padded = 18
+    func pi(_ x: Int, _ y: Int, _ z: Int) -> Int {
+        ((y + 1) * padded + (z + 1)) * padded + (x + 1)
+    }
+    var blocks = [UInt16](repeating: 0, count: padded * padded * padded)
+    var sky = [UInt8](repeating: 15, count: blocks.count)
+    let blockLight = [UInt8](repeating: 0, count: blocks.count)
+    blocks[pi(2, 4, 2)] = cell(B.oak_door, 0)
+    blocks[pi(2, 5, 2)] = cell(B.oak_door, 8)
+    blocks[pi(6, 4, 8)] = cell(B.white_bed, 0)
+    blocks[pi(6, 4, 7)] = cell(B.white_bed, 4)
+    // Keep the compiler from treating the all-15 array as immutable storage in
+    // older Swift releases used by the supported toolchain sweep.
+    sky[pi(0, 0, 0)] = 15
+    let multipart = buildSectionMesh(MeshInput(
+        blocks: blocks, skyLight: sky, blockLight: blockLight,
+        biomes: [UInt8](repeating: 0, count: BIOME_P * BIOME_P), noMerge: true))
+    let doorTile = Int(TILE_TABLE[(Int(cell(B.oak_door, 0)) << 3) | 2])
+    let bedTopTile = Int(TILE_TABLE[(Int(cell(B.white_bed, 0)) << 3) | 1])
+    var doorSeamV: [Float] = []
+    var bedSeamV: [Float] = []
+    for vi in 0..<(multipart.cutout.data.count / 7) {
+        let o = vi * 7
+        let a = multipart.cutout.data[o + 5]
+        let layer = Int(a & 4095)
+        let normal = Int((a >> 12) & 7)
+        let y = Float(bitPattern: multipart.cutout.data[o + 1])
+        let z = Float(bitPattern: multipart.cutout.data[o + 2])
+        let v = Float(bitPattern: multipart.cutout.data[o + 4])
+        if layer == doorTile && normal >= 2 && abs(y - 5) < 0.001 { doorSeamV.append(v) }
+        if layer == bedTopTile && normal == 1 && abs(z - 8) < 0.001 { bedSeamV.append(v) }
+    }
+    var leverOff: [AABB] = [], leverOn: [AABB] = []
+    shapeBoxes(Int(cell(B.lever, 0)), { _, _, _ in 0 }, &leverOff, false)
+    shapeBoxes(Int(cell(B.lever, 8)), { _, _, _ in 0 }, &leverOn, false)
+    let leverChangesPose = leverOff.count == 5 && leverOn.count == 5 &&
+        abs((leverOff.last!.z0 + leverOff.last!.z1) - (leverOn.last!.z0 + leverOn.last!.z1)) > 0.1
+    check("door/bed composite seams and lever powered pose",
+          !doorSeamV.isEmpty && doorSeamV.allSatisfy { abs($0 - 0.5) < 0.001 } &&
+          !bedSeamV.isEmpty && bedSeamV.allSatisfy { abs($0 - 0.5) < 0.001 } &&
+          leverChangesPose)
+}
+
 // ---------------------------------------------------------------------------
 section("world simulation: light engine + fluids + ticks (vs goldens)")
 
@@ -1174,6 +1225,13 @@ if let g = loadJSON("fmath-goldens.json") {
 // ---------------------------------------------------------------------------
 section("entities: zoo/combat/physics/trades/pathfinding/spawning (vs goldens)")
 registerAllEntities()
+let elytraGeometry = buildEntityGeometry("elytra")
+let elytraU = stride(from: 6, to: elytraGeometry.verts.count, by: 9).map { elytraGeometry.verts[$0] }
+check("third-person elytra layer has two rendered wings",
+      hasModel("elytra") && elytraGeometry.partNames == ["wingR", "wingL"] &&
+      elytraGeometry.vertexCount > 0 &&
+      (elytraU.min() ?? 0) >= 22.0 / 64.0 &&
+      elytraGeometry.model.packTex == ["entity/elytra.png"])
 
 if let g = loadJSON("entity-goldens.json") {
     func hex(_ x: Double) -> String {
@@ -1751,6 +1809,52 @@ if let g = loadJSON("systems-goldens.json") {
     let rsWant = (g["redstoneStages"] as! [NSNumber]).map { UInt32(truncating: $0) }
     check("redstone contraption (lever/wire/repeater/piston/lamp/observer)", rsGot == rsWant,
           "got \(rsGot) want \(rsWant)")
+
+    // Sticky retraction must move the entire slime adhesion set, not just the
+    // one block directly in front of the piston.
+    let adhesionWorld = buildWorld()
+    adhesionWorld.randomTickSpeed = 0
+    let ax = 20, az = 20, ay = adhesionWorld.surfaceY(ax, az) + 20
+    adhesionWorld.setBlock(ax, ay, az, Int(cell(B.sticky_piston, Dir.east)))
+    adhesionWorld.setBlock(ax + 1, ay, az, Int(cell(B.slime_block)))
+    adhesionWorld.setBlock(ax + 1, ay + 1, az, Int(cell(B.stone)))
+    adhesionWorld.setBlock(ax, ay - 1, az, Int(cell(B.redstone_block)))
+    for _ in 0..<4 { stepWorld(adhesionWorld) }
+    let adhesionExtended =
+        adhesionWorld.getBlock(ax, ay, az) == Int(cell(B.sticky_piston, Dir.east | 8)) &&
+        (adhesionWorld.getBlock(ax + 1, ay, az) >> 4) == Int(B.piston_head) &&
+        (adhesionWorld.getBlock(ax + 2, ay, az) >> 4) == Int(B.slime_block) &&
+        (adhesionWorld.getBlock(ax + 2, ay + 1, az) >> 4) == Int(B.stone)
+    adhesionWorld.setBlock(ax, ay - 1, az, 0)
+    for _ in 0..<4 { stepWorld(adhesionWorld) }
+    let adhesionRetracted =
+        adhesionWorld.getBlock(ax, ay, az) == Int(cell(B.sticky_piston, Dir.east)) &&
+        (adhesionWorld.getBlock(ax + 1, ay, az) >> 4) == Int(B.slime_block) &&
+        (adhesionWorld.getBlock(ax + 1, ay + 1, az) >> 4) == Int(B.stone) &&
+        adhesionWorld.getBlock(ax + 2, ay, az) == 0 &&
+        adhesionWorld.getBlock(ax + 2, ay + 1, az) == 0
+    check("sticky piston retracts the full slime adhesion set",
+          blockDefs[Int(B.piston)].piston == .normal && adhesionExtended && adhesionRetracted)
+
+    // Pistons/fluids/mob griefing use World.breakBlockNaturally rather than the
+    // player-breaking path; both halves of multipart blocks must still vanish.
+    let multipartBreakWorld = buildWorld()
+    multipartBreakWorld.randomTickSpeed = 0
+    let mbx = 28, mbz = 28, mby = multipartBreakWorld.surfaceY(mbx, mbz) + 20
+    multipartBreakWorld.setBlock(mbx, mby, mbz, Int(cell(B.white_bed, 3)))
+    multipartBreakWorld.setBlock(mbx + 1, mby, mbz, Int(cell(B.white_bed, 7)))
+    multipartBreakWorld.breakBlockNaturally(mbx, mby, mbz)
+    let bedNaturalCleanup =
+        multipartBreakWorld.getBlock(mbx, mby, mbz) == 0 &&
+        multipartBreakWorld.getBlock(mbx + 1, mby, mbz) == 0
+    multipartBreakWorld.setBlock(mbx, mby, mbz, Int(cell(B.oak_door, 0)))
+    multipartBreakWorld.setBlock(mbx, mby + 1, mbz, Int(cell(B.oak_door, 8)))
+    multipartBreakWorld.breakBlockNaturally(mbx, mby + 1, mbz)
+    let doorNaturalCleanup =
+        multipartBreakWorld.getBlock(mbx, mby, mbz) == 0 &&
+        multipartBreakWorld.getBlock(mbx, mby + 1, mbz) == 0
+    check("natural destruction cleans both door/bed halves",
+          bedNaturalCleanup && doorNaturalCleanup)
 
     // --- E) random ticks
     resetGameRng(hashString("crops"))

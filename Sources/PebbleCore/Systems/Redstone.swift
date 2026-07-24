@@ -800,44 +800,83 @@ private func pistonPowered(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ facin
     return false
 }
 
-private func gatherPushSet(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ facing: Int) -> [(Int, Int, Int)]? {
+private func pistonMoveBehavior(_ c: Int) -> PistonBehavior {
+    let id = c >> 4
+    if (id == Int(B.piston) || id == Int(B.sticky_piston)) && (c & 8) != 0 {
+        return .block
+    }
+    return blockDefs[id].piston
+}
+
+private func gatherMoveSet(_ world: World,
+                           _ startX: Int, _ startY: Int, _ startZ: Int,
+                           _ moveX: Int, _ moveY: Int, _ moveZ: Int,
+                           excluding ex: (Int, Int, Int)) -> [(Int, Int, Int)]? {
     struct K: Hashable { let x: Int, y: Int, z: Int }
-    let dx = DIR_X[facing], dy = DIR_Y[facing], dz = DIR_Z[facing]
     var set: [(Int, Int, Int)] = []
     var seen = Set<K>()
-    var toCheck: [(Int, Int, Int)] = [(x + dx, y + dy, z + dz)]
+    var toCheck: [(Int, Int, Int)] = [(startX, startY, startZ)]
     var head = 0
     while head < toCheck.count {
         let (px, py, pz) = toCheck[head]
         head += 1
+        if px == ex.0 && py == ex.1 && pz == ex.2 { return nil }
         let k = K(x: px, y: py, z: pz)
         if seen.contains(k) { continue }
         let c = world.getBlock(px, py, pz)
         let id = c >> 4
         if id == 0 || blockDefs[id].replaceable { continue }
-        let behavior = blockDefs[id].piston
+        let behavior = pistonMoveBehavior(c)
         if behavior == .destroy { continue } // destroyed on push, not part of set
         if behavior == .block || behavior == .blockEntity || blockDefs[id].hardness < 0 { return nil }
         seen.insert(k)
         set.append((px, py, pz))
         if set.count > 12 { return nil }
-        // block in front must move too
-        toCheck.append((px + dx, py + dy, pz + dz))
+        // The destination must either be empty/destroyable or join the move.
+        toCheck.append((px + moveX, py + moveY, pz + moveZ))
         // slime/honey adhesion
         if id == Int(B.slime_block) || id == Int(B.honey_block) {
             for d in 0..<6 {
                 let nx = px + DIR_X[d], ny = py + DIR_Y[d], nz = pz + DIR_Z[d]
-                let nc = world.getBlock(nx, ny, nz) >> 4
-                if nc == 0 { continue }
+                if nx == ex.0 && ny == ex.1 && nz == ex.2 { continue }
+                let neighbor = world.getBlock(nx, ny, nz)
+                let nc = neighbor >> 4
+                if nc == 0 || blockDefs[nc].replaceable { continue }
                 // slime doesn't stick to honey
                 if (id == Int(B.slime_block) && nc == Int(B.honey_block)) || (id == Int(B.honey_block) && nc == Int(B.slime_block)) { continue }
-                if blockDefs[nc].piston == .normal && !seen.contains(K(x: nx, y: ny, z: nz)) {
+                if pistonMoveBehavior(neighbor) == .normal && blockDefs[nc].hardness >= 0 &&
+                    !seen.contains(K(x: nx, y: ny, z: nz)) {
                     toCheck.append((nx, ny, nz))
                 }
             }
         }
     }
     return set
+}
+
+private func gatherPushSet(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ facing: Int) -> [(Int, Int, Int)]? {
+    let dx = DIR_X[facing], dy = DIR_Y[facing], dz = DIR_Z[facing]
+    return gatherMoveSet(world, x + dx, y + dy, z + dz, dx, dy, dz, excluding: (x, y, z))
+}
+
+private func movePistonBlocks(_ world: World, _ blocks: [(Int, Int, Int)],
+                              _ dx: Int, _ dy: Int, _ dz: Int) {
+    let ordered = blocks.enumerated()
+        .sorted { a, b in
+            let da = a.element.0 * dx + a.element.1 * dy + a.element.2 * dz
+            let db = b.element.0 * dx + b.element.1 * dy + b.element.2 * dz
+            return da != db ? da > db : a.offset < b.offset
+        }
+        .map { $0.element }
+    for (px, py, pz) in ordered {
+        let destX = px + dx, destY = py + dy, destZ = pz + dz
+        let destC = world.getBlock(destX, destY, destZ)
+        if destC != 0 && pistonMoveBehavior(destC) == .destroy {
+            world.breakBlockNaturally(destX, destY, destZ)
+        }
+        world.setBlock(destX, destY, destZ, world.getBlock(px, py, pz))
+        world.setBlock(px, py, pz, 0)
+    }
 }
 
 private func pistonTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
@@ -848,24 +887,8 @@ private func pistonTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) 
     let dx = DIR_X[facing], dy = DIR_Y[facing], dz = DIR_Z[facing]
     if powered && !extended {
         // EXTEND
-        guard var set = gatherPushSet(world, x, y, z, facing) else { return }
-        // sort: move farthest first (stable mirror of deterministic sort on distance)
-        set = set.enumerated()
-            .sorted { a, b in
-                let da = (a.element.0 - x) * dx + (a.element.1 - y) * dy + (a.element.2 - z) * dz
-                let db = (b.element.0 - x) * dx + (b.element.1 - y) * dy + (b.element.2 - z) * dz
-                return da != db ? da > db : a.offset < b.offset
-            }
-            .map { $0.element }
-        for (px, py, pz) in set {
-            let destX = px + dx, destY = py + dy, destZ = pz + dz
-            let destC = world.getBlock(destX, destY, destZ)
-            if destC != 0 && blockDefs[destC >> 4].piston == .destroy {
-                world.breakBlockNaturally(destX, destY, destZ)
-            }
-            world.setBlock(destX, destY, destZ, world.getBlock(px, py, pz))
-            world.setBlock(px, py, pz, 0)
-        }
+        guard let set = gatherPushSet(world, x, y, z, facing) else { return }
+        movePistonBlocks(world, set, dx, dy, dz)
         // destroy block directly in front if Destroy-type and not moved
         let frontC = world.getBlock(x + dx, y + dy, z + dz)
         if frontC != 0 && blockDefs[frontC >> 4].piston == .destroy {
@@ -888,13 +911,12 @@ private func pistonTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) 
         world.setBlock(x + dx, y + dy, z + dz, 0) // remove head
         world.setBlock(x, y, z, Int(cell(UInt16(id), facing)))
         if id == Int(B.sticky_piston) {
-            // pull the block 2 ahead
+            // Pull the block two ahead plus its full slime/honey adhesion set.
+            // The old path moved only that first block, leaving side-attached
+            // payloads behind and making even basic flying machines impossible.
             let px = x + dx * 2, py = y + dy * 2, pz = z + dz * 2
-            let pc = world.getBlock(px, py, pz)
-            let pid = pc >> 4
-            if pid != 0 && blockDefs[pid].piston == .normal && blockDefs[pid].hardness >= 0 {
-                world.setBlock(x + dx, y + dy, z + dz, pc)
-                world.setBlock(px, py, pz, 0)
+            if let set = gatherMoveSet(world, px, py, pz, -dx, -dy, -dz, excluding: (x, y, z)) {
+                movePistonBlocks(world, set, -dx, -dy, -dz)
             }
         }
         world.hooks.playSound("block.piston.contract", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 0.6, 0.7)

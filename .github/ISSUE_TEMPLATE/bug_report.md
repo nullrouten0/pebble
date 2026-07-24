@@ -29,4 +29,4 @@ assignees: ""
      For crashes: the report from ~/Library/Logs/DiagnosticReports, plus
      terminal output if you launched with `pebble run` from a terminal.
      If the engine itself seems wrong (worldgen/physics/redstone): the tail
-     of `pebble test` — it should print "456 passed, 0 failed". -->
+     of `pebble test` — it should print "461 passed, 0 failed". -->

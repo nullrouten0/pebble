@@ -29,6 +29,7 @@ struct EntityPose {
     var hanging = false
     var open = 0.0
     var sitting = false
+    var elytraFlying = false
 }
 
 struct EntityUniforms {
@@ -347,6 +348,18 @@ final class EntityRendererM {
                     m = mRotateX(m, Float(walkA))
                 } else if n == "legL" {
                     m = mRotateX(m, Float(walkB))
+                }
+            case "elytra":
+                let spread = p.elytraFlying ? 0.08 : 0.72
+                let pitch = p.elytraFlying ? 0.18 : 0.38
+                if n == "wingR" {
+                    m = mRotateY(m, Float(-spread))
+                    m = mRotateX(m, Float(pitch))
+                    m = mRotateZ(m, Float(p.elytraFlying ? 0.08 : 0.18))
+                } else if n == "wingL" {
+                    m = mRotateY(m, Float(spread))
+                    m = mRotateX(m, Float(pitch))
+                    m = mRotateZ(m, Float(p.elytraFlying ? -0.08 : -0.18))
                 }
             case "rabbit", "frog":
                 let hop = min(1, max(0, Foundation.sin(swing * 1.2) * amp * 2))

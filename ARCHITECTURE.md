@@ -68,7 +68,7 @@ One SQLite database (WAL, FULLMUTEX, serial save queue): `worlds(id, json, lastP
 
 ## The test harness (pebsmoke)
 
-456 checks across 16 suites, run with `pebble test`:
+461 checks across 16 suites, run with `pebble test`:
 
 random/noise/math → block & item registries (counts + id spot checks) → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full redstone contraption, explosion crater, interactions, portals) → and a final suite that *independently derives* vanilla physics constants instead of trusting goldens.
 

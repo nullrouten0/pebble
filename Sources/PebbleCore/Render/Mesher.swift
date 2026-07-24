@@ -455,6 +455,60 @@ final class SectionMesher {
                     // generic: render the outline boxes with per-face culling
                     boxes.removeAll(keepingCapacity: true)
                     shapeBoxes(cell, { dx, dy, dz in self.cellAt(x + dx, y + dy, z + dz) }, &boxes, false)
+                    if shape == .door {
+                        // Door art stores the upper and lower block textures in
+                        // the top and bottom halves of one atlas slice.  Sampling
+                        // the whole slice on both blocks produced two squashed,
+                        // repeated doors.
+                        let vBase = (meta & 8) != 0 ? 0.0 : 0.5
+                        for bx in boxes {
+                            emitBox(target, x, y, z, bx, tileOf, s4, b4, tint, anim, Int(EMISSIVE[id])) {
+                                face, u, v in
+                                face >= 2 ? (u, vBase + v * 0.5) : (u, v)
+                            }
+                        }
+                        continue
+                    }
+                    if shape == .bed {
+                        // The top slice similarly packs head then foot.  Select
+                        // one half and rotate it with the two-block footprint;
+                        // side and frame textures retain their full UV range.
+                        let head = (meta & 4) != 0
+                        let facing = meta & 3
+                        let vBase = head ? 0.0 : 0.5
+                        for bx in boxes {
+                            emitBox(target, x, y, z, bx, tileOf, s4, b4, tint, anim, Int(EMISSIVE[id])) {
+                                face, u, v in
+                                guard face == 1 else { return (u, v) }
+                                let ru: Double, rv: Double
+                                switch facing {
+                                case 1: (ru, rv) = (1 - u, 1 - v)
+                                case 2: (ru, rv) = (v, 1 - u)
+                                case 3: (ru, rv) = (1 - v, u)
+                                default: (ru, rv) = (u, v)
+                                }
+                                return (ru, vBase + rv * 0.5)
+                            }
+                        }
+                        continue
+                    }
+                    if shape == .lever {
+                        // shapeBoxes emits the stone base first and four handle
+                        // segments after it. Crop each from the matching region
+                        // of the existing lever tile instead of repeating the
+                        // entire sprite on every box.
+                        for (part, bx) in boxes.enumerated() {
+                            let u0 = part == 0 ? 4.0 / 16 : 7.0 / 16
+                            let u1 = part == 0 ? 12.0 / 16 : 9.0 / 16
+                            let v0 = part == 0 ? 10.0 / 16 : 1.0 / 16
+                            let v1 = part == 0 ? 1.0 : 10.0 / 16
+                            emitBox(target, x, y, z, bx, tileOf, s4, b4, tint, anim, Int(EMISSIVE[id])) {
+                                _, u, v in
+                                (u0 + u * (u1 - u0), v0 + v * (v1 - v0))
+                            }
+                        }
+                        continue
+                    }
                     for bx in boxes {
                         emitBox(target, x, y, z, bx, tileOf, s4, b4, tint, anim, Int(EMISSIVE[id]))
                     }
@@ -830,46 +884,62 @@ final class SectionMesher {
 
     private func emitBox(
         _ b: MeshBuilder, _ x: Int, _ y: Int, _ z: Int, _ box: AABB,
-        _ tileOf: (Int) -> Int, _ sky: Int, _ blk: Int, _ tint: Int, _ anim: Int, _ emissive: Int
+        _ tileOf: (Int) -> Int, _ sky: Int, _ blk: Int, _ tint: Int, _ anim: Int, _ emissive: Int,
+        _ uvMap: ((Int, Double, Double) -> (Double, Double))? = nil
     ) {
         let x0 = Double(x) + box.x0, y0 = Double(y) + box.y0, z0 = Double(z) + box.z0
         let x1 = Double(x) + box.x1, y1 = Double(y) + box.y1, z1 = Double(z) + box.z1
         @inline(__always) func fullLow(_ v: Double) -> Bool { v <= 0.001 }
         @inline(__always) func fullHigh(_ v: Double) -> Bool { v >= 0.999 }
+        @inline(__always) func uv(_ face: Int, _ u: Double, _ v: Double) -> (Double, Double) {
+            uvMap?(face, u, v) ?? (u, v)
+        }
         // bottom (0)
         if !(fullLow(box.y0) && OPAQUE[cellAt(x, y - 1, z) >> 4] == 1) {
+            let a = uv(0, box.x0, box.z0), c = uv(0, box.x0, box.z1)
+            let d = uv(0, box.x1, box.z1), e = uv(0, box.x1, box.z0)
             b.quad(x0, y0, z0, x0, y0, z1, x1, y0, z1, x1, y0, z0,
-                   box.x0, box.z0, box.x0, box.z1, box.x1, box.z1, box.x1, box.z0,
+                   a.0, a.1, c.0, c.1, d.0, d.1, e.0, e.1,
                    tileOf(0), 0, 3, 3, 3, 3, sky, sky, sky, sky, blk, blk, blk, blk, emissive, tint, anim)
         }
         // top (1)
         if !(fullHigh(box.y1) && OPAQUE[cellAt(x, y + 1, z) >> 4] == 1) {
+            let a = uv(1, box.x0, box.z0), c = uv(1, box.x1, box.z0)
+            let d = uv(1, box.x1, box.z1), e = uv(1, box.x0, box.z1)
             b.quad(x0, y1, z0, x1, y1, z0, x1, y1, z1, x0, y1, z1,
-                   box.x0, box.z0, box.x1, box.z0, box.x1, box.z1, box.x0, box.z1,
+                   a.0, a.1, c.0, c.1, d.0, d.1, e.0, e.1,
                    tileOf(1), 1, 3, 3, 3, 3, sky, sky, sky, sky, blk, blk, blk, blk, emissive, tint, anim)
         }
         // north -z (2) — vertex order matches the greedy cube winding (back-culled)
         if !(fullLow(box.z0) && OPAQUE[cellAt(x, y, z - 1) >> 4] == 1) {
+            let a = uv(2, 1 - box.x0, 1 - box.y0), c = uv(2, 1 - box.x1, 1 - box.y0)
+            let d = uv(2, 1 - box.x1, 1 - box.y1), e = uv(2, 1 - box.x0, 1 - box.y1)
             b.quad(x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0,
-                   1 - box.x0, 1 - box.y0, 1 - box.x1, 1 - box.y0, 1 - box.x1, 1 - box.y1, 1 - box.x0, 1 - box.y1,
+                   a.0, a.1, c.0, c.1, d.0, d.1, e.0, e.1,
                    tileOf(2), 2, 3, 3, 3, 3, sky, sky, sky, sky, blk, blk, blk, blk, emissive, tint, anim)
         }
         // south +z (3)
         if !(fullHigh(box.z1) && OPAQUE[cellAt(x, y, z + 1) >> 4] == 1) {
+            let a = uv(3, box.x1, 1 - box.y0), c = uv(3, box.x0, 1 - box.y0)
+            let d = uv(3, box.x0, 1 - box.y1), e = uv(3, box.x1, 1 - box.y1)
             b.quad(x1, y0, z1, x0, y0, z1, x0, y1, z1, x1, y1, z1,
-                   box.x1, 1 - box.y0, box.x0, 1 - box.y0, box.x0, 1 - box.y1, box.x1, 1 - box.y1,
+                   a.0, a.1, c.0, c.1, d.0, d.1, e.0, e.1,
                    tileOf(3), 3, 3, 3, 3, 3, sky, sky, sky, sky, blk, blk, blk, blk, emissive, tint, anim)
         }
         // west -x (4)
         if !(fullLow(box.x0) && OPAQUE[cellAt(x - 1, y, z) >> 4] == 1) {
+            let a = uv(4, box.z1, 1 - box.y0), c = uv(4, box.z0, 1 - box.y0)
+            let d = uv(4, box.z0, 1 - box.y1), e = uv(4, box.z1, 1 - box.y1)
             b.quad(x0, y0, z1, x0, y0, z0, x0, y1, z0, x0, y1, z1,
-                   box.z1, 1 - box.y0, box.z0, 1 - box.y0, box.z0, 1 - box.y1, box.z1, 1 - box.y1,
+                   a.0, a.1, c.0, c.1, d.0, d.1, e.0, e.1,
                    tileOf(4), 4, 3, 3, 3, 3, sky, sky, sky, sky, blk, blk, blk, blk, emissive, tint, anim)
         }
         // east +x (5)
         if !(fullHigh(box.x1) && OPAQUE[cellAt(x + 1, y, z) >> 4] == 1) {
+            let a = uv(5, 1 - box.z0, 1 - box.y0), c = uv(5, 1 - box.z1, 1 - box.y0)
+            let d = uv(5, 1 - box.z1, 1 - box.y1), e = uv(5, 1 - box.z0, 1 - box.y1)
             b.quad(x1, y0, z0, x1, y0, z1, x1, y1, z1, x1, y1, z0,
-                   1 - box.z0, 1 - box.y0, 1 - box.z1, 1 - box.y0, 1 - box.z1, 1 - box.y1, 1 - box.z0, 1 - box.y1,
+                   a.0, a.1, c.0, c.1, d.0, d.1, e.0, e.1,
                    tileOf(5), 5, 3, 3, 3, 3, sky, sky, sky, sky, blk, blk, blk, blk, emissive, tint, anim)
         }
     }
