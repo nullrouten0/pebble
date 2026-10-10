@@ -1325,18 +1325,16 @@ final class ChatScreen: Screen {
     }
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         let cv = ui.cv
-        let maxN = min(chatLog.count, 18)
-        for i in 0..<maxN {
-            let msg = chatLog[chatLog.count - 1 - i]
-            let y = ui.height - 36 - Double(i) * 10
-            cv.setFill("rgba(0,0,0,0.5)")
-            cv.fillRect(2, y, min(ui.width * 0.6, Double(textWidth(msg.text)) + 4), 10)
-            cv.drawText(msg.text, 4, y + 1, 1)
-        }
+        let s = chatScale
+        drawChatLines(ui, chatLog.map { ($0, 1.0) }, ui.height - 4 - 12 * s, 0.5)
         cv.setFill("rgba(0,0,0,0.6)")
-        cv.fillRect(2, ui.height - 14, ui.width - 4, 12)
+        cv.fillRect(2, ui.height - 2 - 12 * s, ui.width - 4, 12 * s)
         let blink = Int(CACurrentMediaTime() * 1000 / 400) % 2 == 0 ? "_" : ""
-        cv.drawText(input + blink, 4, ui.height - 12, 1)
+        // keep the caret in view when the line is wider than the screen
+        let maxW = Int((ui.width - 12) / s)
+        var shown = input + blink
+        while textWidth(shown) > maxW && !shown.isEmpty { shown.removeFirst() }
+        cv.drawText(shown, 4, ui.height - 2 - 12 * s + 2 * s, s)
     }
     override func onChar(_ ui: UIManager, _ game: GameCore, _ ch: String) -> Bool {
         input += ch
@@ -1376,21 +1374,49 @@ final class ChatScreen: Screen {
 /// draws recent chat while playing (no screen open)
 func drawChatOverlay(_ ui: UIManager) {
     let now = CACurrentMediaTime() * 1000
-    let cv = ui.cv
-    var shown = 0
-    var i = chatLog.count - 1
-    while i >= 0 && shown < 8 {
-        let msg = chatLog[i]
+    var recent: [(ChatMessage, Double)] = []
+    for msg in chatLog.reversed().prefix(8) {
         let age = now - msg.time
         if age > 8000 { break }
-        let alpha = age > 6000 ? 1 - (age - 6000) / 2000 : 1
-        let y = ui.height - 44 - Double(shown) * 10
-        cv.globalAlpha = Float(alpha)
-        cv.setFill("rgba(0,0,0,0.45)")
-        cv.fillRect(2, y, min(ui.width * 0.6, Double(textWidth(msg.text)) + 4), 10)
-        cv.drawText(msg.text, 4, y + 1, 1)
-        cv.globalAlpha = 1
-        shown += 1
-        i -= 1
+        recent.append((msg, age > 6000 ? 1 - (age - 6000) / 2000 : 1))
+    }
+    drawChatLines(ui, recent.reversed(), ui.height - 34, 0.45)
+}
+
+var chatScale: Double { min(3, max(1, gAppDelegate?.game.settings.chatScale ?? 1)) }
+
+/// wrap a chat message to `maxW` (unscaled px), carrying the active §color
+/// code onto continuation lines
+func wrapChat(_ text: String, _ maxW: Int) -> [String] {
+    var out: [String] = []
+    var color = ""
+    for line in wrapText(text, maxW) {
+        out.append(color + line)
+        var it = line.makeIterator()
+        while let ch = it.next() {
+            if ch == "§", let code = it.next() { color = code == "r" ? "" : "§\(code)" }
+        }
+    }
+    return out.isEmpty ? [""] : out
+}
+
+/// messages oldest→newest, newest line sitting on `bottom`; stops at the top of the screen
+private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ bottom: Double, _ bgAlpha: Double) {
+    let cv = ui.cv
+    let s = chatScale
+    let lineH = 10 * s
+    let maxW = Int(ui.width * 0.75 / s) - 6
+    var y = bottom
+    for (msg, alpha) in msgs.reversed() {
+        let lines = wrapChat(msg.text, maxW)
+        for line in lines.reversed() {
+            y -= lineH
+            if y < 4 { return }
+            cv.globalAlpha = Float(alpha)
+            cv.setFill("rgba(0,0,0,\(bgAlpha))")
+            cv.fillRect(2, y, Double(textWidth(line)) * s + 4 * s, lineH)
+            cv.drawText(line, 2 + 2 * s, y + s, s)
+            cv.globalAlpha = 1
+        }
     }
 }

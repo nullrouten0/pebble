@@ -19,7 +19,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft** in any way, and contains no Mojang code or assets. Full statement in [Disclaimer](#disclaimer) below.
 
-> **Pebble 1.0.6 is a beta.** The engine is pinned by 461 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. If you hit one, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
+> **Pebble 1.1.0 is a beta.** The engine is pinned by 461 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. If you hit one, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
 
 ## By the numbers
 
@@ -28,7 +28,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Lines of Swift | ~45,000 across 82 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
-| Items | 1,188 |
+| Items | 1,194 |
 | Biomes | 63 (overworld, nether, end, cave biomes) |
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
 | Structures | 19 types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…) |
@@ -94,7 +94,7 @@ Sources/PebbleCore/   the engine — headless, no AppKit, fully testable
   World/              chunks, block registry (879), light engine, block entities
   Gen/                terrain, biomes, features, all structures
   Entity/             100 entity types, AI, pathfinding, player physics
-  Items/              item registry (1,188), recipes, enchants, potions, loot
+  Items/              item registry (1,194), recipes, enchants, potions, loot
   Systems/            interact, redstone, fluids, farming, combat, raids, portals
   Render/             section mesher, texture atlas, entity models
   Game/               GameCore tick orchestrator, SQLite saves, settings
@@ -119,7 +119,7 @@ Useful environment variables for testing and automation:
 |---|---|
 | `PEBBLE_AUTOLOAD=1` | skip menus, load the most recent world |
 | `PEBBLE_NEWWORLD=<seed>` | create a fresh world with that seed (worldgen testing) |
-| `PEBBLE_CMD="/tp 0 120 0;/time set 1000"` | run chat commands once the world is up |
+| `PEBBLE_CMD="/tp 0 120 0;/time set 1000"` | run chat commands once the world is up (`#wait N` pauses N frames between them) |
 | `PEBBLE_SHOT="/tmp/x.png@300"` | capture a frame N frames after load |
 | `PEBBLE_WORLDS=1` | jump straight to the world-select screen |
 | `PEBBLE_BOT=1` | run the physics validation bot through the real input path |

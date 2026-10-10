@@ -3,6 +3,94 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.1.0 — 2026-10-10 — building & demolition tools, structure placement, undo
+
+### Placing structures — `/place`
+- **`/place <structure> [<x> <y|ground> <z>] [variant]`** drops a whole
+  structure into the world. `/place list` lists every option. With no
+  coordinates it lands in front of you, clear of where you stand. A different
+  `variant` number gives a different layout of the same structure.
+- **Placement clears the way.** Every cell in the structure's footprint is
+  replaced, so trees, terrain or water can't leave holes in it. Columns standing
+  over a gap get a foundation filled down to the ground.
+- **Starter structures:** `cabin`, `watchtower`, `bunker`, `farm`, `portal`.
+  Each comes stocked with things like chests, beds and doors.
+- **Landmarks:**
+  - **`giza_pyramid`**: 101 wide and 51 tall, with internal tunnels and
+    chambers. Placing it writes ~264k blocks in about a second.
+  - **`castle`**
+  - **`lighthouse`**
+  - **`windmill`**
+  - **`treehouse`**
+  - **`sky_island`**
+- **All worldgen structures can be placed too**, e.g. villages, strongholds and
+  end cities.
+- **Underground structures are easy to find.**
+  - A ladder shaft leads down to each one. The shaft is lined with brick and lit
+    with glowstone.
+  - The surface opening has a lantern-lit collar. Trees around it are cleared
+    away.
+  - A flag pole with red wool marks the spot and stands taller than the forest
+    canopy.
+  - `/place` prints the entrance coordinates along with a ready-made `/tp`
+    command.
+
+### Destruction tools
+All are tools-category items, given with `/give`.
+- **Bazooka (`bazooka`).** Fires a fast rocket that blows out a crater of radius
+  9. The blast spreads outward over a few ticks instead of all landing in one
+  frame.
+- **Mining laser (`mining_laser`).** Hold use to fire a beam that bores a
+  5-wide tunnel; sneak for 9 wide. It reaches 64 blocks.
+- **Void bomb (`void_bomb`, stacks to 16).** A thrown, glowing orb that implodes
+  a sphere of radius 12 into nothing; sneak to throw for radius 24.
+- **Quarry charge (`quarry_charge`, stacks to 16).** Placed on a block, it digs
+  a 9×9 shaft down to bedrock one layer per tick; sneak for 17×17.
+
+### Building tools
+- **Wall builder (`wall_builder`).** Right-click to raise a 16×16 wall square
+  to the direction you're facing.
+- **Box builder (`box_builder`).** Right-click to build a 16×16×16 box with a
+  solid floor, walls on four sides and an open top. The inside is cleared out.
+- **Both builders:**
+  - Sneak for the 8-block versions.
+  - Builds snap to a 16-block grid, so walls and boxes line up edge to edge.
+  - Clicking the top of a build stacks the next one on it. Clicking a side puts
+    the next one alongside, at the same base height.
+  - The block in your off hand sets the material. Failing that, the hotbar slot
+    just right of the tool is used, and then stone bricks.
+  - Builds fill a foundation down to nearby ground.
+  - Bedrock and other unbreakable blocks are never overwritten.
+  - Builders and quarry charges fire once per click; holding use doesn't repeat
+    them.
+
+### Undo / redo
+- **Cmd/Ctrl+Z** undoes the last large edit and **Cmd/Ctrl+Shift+Z** redoes it.
+  `/undo [n]` and `/redo [n]` do the same and report what changed.
+- **Covered:** the bazooka, the laser (one held burst is one step), the void
+  bomb, quarry charges, `/place`, `/fill` and both builders.
+- **What's restored:** blocks, plus container contents such as chests.
+  Undoing a blast or quarry that is still running stops it.
+- **Limits:**
+  - The last 64 edits are kept, capped at 6M blocks.
+  - History is cleared on quit.
+  - Hand mining and hand placing aren't tracked.
+  - Mobs and dropped items don't come back.
+
+### Chat
+- **Long chat lines wrap** instead of running off screen. A § color code carries
+  over onto the wrapped lines.
+- **`/chatsize <1-3>`** scales the chat text, and the setting is saved.
+- **The input line scrolls** to keep the cursor visible.
+
+### Development
+- **`PEBBLE_CMD` accepts `#wait N`.** This pauses the remaining commands for
+  N frames, so a script can wait for a blast to finish before taking a
+  screenshot.
+- **The pebsmoke item count is now 1,194** for the six new items, appended
+  after all existing ones so the ids stay stable. The suite passes 461/461 and
+  no goldens changed.
+
 ## 1.0.6 — 2026-07-23 — gameplay and rendering fixes (#15, #16)
 
 - **Doors and beds now render as coherent two-block objects.** Each half samples

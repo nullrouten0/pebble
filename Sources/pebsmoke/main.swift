@@ -152,7 +152,7 @@ registerAllItems()
 // fns referenced items that never existed; appended at the END so every
 // baseline id is unchanged)
 let BASE_ITEM_COUNT = 1186
-check("item count", itemDefs.count == 1188, "got \(itemDefs.count) want 1188")
+check("item count", itemDefs.count == 1194, "got \(itemDefs.count) want 1194") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder
 check("item ids stable after append", iid("weeping_vines") == 1186 && iid("twisting_vines") == 1187,
       "vines ids \(iid("weeping_vines"))/\(iid("twisting_vines")) want 1186/1187")
 let itemGoldens: [(String, Int)] = [

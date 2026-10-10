@@ -20,10 +20,13 @@ let MAX_MESH_INFLIGHT = 26
 let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 
 /// item-billboard projectiles (the app renders these as sprites)
+/// tools that act once per click, never on held-use repeat
+let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge"]
+
 public let SPRITE_TYPES: Set<String> = [
     "snowball", "egg", "ender_pearl", "xp_bottle", "thrown_potion", "firework",
     "eye_of_ender", "fishing_bobber", "wither_skull", "dragon_fireball", "fireball",
-    "shulker_bullet", "llama_spit",
+    "shulker_bullet", "llama_spit", "rocket", "void_bomb",
 ]
 /// entities that tick regardless of sim distance (bosses roam the whole arena)
 let ALWAYS_TICK: Set<String> = ["ender_dragon", "wither", "warden", "end_crystal", "eye_of_ender", "lightning"]
@@ -822,6 +825,16 @@ public final class GameCore {
             }
             be.lootTable = str("lootTable")
             put(be)
+        case "chest_items":
+            // fixed contents: "item*count,item*count,…" in slot order
+            let be = makeContainerBE(x, y, z, 27)
+            for (slot, entry) in (str("items") ?? "").split(separator: ",").prefix(27).enumerated() {
+                let parts = entry.split(separator: "*")
+                guard let id = iidOpt(String(parts[0])) else { continue }
+                let n = parts.count > 1 ? Int(parts[1]) ?? 1 : 1
+                be.items![slot] = ItemStack(id, max(1, min(n, itemDef(id).maxStack)))
+            }
+            put(be)
         case "elytra_chest":
             let be = makeContainerBE(x, y, z, 27)
             be.items![13] = ItemStack(iid("elytra"), 1)
@@ -861,6 +874,172 @@ public final class GameCore {
         default:
             break
         }
+    }
+
+    // MARK: - /place
+
+    public struct PlaceResult {
+        public let changed: Int
+        public let skippedCells: Int
+        public let x0: Int, y0: Int, z0: Int, x1: Int, y1: Int, z1: Int
+        /// top of the marked ladder shaft dug down to a buried structure
+        public var entrance: (Int, Int, Int)? = nil
+    }
+
+    /// stamp a captured structure into the live world centered on (tx,tz).
+    /// Surface structures sit with their ground level at `ty` (default: the real
+    /// ground under (tx,tz), ignoring trees); underground ones keep their native
+    /// depth, or put their lowest block at `ty`. Everything in the footprint above
+    /// ground — terrain, trees, plants — is destroyed and replaced, and columns
+    /// overhanging lower terrain get a foundation down to solid ground.
+    public func placePrefab(_ pf: Prefab, _ tx: Int, _ ty: Int?, _ tz: Int) -> PlaceResult {
+        let w = world
+        let G = PREFAB_GROUND
+        let dx = tx - floorDiv(pf.x0 + pf.x1, 2), dz = tz - floorDiv(pf.z0 + pf.z1, 2)
+        let dy: Int
+        if pf.surface { dy = (ty ?? groundLevel(w, tx, tz)) - G } else { dy = ty.map { $0 - pf.y0 } ?? 0 }
+        let flags = SET_NO_NEIGHBORS
+        var changed = 0, skipped = 0
+        let batch = beginEdit(w, "place \(pf.id)")
+        func put(_ x: Int, _ y: Int, _ z: Int, _ c: Int) {
+            guard w.isLoadedAt(x, z) else { skipped += 1; return }
+            if batch.set(x, y, z, c, flags) { changed += 1 }
+        }
+
+        var captured = Set<Int64>()
+        captured.reserveCapacity(pf.cells.count)
+        for (x, y, z, _) in pf.cells { captured.insert(CaptureSink.pack(x, y, z)) }
+
+        if pf.surface {
+            // per column (capture coords): highest captured y, lowest solid y
+            struct Col { var top = Int.min; var low = Int.max; var lowCell: UInt16 = 0 }
+            var cols: [Int64: Col] = [:]
+            var order: [Int64] = []
+            for (x, y, z, c) in pf.cells where y >= G - 1 {
+                let k = CaptureSink.pack(x, 0, z)
+                var col = cols[k] ?? { order.append(k); return Col() }()
+                col.top = max(col.top, y)
+                if c != 0 && y < col.low { col.low = y; col.lowCell = c }
+                cols[k] = col
+            }
+            let dirt = Int(cell(B.dirt))
+            for k in order {
+                let col = cols[k]!
+                let (x, _, z) = CaptureSink.unpack(k)
+                let wx = x + dx, wz = z + dz
+                // clear: ground level up to 4 above the structure, then any tree above that
+                var y = G
+                while y <= col.top + 4 {
+                    if !captured.contains(CaptureSink.pack(x, y, z)) { put(wx, y + dy, wz, 0) }
+                    y += 1
+                }
+                while y + dy < w.info.minY + w.info.height, w.getBlockId(wx, y + dy, wz) != 0,
+                      isTreeOrPlant(w.getBlockId(wx, y + dy, wz)) {
+                    put(wx, y + dy, wz, 0)
+                    y += 1
+                }
+                // foundation under columns that rest on the ground
+                if col.low <= G {
+                    let lid = Int(col.lowCell >> 4)
+                    let fill = blockDefs[lid].fullCube && OPAQUE[lid] == 1 && HAS_GRAVITY[lid] == 0 ? Int(col.lowCell) : dirt
+                    func open(_ y: Int) -> Bool {
+                        let id = w.getBlockId(wx, y, wz)
+                        return isTreeOrPlant(id) || id == Int(B.water) || id == Int(B.lava)
+                    }
+                    // only when real ground is within reach — a build placed
+                    // up in the air on purpose shouldn't trail a pillar
+                    let top = col.low + dy - 1
+                    var fy = top
+                    while fy > max(w.info.minY, top - 24), open(fy) { fy -= 1 }
+                    if !open(fy) {
+                        for y in stride(from: top, to: fy, by: -1) { put(wx, y, wz, fill) }
+                    }
+                }
+            }
+        }
+
+        for (x, y, z, c) in pf.cells { put(x + dx, y + dy, z + dz, Int(c)) }
+
+        // block entities after blocks: setBlock drops BEs whose block changes
+        for spec in pf.blockEntities {
+            let s = BESpec(x: spec.x + dx, y: spec.y + dy, z: spec.z + dz, kind: spec.kind, data: spec.data)
+            guard let c = w.getChunkAt(s.x, s.z) else { continue }
+            resolveBESpec(w, c, s)
+            if let be = c.getBlockEntity(posMod(s.x, 16), s.y, posMod(s.z, 16)), beTickHandlers[be.type] != nil {
+                w.trackTickingBE(be)
+            }
+        }
+        for es in pf.entities {
+            let m = spawnMob(w, es.mob, es.x + Double(dx), es.y + Double(dy), es.z + Double(dz), spawnOptsFrom(es.data))
+            m?.persistent = true
+        }
+        var r = PlaceResult(changed: changed, skippedCells: skipped,
+                            x0: pf.x0 + dx, y0: pf.y0 + dy, z0: pf.z0 + dz, x1: pf.x1 + dx, y1: pf.y1 + dy, z1: pf.z1 + dz)
+        // buried structures get a lit ladder shaft and a flag so they can be found
+        if !pf.surface, let (ex, ey, ez) = entranceTarget(pf) {
+            r.entrance = digEntrance(w, ex + dx, ey + dy, ez + dz, put)
+        }
+        return r
+    }
+
+    /// ladder shaft from the surface down to the air cell (x,y,z), lined with
+    /// stone bricks where it crosses caves or loose ground, with a flag pole
+    /// and lanterns on top. Returns the surface point.
+    private func digEntrance(_ w: World, _ x: Int, _ y: Int, _ z: Int,
+                             _ put: (Int, Int, Int, Int) -> Void) -> (Int, Int, Int) {
+        let brick = Int(cell(B.stone_bricks)), ladder = Int(cell(B.ladder, 0))
+        let top = max(groundLevel(w, x, z), y + 3)
+        func weak(_ x: Int, _ y: Int, _ z: Int) -> Bool {
+            let id = w.getBlockId(x, y, z)
+            return isTreeOrPlant(id) || id == Int(B.water) || id == Int(B.lava) || HAS_GRAVITY[id] != 0
+        }
+        // the ladder's backing wall (+z) runs all the way down to the floor
+        for sy in y...(top + 1) {
+            for oz in -1...1 {
+                for ox in -1...1 where ox != 0 || oz != 0 {
+                    let isBack = ox == 0 && oz == 1
+                    if (isBack && sy <= top) || (sy < top && sy > y + 2 && weak(x + ox, sy, z + oz)) { put(x + ox, sy, z + oz, brick) }
+                }
+            }
+            put(x, sy, z, sy <= top ? ladder : 0)
+            // a light in the west wall every 6 blocks
+            if sy < top - 1 && (top - sy) % 6 == 0 && !isTreeOrPlant(w.getBlockId(x - 1, sy, z)) {
+                put(x - 1, sy, z, Int(cell(B.glowstone)))
+            }
+        }
+        // clear the canopy over the entrance so the flag shows
+        let ceil = min(w.info.minY + w.info.height - 1, top + 40)
+        var canopy = top
+        for oz in -6...6 {
+            for ox in -6...6 {
+                for cy in top...ceil where w.getBlockId(x + ox, cy, z + oz) != 0 {
+                    let id = w.getBlockId(x + ox, cy, z + oz)
+                    if abs(ox) <= 3 && abs(oz) <= 3 && isTreeOrPlant(id) { put(x + ox, cy, z + oz, 0) }
+                    else { canopy = max(canopy, cy) }
+                }
+            }
+        }
+        // surface collar, flag pole and lights
+        for oz in -2...2 {
+            for ox in -2...2 where abs(ox) == 2 || abs(oz) == 2 {
+                put(x + ox, top - 1, z + oz, brick)
+                put(x + ox, top, z + oz, 0)
+                put(x + ox, top + 1, z + oz, 0)
+            }
+        }
+        for (ox, oz) in [(-1, -1), (1, -1), (-1, 1), (1, 1)] {
+            put(x + ox, top, z + oz, Int(cell(B.stone_brick_wall)))
+            put(x + ox, top + 1, z + oz, Int(cell(B.lantern)))
+        }
+        // flag pole tall enough to clear the surrounding trees
+        let px = x + 2, pz = z + 2
+        let poleTop = min(ceil - 1, max(top + 10, canopy + 5))
+        for py in top..<poleTop { put(px, py, pz, Int(cell(B.oak_fence))) }
+        for fy in (poleTop - 3)..<poleTop {
+            for fx in 1...4 { put(px + fx, fy, pz, Int(cell(B.red_wool))) }
+        }
+        put(px, poleTop, pz, Int(cell(B.glowstone)))
+        return (x, top, z)
     }
 
     /// queue every chunk around (cx,cz) whose 3×3 neighborhood is now generated
@@ -1490,6 +1669,8 @@ public final class GameCore {
 
         // ---- world & entities ----
         w.tick()
+        tickCarveJobs()
+        tickShake()
         let simR = Double(w.simDistance * 16) * Double(w.simDistance * 16)
         for e in Array(w.entities) {
             if e === p || e.dead { continue }
@@ -1643,6 +1824,18 @@ public final class GameCore {
         fovScale += (target - fovScale) * 0.5
     }
 
+    /// screen shake from nearby blasts (decays ~15%/tick)
+    private var shake = 0.0
+    private func tickShake() {
+        shake *= 0.85
+        guard let p = player else { pendingBlasts.removeAll(); return }
+        for (x, y, z, r) in pendingBlasts {
+            let d = detHyp3(p.x - x, p.y - y, p.z - z)
+            shake = max(shake, min(1.2, r * 2.5 / max(6, d)))
+        }
+        pendingBlasts.removeAll()
+    }
+
     /// bows/spyglass zoom-slow while charging
     private func itemUseSlows() -> Bool {
         guard let held = player?.mainHand else { return false }
@@ -1665,14 +1858,17 @@ public final class GameCore {
                 p.useItemTicks += 1
                 let held = p.usingHandStack
                 let def = held.map { itemDef($0.id) }
-                if let def, def.food != nil || def.name == "potion" || def.name == "milk_bucket" {
+                if def?.name == "mining_laser" {
+                    fireLaser(world, p, wide: p.sneaking, tick: p.useItemTicks)
+                } else if let def, def.food != nil || def.name == "potion" || def.name == "milk_bucket" {
                     if p.useItemTicks % 4 == 0 {
                         host?.playSound("entity.generic.eat", p.x, p.y, p.z, 0.4, 0.9 + Double.random(in: 0..<0.3))
                     }
                     if p.useItemTicks >= 32 { finishUsingItem(ctx) }
                 }
             }
-        } else if rightDown && useCooldown <= 0 {
+        } else if rightDown && useCooldown <= 0
+                    && !ONE_SHOT_TOOLS.contains(p.mainHand.map { itemDef($0.id).name } ?? "") {
             // held use repeats (block placement etc.) every 4 ticks
             doUse()
             useCooldown = 4
@@ -1949,7 +2145,9 @@ public final class GameCore {
             }
         }
         let hit = crosshairBlock()
-        if let hit, !p.sneaking || p.mainHand == nil {
+        let heldName = p.mainHand.map { itemDef($0.id).name }
+        let destroyer = ["bazooka", "mining_laser", "void_bomb", "quarry_charge", "wall_builder", "box_builder"].contains(heldName) // fire, don't open doors/chests
+        if let hit, !destroyer, !p.sneaking || p.mainHand == nil {
             if useBlock(ctx, hit) {
                 p.attackAnim = 0.6
                 return
@@ -2145,6 +2343,12 @@ public final class GameCore {
             eyeY += abs(detSin(bp * .pi)) * ba * 0.55
             cx += detSin(bp * .pi) * ba * 0.16 * detCos(p.yaw)
             cz += detSin(bp * .pi) * ba * 0.16 * detSin(p.yaw)
+        }
+        if shake > 0.01 && !settings.reduceMotion {
+            let a = shake * 0.12
+            cx += detSin(timeSec * 61) * a
+            eyeY += detSin(timeSec * 47 + 1.3) * a
+            cz += detSin(timeSec * 53 + 2.1) * a
         }
         var yaw = p.yaw, pitch = p.pitch
         if perspective == 2 {

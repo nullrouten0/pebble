@@ -255,6 +255,11 @@ final class GameView: MTKView {
             appd?.hud.hideGui.toggle()
             return
         }
+        // Cmd/Ctrl+Z undoes the last big edit (blasts, /place, /fill, builders); +Shift redoes
+        if code == "KeyZ" && (event.modifierFlags.contains(.command) || event.modifierFlags.contains(.control)) {
+            runCommand(game, event.modifierFlags.contains(.shift) ? "/redo" : "/undo")
+            return
+        }
         game.keyDown(code, now: nowMs(),
                      ctrlOrCmd: event.modifierFlags.contains(.command) || event.modifierFlags.contains(.control))
     }
@@ -620,10 +625,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
             pendingCmdDelay += 1
             if pendingCmdDelay > 90 {
                 if p.dead { game.respawnPlayer() }
-                for c in cmds.components(separatedBy: ";") where !c.isEmpty {
-                    runCommand(game, c.trimmingCharacters(in: .whitespaces))
-                }
                 pendingCmds = nil
+                let list = cmds.components(separatedBy: ";").filter { !$0.isEmpty }
+                for (i, c) in list.enumerated() {
+                    // "#wait N" defers the rest by N frames
+                    if c.hasPrefix("#wait") {
+                        pendingCmds = list[(i + 1)...].joined(separator: ";")
+                        pendingCmdDelay = 90 - (Int(c.dropFirst(5).trimmingCharacters(in: .whitespaces)) ?? 60)
+                        break
+                    }
+                    let before = chatLog.count
+                    runCommand(game, c.trimmingCharacters(in: .whitespaces))
+                    for m in chatLog.suffix(max(0, chatLog.count - before)) { print("[cmd] \(c) → \(m.text)") }
+                    fflush(stdout)
+                }
             }
         }
         if let shot = pendingShot, game.hasWorld(), pendingCmds == nil {

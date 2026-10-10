@@ -27,7 +27,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
 
     switch cmd {
     case "help":
-        ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, effect, enchant, xp, setblock, fill, locate, difficulty, gamerule, clear, spawnpoint, heal")
+        ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, effect, enchant, xp, setblock, fill, locate, place, undo, redo, chatsize, difficulty, gamerule, clear, spawnpoint, heal")
     case "give":
         guard let itemName = arg(0) else { return fail("Usage: /give <item> [count]") }
         let count = arg(1).flatMap(Int.init) ?? 1
@@ -171,10 +171,11 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let vol = (abs(x1 - x0) + 1) * (abs(y1 - y0) + 1) * (abs(z1 - z0) + 1)
         if vol > 32768 { return fail("Too many blocks (\(vol) > 32768)") }
         var n = 0
+        let batch = beginEdit(world, "fill")
         for y in min(y0, y1)...max(y0, y1) {
             for z in min(z0, z1)...max(z0, z1) {
                 for x in min(x0, x1)...max(x0, x1) {
-                    world.setBlock(x, y, z, id == 0 ? 0 : Int(cell(id, 0)))
+                    batch.set(x, y, z, id == 0 ? 0 : Int(cell(id, 0)), SET_DEFAULT)
                     n += 1
                 }
             }
@@ -257,6 +258,58 @@ func runCommand(_ game: GameCore, _ raw: String) {
         guard mode == "simple" || mode == "greedy" else { return fail("Usage: /meshmode <simple|greedy>") }
         game.setMeshMode(simple: mode == "simple")
         ok("Mesh mode: \(mode!) — rebuilding world…")
+    case "place":
+        let ids = placeableStructureIds()
+        guard let name = arg(0), name != "list" else {
+            return ok("Structures: \(ids.joined(separator: ", "))")
+        }
+        guard ids.contains(name) else { return fail("Unknown structure: \(name). Try /place list") }
+        let usage = "Usage: /place <structure> [<x> <y|ground> <z>] [variant]"
+        let hasPos = args.count >= 4
+        if args.count == 3 || args.count > 5 { return fail(usage) }
+        let variant = (hasPos ? arg(4) : arg(1)).map { Int($0) } ?? 0
+        guard let variant else { return fail(usage) }
+        let t0 = Date()
+        guard let pf = capturePrefab(name, dim: world.dim.rawValue, minY: world.info.minY,
+                                     maxY: world.info.minY + world.info.height,
+                                     biome: world.biomeAt(Int(p.x.rounded(.down)), Int(p.y), Int(p.z.rounded(.down))),
+                                     variant: variant) else {
+            return fail("\(name) produced nothing here (try another variant)")
+        }
+        var tx: Int, tz: Int, ty: Int?
+        if hasPos {
+            tx = Int(parseCoord(args[1], p.x).rounded(.down))
+            tz = Int(parseCoord(args[3], p.z).rounded(.down))
+            ty = args[2] == "ground" || args[2] == "_" ? nil : Int(parseCoord(args[2], p.y).rounded(.down))
+        } else {
+            // in front of the player, far enough that the footprint clears them
+            let reach = Double(max(pf.x1 - pf.x0, pf.z1 - pf.z0)) / 2 + 3
+            tx = Int((p.x - sin(p.yaw) * reach).rounded(.down))
+            tz = Int((p.z + cos(p.yaw) * reach).rounded(.down))
+            ty = nil
+        }
+        let r = game.placePrefab(pf, tx, ty, tz)
+        let ms = Int(Date().timeIntervalSince(t0) * 1000)
+        ok("Placed \(name) at \(r.x0)..\(r.x1), \(r.y0)..\(r.y1), \(r.z0)..\(r.z1) — \(r.changed) blocks in \(ms) ms")
+        if let (ex, ey, ez) = r.entrance { ok("§eEntrance: ladder shaft under the red flag at \(ex) \(ey) \(ez) — /tp \(ex) \(ey + 1) \(ez - 2)") }
+        if r.skippedCells > 0 { fail("\(r.skippedCells) blocks fell in unloaded chunks and were skipped") }
+    case "undo", "redo":
+        let n = max(1, min(64, arg(0).flatMap(Int.init) ?? 1))
+        var done: [String] = []
+        for _ in 0..<n {
+            guard let b = cmd == "undo" ? undoLastEdit() : redoLastEdit() else { break }
+            done.append("\(b.label) (\(b.count) blocks)")
+        }
+        if done.isEmpty { return fail("Nothing to \(cmd)") }
+        ok((cmd == "undo" ? "Undid " : "Redid ") + done.joined(separator: ", ")
+           + " — \(undoStack.count) undo / \(redoStack.count) redo left")
+    case "chatsize":
+        guard let v = arg(0).flatMap(Double.init), v >= 1, v <= 3 else {
+            return fail("Usage: /chatsize <1-3> (current \(game.settings.chatScale ?? 1))")
+        }
+        game.settings.chatScale = v
+        game.applySettings()
+        ok("Chat size set to \(v)")
     case "surface", "top":
         let sx = Int(p.x.rounded(.down)), sz = Int(p.z.rounded(.down))
         let sy = world.surfaceY(sx, sz)

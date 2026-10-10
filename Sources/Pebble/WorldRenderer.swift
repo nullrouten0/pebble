@@ -1380,6 +1380,7 @@ final class WorldRenderer {
             "thrown_potion": "splash_potion", "firework": "firework_rocket", "eye_of_ender": "ender_eye",
             "fishing_bobber": "string", "wither_skull": "wither_skeleton_skull_item", "dragon_fireball": "fire_charge",
             "fireball": "fire_charge", "shulker_bullet": "shulker_shell", "llama_spit": "snowball",
+            "rocket": "firework_rocket", "void_bomb": "heart_of_the_sea",
         ]
         var items: [(x: Double, y: Double, z: Double, slot: Int, size: Double, bob: Double, light: Double, emissive: Double)] = []
         for e in w.entities {
@@ -1398,7 +1399,7 @@ final class WorldRenderer {
                 let id = iidOpt(spriteMap[ent.type] ?? "snowball") ?? iid("snowball")
                 stack = ItemStack(id, 1)
                 size = 0.35
-                if ent.type == "fireball" || ent.type == "dragon_fireball" || ent.type == "wither_skull" { emissive = 1 }
+                if ent.type == "fireball" || ent.type == "dragon_fireball" || ent.type == "wither_skull" || ent.type == "rocket" || ent.type == "void_bomb" { emissive = 1 }
             }
             guard let stack else { continue }
             let dx = ent.x - camPos.x, dz = ent.z - camPos.z

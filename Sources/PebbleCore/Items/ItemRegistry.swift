@@ -333,6 +333,14 @@ public func registerAllItems() {
     registerItem("weeping_vines", block: B.weeping_vines, category: "natural")
     registerItem("twisting_vines", block: B.twisting_vines, category: "natural")
 
+    // block destroyers (Systems/Destroyers.swift)
+    registerItem("bazooka", display: "Bazooka", maxStack: 1, category: "tools", icon: "spyglass", rarity: 3)
+    registerItem("mining_laser", display: "Mining Laser", maxStack: 1, category: "tools", icon: "blaze_rod", rarity: 3)
+    registerItem("void_bomb", display: "Void Bomb", maxStack: 16, category: "tools", icon: "heart_of_the_sea", rarity: 3)
+    registerItem("quarry_charge", display: "Quarry Charge", maxStack: 16, category: "tools", icon: "tnt_minecart", rarity: 3)
+    registerItem("wall_builder", display: "Wall Builder", maxStack: 1, category: "tools", icon: "brick", rarity: 3)
+    registerItem("box_builder", display: "Box Builder", maxStack: 1, category: "tools", icon: "shulker_shell", rarity: 3)
+
     // post-registration fixups
     itemDefs[iid("cake")].maxStack = 1
 }

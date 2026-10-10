@@ -694,6 +694,24 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
         return true
     }
 
+    // block destroyers
+    if name == "bazooka" { return fireBazooka(world, player) }
+    if name == "void_bomb" { return throwVoidBomb(world, player) }
+    if name == "wall_builder" || name == "box_builder" {
+        guard let hit else { return false }
+        if name == "wall_builder" { buildWall(world, player, hit) } else { buildBox(world, player, hit) }
+        return true
+    }
+    if name == "quarry_charge" {
+        guard let hit else { return false }
+        return armQuarryCharge(world, player, hit)
+    }
+    if name == "mining_laser" {
+        player.usingItem = true
+        player.useItemTicks = 0
+        return true
+    }
+
     // food → start eating
     if let food = def.food {
         if player.hunger < 20 || food.alwaysEat || player.gameMode == GameMode.creative {

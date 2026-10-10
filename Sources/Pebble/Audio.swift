@@ -940,6 +940,28 @@ private func buildRecipes() {
     R("entity.lightning_bolt.impact", "ambient", "Lightning strikes") { s, _, _ in
         s.noiseBurst(dur: 0.4, freq: 4000, q: 0.3, vol: 0.7)
     }
+    R("pebble.bazooka.fire", "players", "Bazooka fires") { s, _, _ in
+        s.noiseBurst(dur: 0.12, freq: 300, q: 0.4, lowpass: true, vol: 1.0)       // thump
+        s.noiseBurst(dur: 0.9, freq: 900, q: 0.6, vol: 0.55, attack: 0.08)        // whoosh
+        s.tone(freq: 220, endFreq: 70, dur: 0.5, type: .sawtooth, vol: 0.25)
+    }
+    R("pebble.laser.hum", "players", "Laser hums") { s, pitch, _ in
+        s.tone(freq: 880 * pitch, endFreq: 860 * pitch, dur: 0.22, type: .sawtooth, vol: 0.08, vibrato: 30)
+        s.tone(freq: 110 * pitch, dur: 0.22, type: .square, vol: 0.06)
+        s.noiseBurst(dur: 0.2, freq: 3000, q: 1.5, vol: 0.08)
+    }
+    R("pebble.void.implode", "players", "Void bomb implodes") { s, _, _ in
+        s.tone(freq: 60, endFreq: 900, dur: 0.7, type: .sawtooth, vol: 0.3)
+        s.tone(freq: 1800, endFreq: 40, dur: 0.9, type: .sine, vol: 0.3, delay: 0.5)
+        s.noiseBurst(dur: 1.0, freq: 400, q: 0.7, vol: 0.35, attack: 0.5)
+    }
+    R("pebble.quarry.arm", "players", "Quarry charge arms") { s, _, _ in
+        for i in 0..<3 { s.tone(freq: 1200, dur: 0.06, type: .square, vol: 0.15, delay: Double(i) * 0.12) }
+    }
+    R("pebble.quarry.dig", "blocks", "Quarry charge digs") { s, pitch, _ in
+        s.noiseBurst(dur: 0.25, freq: 300 * pitch, q: 0.8, vol: 0.4)
+        s.tone(freq: 90 * pitch, endFreq: 50, dur: 0.2, type: .square, vol: 0.15)
+    }
     R("entity.firework_rocket.launch", "ambient", "Firework launches") { s, _, _ in
         s.noiseBurst(dur: 0.5, freq: 2200, q: 0.5, vol: 0.4, attack: 0.05)
     }

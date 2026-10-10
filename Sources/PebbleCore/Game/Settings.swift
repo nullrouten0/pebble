@@ -42,6 +42,8 @@ public struct Settings: Codable {
     public var resourcePacks: [String]? = nil
     /// nil = off, "ultra" = built-in ultra preset, anything else = shader pack file name
     public var shader: String? = nil
+    /// chat text scale (1…3); optional so older settings.json files still decode
+    public var chatScale: Double? = nil
 
     public init() {}
 }
