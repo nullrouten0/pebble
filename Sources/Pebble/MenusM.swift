@@ -14,7 +14,7 @@ final class TitleScreen: Screen {
         "Diamonds run deep!", "Now with wardens!", "Sculk is listening!",
         "The dragon is waiting!", "Cherry blossoms!", "Archaeology!",
         "Goats will punt you!", "Trade with villagers!", "Ride a strider!",
-        "X marks the buried treasure!", "Hero of the Village!", "Singleplayer, for now!",
+        "X marks the buried treasure!", "Hero of the Village!", "Now with LAN!",
         "Do not stare at endermen!", "Beds explode in the Nether!", "Llamas spit back!",
         "Lava is not a swimming pool!", "Blame the goat!", "Bring a bucket!",
         "Mostly bug free!", "Creepers hate him!", "The chickens are watching!",
@@ -31,6 +31,11 @@ final class TitleScreen: Screen {
         buttons.append(Button(cx - 100, y, 200, 20, "Singleplayer", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.open(WorldSelectScreen(), game)
+        }))
+        y += 24
+        buttons.append(Button(cx - 100, y, 200, 20, "Multiplayer (LAN)", { [weak ui, weak game] in
+            guard let ui, let game else { return }
+            ui.open(MultiplayerScreen(), game)
         }))
         y += 24
         buttons.append(Button(cx - 100, y, 200, 20, "Credits", { [weak ui, weak game] in
@@ -79,8 +84,11 @@ final class TitleScreen: Screen {
         cv.restore()
         cv.drawText("Pebble \(PEBBLE_VERSION)", 2, ui.height - 10, 1, "#c8c8c8")
         cv.drawText("Textures: Faithful 32x (faithfulpack.net)", 2, ui.height - 20, 1, "#909090")
-        let credit = "Singleplayer, for now"
+        let credit = "Singleplayer & LAN"
         cv.drawText(credit, ui.width - Double(textWidth(credit)) - 2, ui.height - 10, 1, "#c8c8c8")
+        if let why = game.netEndMessage {
+            cv.drawTextCentered("§cLAN game ended: \(why)", ui.width / 2, (ui.height / 4).rounded(.down) + 30, 1)
+        }
         ui.drawButtons(self)
     }
 }
@@ -140,7 +148,7 @@ final class WorldSelectScreen: Screen {
         if !loaded {
             ui.cv.drawTextCentered("Loading...", ui.width / 2, 60, 1, "#a0a0a0")
         } else if worlds.isEmpty {
-            ui.cv.drawTextCentered("No worlds yet — create one!", ui.width / 2, 60, 1, "#a0a0a0")
+            ui.cv.drawTextCentered("No worlds yet - create one!", ui.width / 2, 60, 1, "#a0a0a0")
         }
         let fmt = DateFormatter()
         fmt.dateStyle = .short
@@ -243,7 +251,7 @@ final class WorldCreateScreen: Screen {
         ui.cv.drawText("World Name", nameField.x, nameField.y - 10, 1, "#a0a0a0")
         ui.cv.drawText("Seed", seedField.x, seedField.y - 10, 1, "#a0a0a0")
         if creating {
-            ui.cv.drawTextCentered("Generating world…", ui.width / 2, 190, 1, "#ffff55")
+            ui.cv.drawTextCentered("Generating world...", ui.width / 2, 190, 1, "#ffff55")
         }
         ui.drawButtons(self)
     }
@@ -277,12 +285,12 @@ final class LoadingScreen: Screen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         let (done, target, ready) = progress(game)
         let elapsed = CACurrentMediaTime() - openedAt
-        if (ready && elapsed > 0.4) || elapsed > 8 {
+        if (ready && elapsed > 0.4) || elapsed > (game.isGuest ? 30 : 8) {
             ui.closeTop(game)
             return
         }
         ui.drawDirtBg()
-        ui.cv.drawTextCentered("Loading world…", ui.width / 2, ui.height / 2 - 24, 1)
+        ui.cv.drawTextCentered("Loading world...", ui.width / 2, ui.height / 2 - 24, 1)
         let w = 200.0
         let x = (ui.width - w) / 2, y = ui.height / 2
         let f = target > 0 ? min(1, Double(done) / Double(target)) : 0
@@ -290,7 +298,11 @@ final class LoadingScreen: Screen {
         ui.cv.fillRect(x, y, w, 6)
         ui.cv.setFill("#80ff20")
         ui.cv.fillRect(x, y, (w * f).rounded(), 6)
-        ui.cv.drawTextCentered("§7Building terrain (\(done)/\(target))", ui.width / 2, y + 14, 1)
+        if let nc = game.netClient {
+            ui.cv.drawTextCentered("§7Receiving the world from \(nc.hostName) (\(nc.chunksReceived) chunks)", ui.width / 2, y + 14, 1)
+        } else {
+            ui.cv.drawTextCentered("§7Building terrain (\(done)/\(target))", ui.width / 2, y + 14, 1)
+        }
     }
 }
 
@@ -318,7 +330,22 @@ final class PauseScreen: Screen {
             ui.open(SettingsScreen(), game)
         }))
         y += 24
-        buttons.append(Button(cx - 100, y, 200, 20, "Save & Quit to Title", { [weak game] in
+        if !game.isGuest {
+            let lan = Button(cx - 100, y, 200, 20, game.lanPort == nil ? "Open to LAN" : "Close LAN Game", {})
+            lan.onClick = { [weak game, weak lan] in
+                guard let game, let lan else { return }
+                if game.lanPort == nil {
+                    runCommand(game, "/host")
+                } else {
+                    game.stopHosting()
+                    pushChat("§7Closed the LAN game")
+                }
+                lan.label = game.lanPort == nil ? "Open to LAN" : "Close LAN Game"
+            }
+            buttons.append(lan)
+            y += 24
+        }
+        buttons.append(Button(cx - 100, y, 200, 20, game.isGuest ? "Disconnect" : "Save & Quit to Title", { [weak game] in
             guard let game else { return }
             game.saveAndFlush(synchronous: true)
             game.exitToTitle()
@@ -326,7 +353,17 @@ final class PauseScreen: Screen {
     }
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDarkBg(0.5)
-        ui.cv.drawTextCentered("Game Menu", ui.width / 2, (ui.height / 2).rounded(.down) - 70, 1)
+        let titleY = (ui.height / 2).rounded(.down) - (game.isNetworked ? 84 : 70)
+        ui.cv.drawTextCentered("Game Menu", ui.width / 2, titleY, 1)
+        if game.isNetworked {
+            // the world keeps running behind this menu
+            var line = "§7LAN game | \(game.lanPlayers.count) playing - the world keeps running"
+            if let port = game.lanPort {
+                let ip = localIPv4Addresses().first.map { port == NET_DEFAULT_PORT ? $0 : "\($0):\(port)" } ?? "port \(port)"
+                line = "§7Open to LAN at §f\(ip)§7 | \(game.lanPlayers.count) playing"
+            }
+            ui.cv.drawTextCentered(line, ui.width / 2, titleY + 14, 1)
+        }
         ui.drawButtons(self)
     }
 }
@@ -647,7 +684,7 @@ final class CreditsScreen: Screen {
         "§fEvery sound synthesized in real time.",
         "§fEvery chunk carved from noise.",
         "",
-        "§8— —",
+        "§8- -",
         "",
         "§dTwo voices, somewhere outside the world:",
         "",
@@ -690,5 +727,141 @@ final class CreditsScreen: Screen {
             ui.closeTop(game)
         }
         ui.cv.drawTextCentered("§8Press Esc to skip", ui.width / 2, ui.height - 12, 1)
+    }
+}
+
+
+// =============================================================================
+/// find LAN games (Bonjour) or type an address; also where you set your name
+final class MultiplayerScreen: Screen {
+    let nameField = TextField(0, 0, 200, 16, "Your name")
+    let addrField = TextField(0, 0, 200, 16, "192.168.1.20  or  name.local")
+    private var browser: LANBrowser?
+    private var selected = -1
+    private var joinBtn: Button!
+
+    override func initScreen(_ ui: UIManager, _ game: GameCore) {
+        if browser == nil { browser = LANBrowser() }
+        if nameField.text.isEmpty { nameField.text = game.playerName; nameField.caret = nameField.text.count }
+        nameField.maxLength = 16
+        let cx = (ui.width / 2).rounded(.down)
+        nameField.x = cx - 100; nameField.y = 36
+        addrField.x = cx - 100; addrField.y = ui.height - 84
+        fields.append(nameField)
+        fields.append(addrField)
+        let by = ui.height - 60
+        joinBtn = Button(cx - 154, by, 150, 20, "Join Selected", { [weak self, weak game] in
+            guard let self, let game, let b = self.browser, self.selected >= 0, self.selected < b.games.count else { return }
+            let target = b.games[self.selected]
+            self.saveName(game)
+            gAppDelegate?.beginJoin { $0.joinLAN(target) }
+        })
+        buttons.append(joinBtn)
+        buttons.append(Button(cx + 4, by, 150, 20, "Direct Connect", { [weak self, weak game] in
+            guard let self, let game else { return }
+            let addr = self.addrField.text.trimmingCharacters(in: .whitespaces)
+            if addr.isEmpty { self.addrField.focused = true; return }
+            self.saveName(game)
+            let (h, port) = parseLANAddress(addr)
+            gAppDelegate?.beginJoin { $0.joinLAN(host: h, port: port) }
+        }))
+        buttons.append(Button(cx - 100, by + 24, 200, 20, "Back", { [weak ui, weak game] in
+            guard let ui, let game else { return }
+            ui.closeTop(game)
+        }))
+    }
+    private func saveName(_ game: GameCore) {
+        let n = nameField.text.trimmingCharacters(in: .whitespaces)
+        if n.isEmpty || n == game.playerName { return }
+        game.settings.playerName = n
+        game.applySettings()
+    }
+    override func onClose(_ ui: UIManager, _ game: GameCore) {
+        browser?.stop()
+        browser = nil
+    }
+    private var listTop: Double { 76 }
+    private func listBottom(_ ui: UIManager) -> Double { ui.height - 100 }
+
+    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+        ui.drawDirtBg()
+        let cv = ui.cv
+        cv.drawTextCentered("Multiplayer (LAN)", ui.width / 2, 10, 1)
+        cv.drawText("Your name", nameField.x, nameField.y - 10, 1, "#a0a0a0")
+        cv.drawText("Games on your network", nameField.x, listTop - 12, 1, "#a0a0a0")
+        let games = browser?.games ?? []
+        if selected >= games.count { selected = -1 }
+        joinBtn.enabled = selected >= 0
+        let listX = (ui.width / 2).rounded(.down) - 130
+        if games.isEmpty {
+            cv.drawTextCentered("§7Looking for games... (the host clicks Open to LAN)", ui.width / 2, listTop + 14, 1)
+        }
+        for (i, g) in games.enumerated() {
+            let y = listTop + Double(i) * 24
+            if y + 22 > listBottom(ui) { break }
+            let hover = ui.mouseX >= listX && ui.mouseX < listX + 260 && ui.mouseY >= y && ui.mouseY < y + 22
+            cv.setFill(i == selected ? "rgba(255,255,255,0.25)" : hover ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.3)")
+            cv.fillRect(listX, y, 260, 22)
+            cv.drawText(g.name, listX + 4, y + 7, 1)
+        }
+        cv.drawText("Or connect by address", addrField.x, addrField.y - 10, 1, "#a0a0a0")
+        ui.drawButtons(self)
+    }
+    override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
+        if super.onMouseDown(ui, game, mx, my, btn) { return true }
+        let games = browser?.games ?? []
+        let listX = (ui.width / 2).rounded(.down) - 130
+        guard mx >= listX, mx < listX + 260 else { return false }
+        for i in 0..<games.count {
+            let y = listTop + Double(i) * 24
+            if my >= y && my < y + 22 {
+                if selected == i {
+                    saveName(game)
+                    let target = games[i]
+                    gAppDelegate?.beginJoin { $0.joinLAN(target) }
+                }
+                selected = i
+                return true
+            }
+        }
+        return false
+    }
+}
+
+// =============================================================================
+/// waiting for the host to answer; turns into the loading screen on success
+final class JoinScreen: Screen {
+    private let openedAt = CACurrentMediaTime()
+
+    override init() {
+        super.init()
+        closeOnEsc = false
+    }
+    override func initScreen(_ ui: UIManager, _ game: GameCore) {
+        let cx = (ui.width / 2).rounded(.down)
+        buttons.append(Button(cx - 100, (ui.height / 2).rounded(.down) + 30, 200, 20, "Cancel", { [weak ui, weak game] in
+            guard let ui, let game else { return }
+            game.cancelJoin()
+            ui.closeTop(game)
+        }))
+    }
+    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+        if game.hasWorld() {
+            ui.closeAll(game)
+            ui.open(LoadingScreen(), game)
+            gAppDelegate?.gameView.captureMouse()
+            return
+        }
+        ui.drawDirtBg()
+        let cy = (ui.height / 2).rounded(.down)
+        if let nc = game.netClient {
+            let dots = String(repeating: ".", count: Int((CACurrentMediaTime() - openedAt) * 3) % 4)
+            ui.cv.drawTextCentered(nc.status + dots, ui.width / 2, cy - 20, 1)
+        } else {
+            ui.cv.drawTextCentered("§cCouldn't join", ui.width / 2, cy - 30, 1)
+            ui.cv.drawTextCentered(game.netEndMessage ?? "Connection failed", ui.width / 2, cy - 14, 1)
+            buttons.first?.label = "Back"
+        }
+        ui.drawButtons(self)
     }
 }

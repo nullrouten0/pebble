@@ -4,15 +4,36 @@
 import Foundation
 import PebbleCore
 
+/// commands that change the shared world — a LAN guest asks the host to run them
+let HOST_COMMANDS: Set<String> = [
+    "time", "weather", "summon", "setblock", "fill", "place", "undo", "redo", "difficulty", "gamerule",
+]
+
+/// run a LAN guest's command on the host as that guest's player; returns what it printed
+func runCommandAs(_ game: GameCore, _ guest: Player, _ raw: String) -> [String] {
+    let me = game.player
+    game.player = guest
+    chatCapture = []
+    runCommand(game, raw)
+    let out = chatCapture ?? []
+    chatCapture = nil
+    game.player = me
+    return out
+}
+
 func runCommand(_ game: GameCore, _ raw: String) {
     if !raw.hasPrefix("/") {
-        pushChat("<You> \(raw)")
+        if game.isNetworked { game.lanChat(raw) } else { pushChat("<You> \(raw)") }
         return
     }
     let parts = raw.dropFirst().trimmingCharacters(in: .whitespaces)
         .split(separator: " ", omittingEmptySubsequences: true).map(String.init)
     let cmd = parts.first?.lowercased() ?? ""
     let args = Array(parts.dropFirst())
+    if let nc = game.netClient, HOST_COMMANDS.contains(cmd) {
+        nc.sendCommand(raw)
+        return
+    }
     guard let p = game.player else { return }
     let world = game.world
     func fail(_ msg: String) { pushChat("§c" + msg) }
@@ -28,6 +49,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
     switch cmd {
     case "help":
         ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, effect, enchant, xp, setblock, fill, locate, place, undo, redo, chatsize, difficulty, gamerule, clear, spawnpoint, heal")
+        ok("LAN: host [port], join <address[:port]>, leave, list, name <name>")
     case "give":
         guard let itemName = arg(0) else { return fail("Usage: /give <item> [count]") }
         let count = arg(1).flatMap(Int.init) ?? 1
@@ -111,7 +133,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         guard let mob = arg(0) else { return fail("Usage: /summon <mob> [x y z]") }
         let mobs = spawnableMobs()
         if !mobs.contains(mob) {
-            return fail("Unknown mob: \(mob). Try: \(mobs.prefix(8).joined(separator: ", "))…")
+            return fail("Unknown mob: \(mob). Try: \(mobs.prefix(8).joined(separator: ", "))...")
         }
         let x = arg(1).map { parseCoord($0, p.x) } ?? p.x
         let y = arg(2).map { parseCoord($0, p.y) } ?? p.y
@@ -257,7 +279,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let mode = arg(0)
         guard mode == "simple" || mode == "greedy" else { return fail("Usage: /meshmode <simple|greedy>") }
         game.setMeshMode(simple: mode == "simple")
-        ok("Mesh mode: \(mode!) — rebuilding world…")
+        ok("Mesh mode: \(mode!) - rebuilding world...")
     case "place":
         let ids = placeableStructureIds()
         guard let name = arg(0), name != "list" else {
@@ -290,19 +312,21 @@ func runCommand(_ game: GameCore, _ raw: String) {
         }
         let r = game.placePrefab(pf, tx, ty, tz)
         let ms = Int(Date().timeIntervalSince(t0) * 1000)
-        ok("Placed \(name) at \(r.x0)..\(r.x1), \(r.y0)..\(r.y1), \(r.z0)..\(r.z1) — \(r.changed) blocks in \(ms) ms")
-        if let (ex, ey, ez) = r.entrance { ok("§eEntrance: ladder shaft under the red flag at \(ex) \(ey) \(ez) — /tp \(ex) \(ey + 1) \(ez - 2)") }
+        ok("Placed \(name) at \(r.x0)..\(r.x1), \(r.y0)..\(r.y1), \(r.z0)..\(r.z1) - \(r.changed) blocks in \(ms) ms")
+        if let (ex, ey, ez) = r.entrance { ok("§eEntrance: ladder shaft under the red flag at \(ex) \(ey) \(ez) - /tp \(ex) \(ey + 1) \(ez - 2)") }
         if r.skippedCells > 0 { fail("\(r.skippedCells) blocks fell in unloaded chunks and were skipped") }
     case "undo", "redo":
         let n = max(1, min(64, arg(0).flatMap(Int.init) ?? 1))
         var done: [String] = []
         for _ in 0..<n {
-            guard let b = cmd == "undo" ? undoLastEdit() : redoLastEdit() else { break }
+            // editOwner: a LAN guest's command undoes only that guest's edits
+            guard let b = cmd == "undo" ? undoLastEdit(owner: editOwner) : redoLastEdit(owner: editOwner) else { break }
             done.append("\(b.label) (\(b.count) blocks)")
         }
         if done.isEmpty { return fail("Nothing to \(cmd)") }
+        let left = editCounts(owner: editOwner)
         ok((cmd == "undo" ? "Undid " : "Redid ") + done.joined(separator: ", ")
-           + " — \(undoStack.count) undo / \(redoStack.count) redo left")
+           + " - \(left.undo) undo / \(left.redo) redo left")
     case "chatsize":
         guard let v = arg(0).flatMap(Double.init), v >= 1, v <= 3 else {
             return fail("Usage: /chatsize <1-3> (current \(game.settings.chatScale ?? 1))")
@@ -317,7 +341,49 @@ func runCommand(_ game: GameCore, _ raw: String) {
         p.vx = 0; p.vy = 0; p.vz = 0
         p.fallDistance = 0
         ok("Brought you to the surface (y=\(sy))")
+    case "host", "lan", "publish":
+        if game.isGuest { return fail("You're a guest in someone else's game") }
+        if let port = game.lanPort { return ok("Already open to LAN on port \(port)") }
+        let want = arg(0).flatMap(UInt16.init) ?? NET_DEFAULT_PORT
+        do {
+            let port = try game.hostLAN(port: want)
+            let ips = localIPv4Addresses()
+            ok("§aOpen to LAN on port \(port).")
+            ok(ips.isEmpty ? "Friends can find it under Multiplayer." :
+                "Friends: Multiplayer, or join \(ips.map { port == NET_DEFAULT_PORT ? $0 : "\($0):\(port)" }.joined(separator: " / "))")
+        } catch {
+            fail("Couldn't open to LAN: \(error.localizedDescription)")
+        }
+    case "join", "connect":
+        guard let addr = arg(0) else { return fail("Usage: /join <address[:port]>") }
+        let (h, port) = parseLANAddress(addr)
+        gAppDelegate?.beginJoin { $0.joinLAN(host: h, port: port) }
+    case "leave", "disconnect":
+        if !game.isNetworked { return fail("Not in a LAN game") }
+        if game.isGuest { game.exitToTitle(); return }
+        game.stopHosting()
+        ok("Closed the LAN game - guests were disconnected")
+    case "list", "players", "who":
+        if !game.isNetworked { return ok("Just you (open to LAN with /host)") }
+        let names = game.lanPlayers
+        ok("\(names.count) playing: \(names.joined(separator: ", "))")
+    case "name":
+        guard let n = arg(0), !n.isEmpty else { return ok("Your name is \(game.playerName)") }
+        if game.isNetworked { return fail("Change your name before hosting or joining") }
+        game.settings.playerName = String(args.joined(separator: " ").prefix(16))
+        game.applySettings()
+        ok("You'll be \(game.playerName) in LAN games")
     default:
         fail("Unknown command: /\(cmd). Try /help")
     }
+}
+
+/// "192.168.1.5", "192.168.1.5:25576", "mac.local"
+func parseLANAddress(_ s: String) -> (String, UInt16) {
+    let t = s.trimmingCharacters(in: .whitespaces)
+    if let i = t.lastIndex(of: ":"), !t.contains("]"), t.filter({ $0 == ":" }).count == 1,
+       let port = UInt16(t[t.index(after: i)...]), port > 0 {
+        return (String(t[..<i]), port)
+    }
+    return (t, NET_DEFAULT_PORT)
 }

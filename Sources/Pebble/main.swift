@@ -411,6 +411,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         game = GameCore()
         game.host = host
         host.app = self
+        game.netCommandRunner = { [weak self] guest, text in
+            guard let self else { return [] }
+            return runCommandAs(self.game, guest, text)
+        }
+        // test hook: PEBBLE_NAME=Bob plays as Bob (not saved to settings)
+        if let n = ProcessInfo.processInfo.environment["PEBBLE_NAME"] { game.settings.playerName = n }
         print(String(format: "registries: %.0fms (%d blocks, %d items, %d biomes)",
                      (CFAbsoluteTimeGetCurrent() - t0) * 1000, blockDefs.count, itemDefs.count, BIOMES.count))
 
@@ -420,11 +426,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         ui = UIManager(cv: UICanvas(device: device))
         print(String(format: "renderer: %.0fms (atlas + pipelines)", (CFAbsoluteTimeGetCurrent() - t1) * 1000))
 
-        let rect = NSRect(x: 0, y: 0, width: 1440, height: 810)
+        // test hooks: PEBBLE_WINDOWED=1 skips fullscreen; PEBBLE_WINSIZE=960x540,
+        // PEBBLE_WINPOS=0,0 (two side-by-side windows for LAN testing)
+        let wenv = ProcessInfo.processInfo.environment
+        let windowed = wenv["PEBBLE_WINDOWED"] != nil
+        var rect = NSRect(x: 0, y: 0, width: 1440, height: 810)
+        if let sz = wenv["PEBBLE_WINSIZE"]?.split(separator: "x").compactMap({ Double($0) }), sz.count == 2 {
+            rect.size = NSSize(width: sz[0], height: sz[1])
+        }
         window = NSWindow(contentRect: rect, styleMask: [.titled, .closable, .miniaturizable, .resizable],
                           backing: .buffered, defer: false)
         window.title = "Pebble"
         window.center()
+        if let pos = wenv["PEBBLE_WINPOS"]?.split(separator: ",").compactMap({ Double($0) }), pos.count == 2 {
+            window.setFrameOrigin(NSPoint(x: pos[0], y: pos[1]))
+        }
         gameView = GameView(frame: rect, device: device)
         gameView.appd = self
         gameView.delegate = self
@@ -450,9 +466,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         // drops toggleFullScreen during the launch transaction, so retry until
         // the window actually transitions.
         window.collectionBehavior.insert(.fullScreenPrimary)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.enterFullscreenAtLaunch()
+        if windowed {
+            window.alphaValue = 1
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.enterFullscreenAtLaunch()
+            }
         }
+        // a LAN game must keep ticking while the window is hidden (the view
+        // stops drawing when occluded, and drawing is what drives ticks)
+        let bg = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.backgroundTick() }
+        RunLoop.main.add(bg, forMode: .common)
 
         audio.initEngine()
         audio.applyVolumes(game.settings.volumes)
@@ -475,6 +499,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         // test hook: jump straight to the world list (UI testing)
         if ProcessInfo.processInfo.environment["PEBBLE_WORLDS"] != nil {
             ui.open(WorldSelectScreen(), game)
+        }
+
+        // test hook: PEBBLE_MULTIPLAYER=1 opens the LAN browser at launch
+        if ProcessInfo.processInfo.environment["PEBBLE_MULTIPLAYER"] != nil {
+            ui.open(MultiplayerScreen(), game)
+        }
+        // test hook: PEBBLE_JOIN=127.0.0.1[:port] joins a LAN game at launch
+        if let addr = ProcessInfo.processInfo.environment["PEBBLE_JOIN"] {
+            let (h, port) = parseLANAddress(addr)
+            beginJoin { $0.joinLAN(host: h, port: port) }
         }
 
         // test hook: skip the menus and jump straight into the latest world.
@@ -500,7 +534,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        if game.hasWorld() { game.saveAndFlush(synchronous: true) }
+        if game.hasWorld() {
+            game.saveAndFlush(synchronous: true)
+            if game.isNetworked {
+                // tell guests / the host we're gone, and let that reach the wire
+                game.exitToTitle()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            }
+        }
+    }
+
+    /// leave whatever world we're in and start joining a LAN game
+    func beginJoin(_ start: (GameCore) -> Void) {
+        if game.hasWorld() { game.exitToTitle() }
+        ui.closeAll(game)
+        ui.open(TitleScreen(), game)
+        start(game)
+        ui.open(JoinScreen(), game)
+        gameView.releaseMouse()
+    }
+
+    /// drive ticks from a timer when frames stop (window hidden) in a LAN game
+    private func backgroundTick() {
+        guard let game, game.isNetworked, game.hasWorld() else { return }
+        let now = CACurrentMediaTime()
+        if now - lastFrame < 0.2 { return }
+        _ = game.frame(dtMs: (now - lastFrame) * 1000)
+        lastFrame = now
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
@@ -547,7 +607,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
     func applicationDidResignActive(_ notification: Notification) {
         game?.clearInput()
         gameView?.releaseMouse()
-        if let game, let ui, game.hasWorld(), !ui.hasScreen() {
+        // (scripted windowed test runs keep playing in the background)
+        if let game, let ui, game.hasWorld(), !ui.hasScreen(),
+           ProcessInfo.processInfo.environment["PEBBLE_WINDOWED"] == nil {
             ui.open(PauseScreen(), game)
         }
     }
@@ -628,6 +690,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
                 pendingCmds = nil
                 let list = cmds.components(separatedBy: ";").filter { !$0.isEmpty }
                 for (i, c) in list.enumerated() {
+                    // "#down B" / "#up B" press / release mouse button B (0 left, 2 right),
+                    // "#slot N" picks hotbar slot N (1-9) — scripted interaction tests
+                    if c.hasPrefix("#down") || c.hasPrefix("#up") {
+                        let b = Int(c.split(separator: " ").last ?? "") ?? 0
+                        if c.hasPrefix("#down") { game.mouseDown(b) } else { game.mouseUp(b) }
+                        continue
+                    }
+                    // "#type text" / "#uikey Key" go to the open screen (sign text, fields)
+                    if c.hasPrefix("#type ") {
+                        print("[cmd] \(c) → screen \(ui.current().map { String(describing: type(of: $0)) } ?? "none")")
+                        for ch in c.dropFirst(6) { _ = ui.current()?.onChar(ui, game, String(ch)) }
+                        continue
+                    }
+                    if c.hasPrefix("#uikey ") {
+                        let k = String(c.dropFirst(7))
+                        if k == "Escape" { ui.closeTop(game) } else { _ = ui.current()?.onKey(ui, game, k) }
+                        continue
+                    }
+                    if c.hasPrefix("#key") {
+                        let code = String(c.split(separator: " ").last ?? "")
+                        game.keyDown(code, now: CACurrentMediaTime() * 1000)
+                        game.keyUp(code)
+                        continue
+                    }
+                    if c.hasPrefix("#slot") {
+                        game.player.selectedSlot = max(0, min(8, (Int(c.split(separator: " ").last ?? "") ?? 1) - 1))
+                        continue
+                    }
+                    // "#waitguests N" holds the rest until N LAN guests are in
+                    if c.hasPrefix("#waitguests") {
+                        let n = Int(c.dropFirst(11).trimmingCharacters(in: .whitespaces)) ?? 1
+                        if game.lanGuests.count < n {
+                            pendingCmds = list[i...].joined(separator: ";")
+                            pendingCmdDelay = 60
+                            break
+                        }
+                        continue
+                    }
                     // "#wait N" defers the rest by N frames
                     if c.hasPrefix("#wait") {
                         pendingCmds = list[(i + 1)...].joined(separator: ";")
@@ -641,8 +741,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
                 }
             }
         }
-        if let shot = pendingShot, game.hasWorld(), pendingCmds == nil {
-            hud.hideGui = true
+        if let shot = pendingShot, game.hasWorld() || renderer.captureWithUI, pendingCmds == nil {
+            hud.hideGui = !renderer.captureWithUI
             pendingShot = (shot.path, shot.frames - 1)
             if shot.frames <= 0 {
                 renderer.requestCapture(path: shot.path)
@@ -661,8 +761,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         }
 
         let enc: MTLRenderCommandEncoder
+        // (frame() can end the world: a LAN host dropping us mid-frame)
+        let partial = game.hasWorld() ? game.frame(dtMs: dt) : 0
         if game.hasWorld() {
-            let partial = game.frame(dtMs: dt)
             bot?.tick()
             booth?.tickBooth()
             renderer.particles.tick(game.world)
@@ -684,6 +785,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         ui.cv.flush(enc, pipeline: renderer.uiPipeline)
 
         enc.endEncoding()
+        renderer.captureFinalFrame(cmd, drawable.texture)
         cmd.present(drawable)
         cmd.commit()
     }

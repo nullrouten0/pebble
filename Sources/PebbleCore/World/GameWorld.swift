@@ -58,6 +58,9 @@ public struct WorldHooks {
     public var addParticles: (String, Double, Double, Double, Int, Double, Int) -> Void = { _, _, _, _, _, _, _ in }
     public var onVibration: ((Double, Double, Double, Int, EntityRef?) -> Void)?
     public var requestChunk: ((Int, Int) -> Void)?
+    /// every block write that changed a cell (x, y, z, new cell) — the LAN
+    /// host replicates these to guests
+    public var onBlockChanged: ((Int, Int, Int, Int) -> Void)?
 
     public init() {}
 }
@@ -95,6 +98,12 @@ public final class World {
     public private(set) var light: LightEngine!
     public var difficulty = 2
     public var hooks = WorldHooks()
+    /// a LAN guest's copy of the host's world: blocks arrive from the host and
+    /// nothing is simulated locally
+    public var isRemote = false
+    /// LAN guest: every entity the local game logic tries to spawn is offered
+    /// here instead (the host owns all entities) — return true to add it anyway
+    public var onLocalSpawn: ((EntityRef) -> Bool)?
     private var tickQueue: [ScheduledTick] = []
     private var scheduledSet = Set<TickKey>()
     /// block entities needing per-tick updates — insertion-ordered array like
@@ -114,6 +123,8 @@ public final class World {
     /// transient: after a reload the first power-on re-fires as a transition.
     public var poweredOpenables = Set<OpenablePos>()
     public var simCenterX = 0, simCenterZ = 0
+    /// more random-tick centers (chunk coords) — LAN guests' positions
+    public var extraSimCenters: [(Int, Int)] = []
     public var simDistance = 6
     public var randomTickSpeed = 3
     public var gameRules: [String: Double] = [
@@ -181,6 +192,7 @@ public final class World {
         c.set(lx, y, lz, UInt16(cellV))
         c.modified = true
         c.trackSpecial(lx, y, lz, UInt16(cellV >> 4))
+        hooks.onBlockChanged?(x, y, z, cellV)
 
         let oldId = old >> 4, newId = cellV >> 4
         if oldId != newId && (blockDefs[oldId].shape != blockDefs[newId].shape || !blockDefs[newId].solid) {
@@ -344,22 +356,40 @@ public final class World {
 
         // random ticks in sim-range chunks
         if randomTickSpeed > 0 {
-            let sd = simDistance
-            for dz in -sd...sd {
-                for dx in -sd...sd {
-                    guard let c = getChunk(simCenterX + dx, simCenterZ + dz), c.status != .empty else { continue }
-                    for s in 0..<c.sections {
-                        for _ in 0..<randomTickSpeed {
-                            let rx = rng.nextInt(16), rz = rng.nextInt(16), ry = info.minY + s * 16 + rng.nextInt(16)
-                            let cell = Int(c.get(rx, ry, rz))
-                            let id = cell >> 4
-                            if id != 0 && RANDOM_TICKS[id] == 1 {
-                                if let h = randomTickHandlers[id] {
-                                    h(self, c.cx * 16 + rx, ry, c.cz * 16 + rz, cell)
-                                }
+            func randomTicks(_ c: Chunk) {
+                for s in 0..<c.sections {
+                    for _ in 0..<randomTickSpeed {
+                        let rx = rng.nextInt(16), rz = rng.nextInt(16), ry = info.minY + s * 16 + rng.nextInt(16)
+                        let cell = Int(c.get(rx, ry, rz))
+                        let id = cell >> 4
+                        if id != 0 && RANDOM_TICKS[id] == 1 {
+                            if let h = randomTickHandlers[id] {
+                                h(self, c.cx * 16 + rx, ry, c.cz * 16 + rz, cell)
                             }
                         }
                     }
+                }
+            }
+            let sd = simDistance
+            if extraSimCenters.isEmpty {
+                for dz in -sd...sd {
+                    for dx in -sd...sd {
+                        guard let c = getChunk(simCenterX + dx, simCenterZ + dz), c.status != .empty else { continue }
+                        randomTicks(c)
+                    }
+                }
+            } else {
+                // LAN guests: the union of every player's sim area, each chunk
+                // once, in a fixed order
+                var keys = Set<Int64>()
+                for (ccx, ccz) in [(simCenterX, simCenterZ)] + extraSimCenters {
+                    for dz in -sd...sd {
+                        for dx in -sd...sd { keys.insert(chunkKey(ccx + dx, ccz + dz)) }
+                    }
+                }
+                for key in keys.sorted() {
+                    guard let c = chunks[key], c.status != .empty else { continue }
+                    randomTicks(c)
                 }
             }
         }
@@ -481,6 +511,7 @@ public final class World {
 
     // MARK: - entities
     public func addEntity(_ e: EntityRef) {
+        if let gate = onLocalSpawn, !gate(e) { return }
         entities.append(e)
         entityById[e.id] = e
     }

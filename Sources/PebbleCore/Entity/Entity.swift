@@ -81,6 +81,11 @@ open class Entity: EntityRef {
     /// player-only flags surfaced on the base for baseline `(this as any)` checks
     open var isPlayer: Bool { false }
     public var noClip = false
+    /// LAN: on a guest, a copy of a host entity (positioned by the host, never
+    /// simulated); on the host, a guest's player
+    public var isNetProxy = false
+    /// LAN guest: the host says this mob has a target (aiming pose)
+    public var netAiming = false
 
     /// var (not let): dimension travel re-homes the player into the dest world
     public unowned var world: World

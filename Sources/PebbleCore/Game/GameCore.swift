@@ -22,6 +22,8 @@ let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 /// item-billboard projectiles (the app renders these as sprites)
 /// tools that act once per click, never on held-use repeat
 let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge"]
+/// heavy world tools a LAN guest doesn't predict locally — the host runs them
+let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder"]
 
 public let SPRITE_TYPES: Set<String> = [
     "snowball", "egg", "ender_pearl", "xp_bottle", "thrown_potion", "firework",
@@ -281,6 +283,24 @@ public final class GameCore {
     private var heldForChunks = false
     public private(set) var musicMood = "menu"
 
+    // LAN multiplayer
+    public private(set) var netHost: NetHost?
+    public private(set) var netClient: NetClient?
+    /// the app runs guests' world commands (/fill, /place, /undo…) as their
+    /// player and returns the chat lines they produced
+    public var netCommandRunner: ((Player, String) -> [String])?
+    /// shown to the joining screen / title when a LAN session ends
+    public private(set) var netEndMessage: String?
+    /// playing in someone else's LAN game
+    public var isGuest: Bool { netClient != nil }
+    /// hosting or visiting — the world never pauses
+    public var isNetworked: Bool { netHost != nil || netClient != nil }
+    public var playerName: String {
+        if let n = settings.playerName?.trimmingCharacters(in: .whitespaces), !n.isEmpty { return n }
+        let full = NSFullUserName().split(separator: " ").first.map(String.init) ?? ""
+        return full.isEmpty ? "Player" : String(full.prefix(16))
+    }
+
     public init() {
         settings = loadSettings()
         keybinds = loadKeybinds()
@@ -310,12 +330,12 @@ public final class GameCore {
         }
         // screen-opening hooks fired from entity interactions
         bindOpenTrading { [weak self] player, villager in
-            guard let self, player is Player else { return }
+            guard let self, player === self.player else { return }
             self.host?.openTrading(villager)
             self.advanceLater("trade_villager")
         }
         openContainerScreenFn = { [weak self] player, kind, vehicle in
-            guard let self, player is Player else { return }
+            guard let self, player === self.player else { return }
             self.host?.openVehicleChest(kind, vehicle)
         }
     }
@@ -373,11 +393,23 @@ public final class GameCore {
                 }
             }
         }
-        if dest == nil {
+        if dest == nil && !isGuest {
             destDim = .overworld
             let w = worlds[.overworld]!
             ensureChunksLoaded(w, floorDiv(Int(w.spawnX), 16), floorDiv(Int(w.spawnZ), 16), 1)
             dest = (w.spawnX + 0.5, Double(w.surfaceY(Int(w.spawnX), Int(w.spawnZ))), w.spawnZ + 0.5)
+        }
+        if isGuest {
+            // a guest respawns in the host's dimension, at its bed if that's
+            // loaded here, else at world spawn (chunks stream in under it)
+            if destDim != dim || dest == nil {
+                let w = world
+                dest = (w.spawnX + 0.5, w.spawnY + 1, w.spawnZ + 0.5)
+                if w.isLoadedAt(Int(w.spawnX), Int(w.spawnZ)) {
+                    dest!.1 = Double(w.surfaceY(Int(w.spawnX), Int(w.spawnZ)))
+                }
+            }
+            destDim = dim
         }
         if destDim != dim { moveToDimension(destDim) }
         p.respawn()
@@ -388,6 +420,11 @@ public final class GameCore {
 
     public func exitToTitle() {
         if inWorld { saveAndFlush(synchronous: true) }
+        if let nc = netClient {
+            nc.disconnect()
+            netClient = nil
+        }
+        stopHosting()
         inWorld = false
         worldRec = nil
         dragonSpawned = false
@@ -528,12 +565,12 @@ public final class GameCore {
         deathScreenShown = false
         ticksSinceSave = 0
         host?.closeAllScreens()
-        host?.showActionBar("§e\(rec.name)§r — seed \(rec.seed)", 60)
+        host?.showActionBar("§e\(rec.name)§r - seed \(rec.seed)", 60)
         // loaded in deep underground? say so loudly instead of looking like a render bug
         let bx = ifloor(player.x), bz = ifloor(player.z)
         if w.info.hasSky && Double(w.heightAt(bx, bz)) > player.eyeY() + 10 {
             host?.pushChat("§eYou are deep underground. Type §f/surface§e to climb out.")
-            host?.showActionBar("§eDeep underground — press T, type §f/surface", 400)
+            host?.showActionBar("§eDeep underground - press T, type §f/surface", 400)
         }
     }
 
@@ -546,9 +583,11 @@ public final class GameCore {
         hooks.playSound = { [weak self, weak w] name, x, y, z, volume, pitch in
             guard let self, let w, w === self.worlds[self.dim] else { return }
             self.host?.playSound(name, x, y, z, volume, pitch)
+            self.netHost?.sound(name, x, y, z, volume, pitch)
         }
         hooks.addParticles = { [weak self, weak w] type, x, y, z, count, spread, data in
             guard let self, let w, w === self.worlds[self.dim] else { return }
+            self.netHost?.particle(type, x, y, z, count, spread, data)
             let mult = [0.3, 0.65, 1.0][min(2, max(0, self.settings.particles))]
             let n = max(1, Int((Double(count) * mult).rounded()))
             self.host?.addParticles(type, x, y, z, n, spread, data)
@@ -568,6 +607,8 @@ public final class GameCore {
     }
 
     public func saveAndFlush(synchronous: Bool = false) {
+        // a guest's player is kept by the host; the world isn't ours to save
+        if let nc = netClient { nc.sendSave(); return }
         guard inWorld, var rec = worldRec else { return }
         rec.lastPlayed = Date().timeIntervalSince1970 * 1000
         rec.gameMode = player.gameMode
@@ -614,7 +655,7 @@ public final class GameCore {
         if db.putChunks(records) { return }
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            print("[saves] chunk batch failed — re-marking \(records.count) chunks dirty for retry")
+            print("[saves] chunk batch failed - re-marking \(records.count) chunks dirty for retry")
             for r in records {
                 guard let d = Dim(rawValue: r.dim), let w = self.worlds[d] else { continue }
                 if let c = w.chunks[chunkKey(r.cx, r.cz)] {
@@ -729,7 +770,7 @@ public final class GameCore {
 
     /// heavy chunk assembly (heightmap + special scan) — safe off-main, the
     /// chunk isn't shared until adoptChunk
-    private static func makeChunk(
+    static func makeChunk(
         _ cx: Int, _ cz: Int, _ minY: Int, _ height: Int,
         _ blocks: [UInt16], _ biomes: [UInt8],
         _ skyLight: [UInt8]?, _ blockLight: [UInt8]?
@@ -1064,7 +1105,7 @@ public final class GameCore {
             }
         }
         dirtySections[w.dim] = dirty
-        activateFluids(w, c)
+        if !w.isRemote { activateFluids(w, c) }
     }
 
     /// schedule flow ticks for fluid cells that should be moving — the fluid sim
@@ -1163,6 +1204,7 @@ public final class GameCore {
 
     /// Guarantee an area exists before placing the player in it (synchronous)
     private func ensureChunksLoaded(_ w: World, _ ccx: Int, _ ccz: Int, _ radius: Int) {
+        if w.isRemote { return } // a guest's chunks come from the host
         let worldId = worldRec?.id
         for dz in -radius...radius {
             for dx in -radius...radius {
@@ -1201,23 +1243,26 @@ public final class GameCore {
         w.simCenterX = pcx
         w.simCenterZ = pcz
         let R = settings.renderDistance + GEN_RADIUS_PAD
+        // LAN guests need their own areas loaded too (the host's comes first)
+        let centers = [(pcx, pcz, R)] + (netHost?.guestCenters().map { ($0.0, $0.1, $0.2 + 1) } ?? [])
+        w.extraSimCenters = centers.dropFirst().map { ($0.0, $0.1) }
         // request missing chunks ring by ring (closest first)
-        outer: for r in 0...R {
-            for dz in -r...r {
-                for dx in -r...r {
-                    if max(abs(dx), abs(dz)) != r { continue }
-                    if genInFlight.count >= MAX_GEN_INFLIGHT { break outer }
-                    let cx = pcx + dx, cz = pcz + dz
-                    if w.chunks[chunkKey(cx, cz)] == nil { requestChunk(w, cx, cz) }
+        outer: for (ccx, ccz, cr) in centers {
+            for r in 0...cr {
+                for dz in -r...r {
+                    for dx in -r...r {
+                        if max(abs(dx), abs(dz)) != r { continue }
+                        if genInFlight.count >= MAX_GEN_INFLIGHT { break outer }
+                        let cx = ccx + dx, cz = ccz + dz
+                        if w.chunks[chunkKey(cx, cz)] == nil { requestChunk(w, cx, cz) }
+                    }
                 }
             }
         }
         // unload far chunks (tight radius — chunk arrays are ~400KB each)
-        let dropR = R + 2
         for c in Array(w.chunks.values) {
-            if abs(c.cx - pcx) > dropR || abs(c.cz - pcz) > dropR {
-                unloadChunk(w, c)
-            }
+            let far = centers.allSatisfy { abs(c.cx - $0.0) > $0.2 + 2 || abs(c.cz - $0.1) > $0.2 + 2 }
+            if far { unloadChunk(w, c) }
         }
         // inactive dimensions don't stream — drop everything they hold
         if w.time % 100 == 0 {
@@ -1433,6 +1478,10 @@ public final class GameCore {
                 dirtySections[dest]!.insert(SectionPos(cx: c.cx, sy: s, cz: c.cz))
             }
         }
+        // LAN guests follow the host (they arrive after the host is placed)
+        if let nh = netHost {
+            DispatchQueue.main.async { nh.hostChangedDimension(from: from) }
+        }
     }
 
     private func travelNetherPortal() {
@@ -1567,12 +1616,19 @@ public final class GameCore {
     // ===========================================================================
     private func tick() {
         if !inWorld { return }
+        netHost?.processInbox()
+        if let nc = netClient {
+            nc.pump()
+            if !inWorld { return } // kicked
+        }
         let w = world
         let p = player!
-        paused = host?.screenPausesGame() ?? false
+        let guest = netClient != nil
+        // a LAN game never pauses — others are still playing
+        paused = (host?.screenPausesGame() ?? false) && !isNetworked
         if paused { return }
 
-        streamChunks()
+        if !guest { streamChunks() }
 
         // ---- player intent ----
         let playerDead = p.dead || p.deathTime > 0
@@ -1668,35 +1724,59 @@ public final class GameCore {
         }
 
         // ---- world & entities ----
-        w.tick()
-        tickCarveJobs()
-        tickShake()
-        let simR = Double(w.simDistance * 16) * Double(w.simDistance * 16)
-        for e in Array(w.entities) {
-            if e === p || e.dead { continue }
-            guard let ent = e as? Entity else { continue }
-            let dx = ent.x - p.x, dz = ent.z - p.z
-            if dx * dx + dz * dz > simR && !ALWAYS_TICK.contains(ent.type) { continue }
-            ent.tick()
-            // sculk catalyst blooms on death
-            if let liv = ent as? LivingEntity, liv.deathTime == 1 {
-                tryCatalystBloom(w, ent.x, ent.y, ent.z, liv.xpReward)
+        if guest {
+            // the host simulates; we keep the clock running between its syncs
+            w.time += 1
+            if w.rule("doDaylightCycle") && w.info.hasSky { w.dayTime = (w.dayTime + 1) % DAY_LENGTH }
+            w.light.flush()
+            netClient!.tickCopies()
+            tickShake()
+        } else {
+            netHost?.tickProxies()
+            w.tick()
+            tickCarveJobs()
+            tickShake()
+            let simR = Double(w.simDistance * 16) * Double(w.simDistance * 16)
+            let players: [Player] = [p] + (netHost?.proxies ?? [])
+            for e in Array(w.entities) {
+                if e === p || e.dead { continue }
+                guard let ent = e as? Entity else { continue }
+                if ent.isNetProxy { continue } // a guest's player: moved by the guest
+                var near = ALWAYS_TICK.contains(ent.type)
+                for pl in players where !near {
+                    let dx = ent.x - pl.x, dz = ent.z - pl.z
+                    near = dx * dx + dz * dz <= simR
+                }
+                if !near { continue }
+                ent.tick()
+                // sculk catalyst blooms on death
+                if let liv = ent as? LivingEntity, liv.deathTime == 1 {
+                    tryCatalystBloom(w, ent.x, ent.y, ent.z, liv.xpReward)
+                }
             }
-        }
-        for e in Array(w.entities) where e.dead {
-            w.removeEntity(e)
-        }
+            for e in Array(w.entities) where e.dead && !((e as? Entity)?.isNetProxy ?? false) {
+                w.removeEntity(e)
+            }
 
-        // ---- per-tick systems ----
-        tickEntityTriggers(w)
-        tickFangs(w)
-        // (updateDaylightDetectors is a no-op — detectors self-schedule ticks)
-        naturalSpawnTick(w, [p], &w.rng)
-        raidManager.tick(w)
-        if w.time % 1200 == 0 && dim == .overworld { tryPatrolSpawn(w, [p], &w.rng) }
-        raidManager.tryStartRaid(w, p)
+            // ---- per-tick systems ----
+            let living = [p] + (netHost?.liveProxies ?? [])
+            tickEntityTriggers(w)
+            tickFangs(w)
+            // (updateDaylightDetectors is a no-op — detectors self-schedule ticks)
+            naturalSpawnTick(w, living, &w.rng)
+            raidManager.tick(w)
+            if w.time % 1200 == 0 && dim == .overworld { tryPatrolSpawn(w, living, &w.rng) }
+            raidManager.tryStartRaid(w, p)
+        }
         tickWeatherEffects()
-        tickPortals()
+        if guest {
+            // dimension travel follows the host for now
+            if w.time % 40 == 0, ["nether", "end"].contains(portalUnderPlayer()) {
+                host?.showActionBar("§eOnly the host can travel between dimensions in a LAN game", 60)
+            }
+        } else {
+            tickPortals()
+        }
         tickUsing()
         tickMining()
         tickViewBob()
@@ -1709,8 +1789,8 @@ public final class GameCore {
             host?.pushToast(advancements.pendingToasts.removeFirst())
         }
 
-        // sleeping skips to morning
-        if p.sleepTicks > 100 {
+        // sleeping skips to morning (everyone in a LAN game has to be in bed)
+        if !guest && p.sleepTicks > 100 && (netHost?.allGuestsSleeping ?? true) {
             p.sleepTicks = 0
             w.dayTime = 0
             if w.raining && w.rng.chance(0.6) {
@@ -1719,6 +1799,7 @@ public final class GameCore {
                 w.weatherTimer = 12000
             }
             advance("sleep_in_bed")
+            netHost?.wakeEveryone()
         }
 
         // hotbar name flash
@@ -1735,6 +1816,11 @@ public final class GameCore {
         let targetWarp = p.insidePortalKind == "nether" ? min(1, Double(p.portalTicks) / 60) : 0
         portalWarp += (targetWarp - portalWarp) * 0.1
 
+        if let nc = netClient {
+            nc.sendTick()
+            return
+        }
+
         // batched unload writes — one transaction per second at most
         if !pendingChunkSaves.isEmpty && w.time % 20 == 0 {
             let batch = Array(pendingChunkSaves.values)
@@ -1748,6 +1834,19 @@ public final class GameCore {
             ticksSinceSave = 0
             saveAndFlush()
         }
+        netHost?.flushTick()
+    }
+
+    /// "nether" / "end" when the player stands in a portal
+    private func portalUnderPlayer() -> String? {
+        let p = player!
+        let w = world
+        for y in ifloor(p.y)...ifloor(p.y + 1) {
+            let id = w.getBlockId(ifloor(p.x), y, ifloor(p.z))
+            if id == Int(B.nether_portal) { return "nether" }
+            if id == Int(B.end_portal) || id == Int(B.end_gateway) { return "end" }
+        }
+        return nil
     }
 
     private func tryCatalystBloom(_ w: World, _ x: Double, _ y: Double, _ z: Double, _ xp: Int) {
@@ -1770,7 +1869,7 @@ public final class GameCore {
         if dim != .overworld { return }
         let p = player!
         // lightning strikes
-        if w.thundering && w.rng.chance(0.00004 * w.thunderLevel * 16) {
+        if !w.isRemote && w.thundering && w.rng.chance(0.00004 * w.thunderLevel * 16) {
             let x = ifloor(p.x + (w.rng.nextFloat() - 0.5) * 160)
             let z = ifloor(p.z + (w.rng.nextFloat() - 0.5) * 160)
             if w.isLoadedAt(x, z) {
@@ -1781,7 +1880,7 @@ public final class GameCore {
             }
         }
         // snow/ice accumulation + fire spread damp: sample random loaded columns
-        if w.rainLevel > 0.5 {
+        if w.rainLevel > 0.5 && !w.isRemote {
             for _ in 0..<4 {
                 let x = ifloor(p.x + (w.rng.nextFloat() - 0.5) * 128)
                 let z = ifloor(p.z + (w.rng.nextFloat() - 0.5) * 128)
@@ -1853,13 +1952,14 @@ public final class GameCore {
         let ctx = interactCtx()
         if p.usingItem {
             if !rightDown {
-                releaseUsingItem(ctx)
+                releaseUse(ctx)
             } else {
                 p.useItemTicks += 1
                 let held = p.usingHandStack
                 let def = held.map { itemDef($0.id) }
                 if def?.name == "mining_laser" {
-                    fireLaser(world, p, wide: p.sneaking, tick: p.useItemTicks)
+                    // a guest's beam burns on the host (its usingItem flag is synced)
+                    if !isGuest { fireLaser(world, p, wide: p.sneaking, tick: p.useItemTicks) }
                 } else if let def, def.food != nil || def.name == "potion" || def.name == "milk_bucket" {
                     if p.useItemTicks % 4 == 0 {
                         host?.playSound("entity.generic.eat", p.x, p.y, p.z, 0.4, 0.9 + Double.random(in: 0..<0.3))
@@ -1900,6 +2000,7 @@ public final class GameCore {
                             brushable.item = loot.first ?? ItemStack(iid("stick"), 1)
                         }
                         let isGravel = (hit.cell >> 4) == Int(B.suspicious_gravel)
+                        netClient?.sendBrush(hit.x, hit.y, hit.z)
                         world.setBlock(hit.x, hit.y, hit.z, Int(cell(isGravel ? B.gravel : B.sand)))
                         spawnItem(world, Double(hit.x) + 0.5, Double(hit.y) + 0.6, Double(hit.z) + 0.5, brushable.item!)
                         if itemDef(brushable.item!.id).name.hasSuffix("_pottery_sherd") { advance("brush_sherd") }
@@ -1936,6 +2037,7 @@ public final class GameCore {
         }
         if p.gameMode == GameMode.creative {
             if breakCooldown <= 0 {
+                netClient?.sendBreak(hit.x, hit.y, hit.z)
                 finishBreaking(interactCtx(), hit.x, hit.y, hit.z)
                 breakCooldown = 5
             }
@@ -1956,6 +2058,7 @@ public final class GameCore {
             w.hooks.addParticles("block", hit.px, hit.py, hit.pz, 1, 0.12, hit.cell)
         }
         if p.breakingProgress >= 1 {
+            netClient?.sendBreak(hit.x, hit.y, hit.z)
             finishBreaking(interactCtx(), hit.x, hit.y, hit.z)
             trackBreakAdvancements(hit.cell >> 4)
             p.breakingProgress = -1
@@ -2073,6 +2176,11 @@ public final class GameCore {
             host?.showActionBar(data?.text ?? "", 60)
             return
         }
+        if let nc = netClient, let data {
+            // container / sign edits go back to the host
+            for be in [data.be, data.other].compactMap({ $0 }) { nc.watch(be.x, be.y, be.z) }
+            if kind == "sign" { nc.watch(data.x, data.y, data.z) }
+        }
         host?.openScreen(kind, data)
     }
 
@@ -2119,6 +2227,18 @@ public final class GameCore {
         p.useItemHand = "main" // an attack always swings (and wears) the main hand
         let target = crosshairEntity(ATTACK_REACH)
         p.attackAnim = 1
+        if let target, let nc = netClient {
+            // the host lands the hit; we predict our side (cooldown, wear,
+            // the target's flash) — only living things have a safe prediction
+            nc.sendAttack(target)
+            if target is LivingEntity {
+                playerAttack(p, target)
+                advance("kill_mob_attempt")
+            } else {
+                p.resetAttackCooldown()
+            }
+            return
+        }
         if let target {
             if target is LivingEntity || target.type == "end_crystal" {
                 playerAttack(p, target)
@@ -2134,28 +2254,44 @@ public final class GameCore {
     private func doUse() {
         let p = player!
         if p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) { return }
-        p.useItemHand = "main"
-        let ctx = interactCtx()
-        // entities first
         let target = crosshairEntity(REACH_SURVIVAL - 1)
-        if let target, !p.sneaking {
-            if target.interact(p, p.mainHand) {
+        let hit = crosshairBlock()
+        if let nc = netClient {
+            nc.sendUse(target, hit)
+            // big world tools run on the host only — just pay for them here
+            let heldName = p.mainHand.map { itemDef($0.id).name } ?? ""
+            if HOST_ONLY_TOOLS.contains(heldName) {
                 p.attackAnim = 0.6
+                if heldName == "void_bomb" || (heldName == "quarry_charge" && hit != nil) { p.consumeHeld(1) }
                 return
             }
         }
-        let hit = crosshairBlock()
+        performUse(p, interactCtx(), target: target, hit: hit)
+    }
+
+    /// the right-click ladder: entity, then block, then held item, then the
+    /// off hand. Shared with the LAN host, which replays guests' clicks.
+    @discardableResult
+    func performUse(_ p: Player, _ ctx: InteractCtx, target: Entity?, hit: RaycastHit?) -> Bool {
+        p.useItemHand = "main"
+        // entities first
+        if let target, !p.sneaking {
+            if target.interact(p, p.mainHand) {
+                p.attackAnim = 0.6
+                return true
+            }
+        }
         let heldName = p.mainHand.map { itemDef($0.id).name }
         let destroyer = ["bazooka", "mining_laser", "void_bomb", "quarry_charge", "wall_builder", "box_builder"].contains(heldName) // fire, don't open doors/chests
         if let hit, !destroyer, !p.sneaking || p.mainHand == nil {
             if useBlock(ctx, hit) {
                 p.attackAnim = 0.6
-                return
+                return true
             }
         }
         if useItem(ctx, hit) {
             p.attackAnim = 0.6
-            return
+            return true
         }
         // offhand fallback: retry the held-item use with the offhand item
         // (food, shield, torches/blocks, throwables, …) when the main hand did nothing.
@@ -2163,9 +2299,17 @@ public final class GameCore {
             p.useItemHand = "off"
             let used = useItem(ctx, hit)
             if !p.usingItem { p.useItemHand = "main" } // keep "off" only for an ongoing use
-            if used { p.attackAnim = 0.6; return }
+            if used { p.attackAnim = 0.6; return true }
         }
         if !p.usingItem { p.useItemHand = "main" }
+        return false
+    }
+
+    /// let go of a drawn bow / trident / eaten item (a guest tells the host too)
+    private func releaseUse(_ ctx: InteractCtx) {
+        let p = player!
+        netClient?.sendRelease(p.useItemTicks, p.useItemHand)
+        releaseUsingItem(ctx)
     }
 
     private func pickBlock() {
@@ -2216,7 +2360,7 @@ public final class GameCore {
         if button == 0 { leftDown = false }
         if button == 2 {
             rightDown = false
-            if player?.usingItem == true { releaseUsingItem(interactCtx()) }
+            if player?.usingItem == true { releaseUse(interactCtx()) }
         }
     }
 
@@ -2310,6 +2454,8 @@ public final class GameCore {
     /// Returns the interpolation partial for rendering.
     public func frame(dtMs: Double) -> Double {
         guard inWorld else { return 0 }
+        netClient?.pump()
+        guard inWorld else { return 0 }
         accumulator += min(dtMs, 250)
         var steps = 0
         while accumulator >= TICK_MS && steps < 10 {
@@ -2322,6 +2468,182 @@ public final class GameCore {
         LoadProf.shared.time("streamMesh") { streamMeshes() }
         LoadProf.shared.tickPrint()
         return paused ? 1 : clampD(accumulator / TICK_MS, 0, 1)
+    }
+
+    // ===========================================================================
+    // LAN multiplayer
+    // ===========================================================================
+    /// open the current world to the local network; returns the port
+    @discardableResult
+    public func hostLAN(port: UInt16 = NET_DEFAULT_PORT) throws -> UInt16 {
+        if let nh = netHost { return nh.port }
+        guard inWorld, !isGuest else { throw NetError.badFrame }
+        let nh = NetHost(game: self)
+        try nh.start(port: port, name: "\(playerName)'s world - \(worldRec?.name ?? "Pebble")")
+        netHost = nh
+        player.name = playerName
+        for w in worlds.values {
+            w.hooks.onBlockChanged = { [weak self, weak w] x, y, z, c in
+                guard let self, let w, w === self.worlds[self.dim] else { return }
+                self.netHost?.blockChanged(x, y, z, c)
+            }
+            w.onLocalSpawn = { [weak self] e in self?.netHost?.shouldSpawn(e) ?? true }
+        }
+        return nh.port
+    }
+
+    public func stopHosting() {
+        guard let nh = netHost else { return }
+        nh.stop()
+        netHost = nil
+        for w in worlds.values {
+            w.hooks.onBlockChanged = nil
+            w.onLocalSpawn = nil
+            w.extraSimCenters = []
+        }
+    }
+
+    public var lanPort: UInt16? { netHost?.port }
+    public var lanGuests: [String] { netHost?.guestNames ?? [] }
+    /// everyone in the LAN game, host first
+    public var lanPlayers: [String] {
+        if let nc = netClient { return nc.playerNames.isEmpty ? [nc.hostName, nc.name] : nc.playerNames }
+        return [playerName] + lanGuests
+    }
+    /// say something to everyone in the LAN game
+    public func lanChat(_ text: String) {
+        if let nc = netClient { nc.sendChat(text) }
+        else if let nh = netHost { nh.broadcastChat("<\(playerName)> \(text)") }
+    }
+
+    /// connect to a LAN game by address; the world opens when the host answers
+    @discardableResult
+    public func joinLAN(host: String, port: UInt16 = NET_DEFAULT_PORT) -> NetClient {
+        startJoin(NetConn(host: host, port: port))
+    }
+    @discardableResult
+    public func joinLAN(_ game: LANGame) -> NetClient {
+        startJoin(NetConn(endpoint: game.endpoint))
+    }
+    private func startJoin(_ conn: NetConn) -> NetClient {
+        if inWorld { exitToTitle() }
+        netClient?.disconnect()
+        netEndMessage = nil
+        let nc = NetClient(game: self, conn: conn, name: playerName)
+        netClient = nc
+        return nc
+    }
+    /// give up on a join in progress
+    public func cancelJoin() {
+        if inWorld { return }
+        netClient?.disconnect()
+        netClient = nil
+    }
+
+    /// the host accepted us: build a world shell that the host will fill
+    func enterRemoteWorld(_ nc: NetClient, name: String, seed: Int32, dim d: Dim, mode: Int,
+                          pos: (Double, Double, Double, Double, Double), spawn: (Int, Int, Int),
+                          saved: [String: Any]?) {
+        var rec = WorldRecord(id: "lan-guest", name: name, seed: seed, gameMode: mode, difficulty: 2)
+        rec.spawnX = spawn.0; rec.spawnY = spawn.1; rec.spawnZ = spawn.2
+        worldRec = rec
+        advancements = AdvancementTracker()
+        dragonSpawned = false
+        worlds.removeAll()
+        for dd in [Dim.overworld, .nether, .end] {
+            let w = World(dim: dd, seed: UInt32(bitPattern: seed))
+            w.spawnX = Double(spawn.0); w.spawnY = Double(spawn.1); w.spawnZ = Double(spawn.2)
+            w.isRemote = true
+            w.randomTickSpeed = 0
+            hookWorld(w)
+            w.onLocalSpawn = { [weak nc] e in nc?.localSpawn(e) ?? false }
+            worlds[dd] = w
+        }
+        dim = d
+        let w = world
+        player = Player(world: w)
+        player.name = nc.name
+        player.setGameMode(mode)
+        if let saved {
+            player.load(saved)
+        }
+        player.setPos(pos.0, pos.1, pos.2)
+        if saved == nil { player.yaw = pos.3; player.pitch = pos.4 }
+        w.addEntity(player)
+        inWorld = true
+        deathScreenShown = false
+        ticksSinceSave = 0
+        host?.showActionBar("§eJoined \(nc.hostName)'s world - \(name)", 80)
+    }
+
+    /// a chunk from the host (already decoded and locally lit off-main)
+    func netAdoptChunk(_ c: Chunk, _ bes: [BlockEntityData]) {
+        let w = world
+        if let old = w.getChunk(c.cx, c.cz) {
+            // a resend after a big edit replaces what we had
+            w.releaseChunkBlockEntities(old)
+            w.removeChunk(old.cx, old.cz)
+            host?.removeChunkMeshes(old.cx, old.cz, old.sections)
+        }
+        w.setChunk(c)
+        for be in bes { c.setBlockEntity(posMod(be.x, 16), be.y, posMod(be.z, 16), be) }
+        c.modified = false
+        enqueueLightAround(w, c.cx, c.cz)
+        // neighbors' border faces depend on this chunk
+        for (nx, nz) in [(c.cx - 1, c.cz), (c.cx + 1, c.cz), (c.cx, c.cz - 1), (c.cx, c.cz + 1)] {
+            if let n = w.getChunk(nx, nz), n.status == .lit {
+                for s in 0..<n.sections { dirtySections[w.dim]!.insert(SectionPos(cx: nx, sy: s, cz: nz)) }
+            }
+        }
+    }
+
+    func netDropChunk(_ cx: Int, _ cz: Int) {
+        let w = world
+        guard let c = w.getChunk(cx, cz) else { return }
+        w.releaseChunkBlockEntities(c)
+        w.removeChunk(cx, cz)
+        host?.removeChunkMeshes(cx, cz, c.sections)
+        lightQueue[w.dim]!.remove(chunkKey(cx, cz))
+        for s in 0..<c.sections { dirtySections[w.dim]!.remove(SectionPos(cx: cx, sy: s, cz: cz)) }
+    }
+
+    /// the host changed dimension and took us along
+    func netChangeDim(_ d: Dim, _ x: Double, _ y: Double, _ z: Double) {
+        let from = world
+        for c in Array(from.chunks.values) { netDropChunk(c.cx, c.cz) }
+        if d != dim {
+            from.removeEntity(player)
+            dim = d
+            player.world = world
+            world.addEntity(player)
+            host?.clearAllSections()
+            meshJobs.removeAll()
+        }
+        player.setPos(x, y, z)
+        player.vx = 0; player.vy = 0; player.vz = 0
+    }
+
+    /// the connection to the host ended (kick, host quit, network error)
+    func netClientClosed(_ nc: NetClient, _ why: String) {
+        guard netClient === nc else { return }
+        netClient = nil
+        netEndMessage = why
+        if inWorld {
+            inWorld = false
+            worldRec = nil
+            worlds.removeAll()
+            for d in dirtySections.keys { dirtySections[d]!.removeAll() }
+            stalledSections.removeAll()
+            for d in lightQueue.keys { lightQueue[d]!.removeAll() }
+            meshJobs.removeAll()
+            host?.clearAllSections()
+            host?.setBossBars([])
+            host?.stopDisc()
+            host?.releasePointer()
+            host?.closeAllScreens()
+            host?.openTitleScreen()
+            host?.pushChat("§eDisconnected: \(why)")
+        }
     }
 
     /// interpolated camera (view bobbing, third person, effect overlays)

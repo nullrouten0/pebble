@@ -3,6 +3,60 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.2.0 — 2026-10-10 — LAN multiplayer
+
+### Play together over LAN
+- **Host from the pause menu.** **Open to LAN** (or `/host [port]`) shares the
+  world you're in. The pause menu shows the address, and **Close LAN Game**
+  stops it. A LAN game never pauses, and the host keeps running with its
+  window in the background.
+- **Join from the title screen.** **Multiplayer (LAN)** finds games on the
+  local network automatically (Bonjour). You can also type an address, or use
+  `/join <address[:port]>`. Set your name there or with `/name`.
+- **One shared world.** Shared between all players:
+  - block changes (including `/place`, `/fill` and the creative tools)
+  - mobs, items and projectiles
+  - chests, furnaces and signs
+  - time, weather, game rules, difficulty, sounds and particles
+  - chat, with join and leave messages
+- **Each other.** Players see each other with name tags. A name tag dims
+  behind walls and while the player sneaks, and is hidden when they sneak
+  behind a wall.
+- **Survival works for guests.** Guests:
+  - take damage, knockback and effects from mobs and explosions
+  - pick up items and XP, and can fight each other (PvP)
+  - drop their items when they die and respawn at their bed or world spawn
+- **Guests come back where they left off.** The host's world saves each
+  guest's inventory, health and position for their next visit.
+- **Your own undo.** In a LAN game, each player's Cmd+Z / `/undo` only undoes
+  their own edits.
+- **More commands:** `/list` shows who's playing, and `/leave` disconnects
+  (or closes the game, for the host).
+- **Limits for now:**
+  - Guests follow the host between dimensions instead of using portals
+    themselves.
+  - Sleeping skips the night only when everyone is in bed.
+  - Villager trade limits and anvil wear aren't shared.
+  - Everyone needs the same version.
+
+### Fixes
+- **Messages no longer show "?" for dashes and ellipses.** The in-game font is
+  ASCII-only, so "—", "…" and "·" in chat lines, the loading screens and the
+  Credits rendered as "?". They're now plain ASCII.
+
+### Development
+- **New test hooks** for LAN and UI testing:
+  - `PEBBLE_JOIN`, `PEBBLE_NAME`, `PEBBLE_MULTIPLAYER`
+  - `PEBBLE_WINDOWED` / `PEBBLE_WINSIZE` / `PEBBLE_WINPOS`
+  - `PEBBLE_NETLOG` and `PEBBLE_SHOT_UI`
+  - `PEBBLE_CMD` steps: `#waitguests`, `#down`/`#up`, `#key`, `#slot`, `#type`
+    and `#uikey`
+  - This lets a host and guests run side by side in windows from one script.
+- **App bundle:** `Info.plist` now declares local-network use
+  (`NSLocalNetworkUsageDescription`, `NSBonjourServices`).
+- **Docs:** README, ARCHITECTURE and SECURITY now cover LAN play.
+- **Tests:** pebsmoke passes 461/461 and no goldens changed.
+
 ## 1.1.0 — 2026-10-10 — building & demolition tools, structure placement, undo
 
 ### Placing structures — `/place`

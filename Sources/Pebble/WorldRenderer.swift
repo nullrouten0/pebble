@@ -504,6 +504,12 @@ final class WorldRenderer {
     func requestCapture(path: String) {
         pendingCapture = path
     }
+    /// PEBBLE_SHOT_UI=1: captures include the UI (menus, HUD, chat) — taken
+    /// from the finished frame instead of before the UI pass
+    let captureWithUI = ProcessInfo.processInfo.environment["PEBBLE_SHOT_UI"] != nil
+    func captureFinalFrame(_ cmd: MTLCommandBuffer, _ tex: MTLTexture) {
+        if captureWithUI && pendingCapture != nil && !tex.isFramebufferOnly { encodeCapture(cmd, from: tex) }
+    }
 
     /// encode a texture→buffer blit + async PNG write; call with the final
     /// composited image so captures include the full post stack
@@ -798,6 +804,22 @@ final class WorldRenderer {
     // ---- frame --------------------------------------------------------------------
     /// renders the world into the offscreen scene target, then composites into
     /// `rpd` (the drawable's pass). Returns the open encoder for the UI pass.
+    /// last frame's camera (camera-relative view-projection) — the HUD uses it
+    /// to pin name tags over other players
+    private(set) var lastViewProj = matrix_identity_float4x4
+    private(set) var lastCamPos = SIMD3<Double>(0, 0, 0)
+    private(set) var lastPartial = 0.0
+
+    /// screen position (GUI units) of a world point, nil when behind the camera
+    func project(_ x: Double, _ y: Double, _ z: Double, _ uiW: Double, _ uiH: Double) -> (Double, Double, Double)? {
+        let v = SIMD4<Float>(Float(x - lastCamPos.x), Float(y - lastCamPos.y), Float(z - lastCamPos.z), 1)
+        let c = lastViewProj * v
+        if c.w <= 0.05 { return nil }
+        let nx = Double(c.x / c.w), ny = Double(c.y / c.w)
+        if abs(nx) > 1.2 || abs(ny) > 1.2 { return nil }
+        return ((nx * 0.5 + 0.5) * uiW, (0.5 - ny * 0.5) * uiH, Double(c.w))
+    }
+
     func render(cmd: MTLCommandBuffer, rpd: MTLRenderPassDescriptor,
                 game: GameCore, cam: CamState, partial: Double, timeSec: Double) -> MTLRenderCommandEncoder {
         drawCalls = 0
@@ -819,6 +841,9 @@ final class WorldRenderer {
         let viewProj = proj * viewM
         var frustum = Frustum()
         frustum.setFromMatrix(viewProj)
+        lastViewProj = viewProj
+        lastCamPos = SIMD3<Double>(cam.x, cam.y, cam.z)
+        lastPartial = partial
 
         let sky = skyColors(world, cam)
         var fogColor = sky.fog
@@ -1158,7 +1183,7 @@ final class WorldRenderer {
         fenc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         // pending capture: grab the composited drawable (ultra/bloom/ACES applied,
         // no UI), then reopen the pass for the UI overlay
-        if pendingCapture != nil, let drawableTex = rpd.colorAttachments[0].texture,
+        if pendingCapture != nil, !captureWithUI, let drawableTex = rpd.colorAttachments[0].texture,
            !drawableTex.isFramebufferOnly {
             fenc.endEncoding()
             encodeCapture(cmd, from: drawableTex)
@@ -1252,7 +1277,7 @@ final class WorldRenderer {
         for e in w.entities {
             if e.dead { continue }
             guard let ent = e as? Entity else { continue }
-            if ent.type == "player" && game.perspective == 0 { continue }
+            if ent === game.player && game.perspective == 0 { continue }
             let dx = ent.x - camPos.x, dz = ent.z - camPos.z
             if dx * dx + dz * dz > maxD { continue }
             guard let name = modelNameFor(ent) else { continue }

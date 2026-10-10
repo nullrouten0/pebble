@@ -79,6 +79,10 @@ open class LivingEntity: Entity {
 
     // ---- effects ----------------------------------------------------------
     public func addEffect(_ id: String, _ duration: Int, _ amplifier: Int = 0, ambient: Bool = false) {
+        if let link = (self as? Player)?.netLink {
+            link.netAddEffect(id, duration, amplifier, ambient)
+            return
+        }
         if let i = effects.firstIndex(where: { $0.id == id }) {
             let cur = effects[i]
             if cur.amplifier > amplifier || (cur.amplifier == amplifier && cur.duration > duration) { return }
@@ -170,6 +174,12 @@ open class LivingEntity: Entity {
     @discardableResult
     open override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
         if dead || deathTime > 0 || amount <= 0 { return false }
+        if isNetProxy && world.isRemote {
+            // a LAN guest's copy: the host owns its health — just flash
+            hurtTime = 10
+            world.hooks.playSound(hurtSound(), x, y, z, 1, 0.9 + Double.random(in: 0..<1) * 0.2)
+            return true
+        }
         if invulnTicks > 0 { return false }
         if source == "fire" && hasEffect("fire_resistance") { return false }
         if source == "lava" && hasEffect("fire_resistance") { return false }

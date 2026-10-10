@@ -83,6 +83,59 @@ public final class BlockEntityData: Codable {
         self.y = y
         self.z = z
     }
+
+    /// take every field but the position from `o`, in place — a LAN update
+    /// lands in the object an open container screen is already showing
+    public func copyContents(from o: BlockEntityData) {
+        type = o.type
+        items = o.items
+        lootTable = o.lootTable
+        lootSeed = o.lootSeed
+        name = o.name
+        cooldown = o.cooldown
+        kind = o.kind
+        burnTime = o.burnTime
+        burnTotal = o.burnTotal
+        cookTime = o.cookTime
+        cookTotal = o.cookTotal
+        xpBank = o.xpBank
+        brewTime = o.brewTime
+        fuel = o.fuel
+        lines = o.lines
+        glowing = o.glowing
+        color = o.color
+        mob = o.mob
+        delay = o.delay
+        disc = o.disc
+        startedTick = o.startedTick
+        primary = o.primary
+        secondary = o.secondary
+        levels = o.levels
+        bees = o.bees
+        honey = o.honey
+        lastSlot = o.lastSlot
+        sherds = o.sherds
+        times = o.times
+        item = o.item
+        dusted = o.dusted
+        output = o.output
+        note = o.note
+        movedCell = o.movedCell
+        facing = o.facing
+        extending = o.extending
+        progress = o.progress
+        isSourceHead = o.isSourceHead
+        active = o.active
+        eyeTarget = o.eyeTarget
+        exitX = o.exitX
+        exitY = o.exitY
+        exitZ = o.exitZ
+        exactTeleport = o.exactTeleport
+        canSummon = o.canSummon
+        viewers = o.viewers
+        shrieking = o.shrieking
+        plant = o.plant
+    }
 }
 
 public func makeContainerBE(_ x: Int, _ y: Int, _ z: Int, _ size: Int) -> BlockEntityData {

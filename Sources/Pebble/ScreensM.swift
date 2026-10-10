@@ -1307,7 +1307,11 @@ struct ChatMessage {
     var time: Double
 }
 var chatLog: [ChatMessage] = []
+/// while set, chat lines are collected here instead of shown (the LAN host
+/// runs a guest's command and sends the guest what it printed)
+var chatCapture: [String]? = nil
 func pushChat(_ text: String) {
+    if chatCapture != nil { chatCapture!.append(text); return }
     chatLog.append(ChatMessage(text: text, time: CACurrentMediaTime() * 1000))
     if chatLog.count > 100 { chatLog.removeFirst() }
 }

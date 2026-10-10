@@ -55,6 +55,8 @@ final class HUD {
         let W = ui.width, H = ui.height
         let cx = (W / 2).rounded(.down)
 
+        drawNameTags(ui, game)
+
         // sleeping: fade the screen to black, show a hint, suppress the rest of
         // the HUD. sleepTicks runs 1→100 (GameCore skips to morning past 100);
         // fade in over the first ~2s so it reads as drifting off.
@@ -410,4 +412,34 @@ private func facingName(_ yaw: Double) -> String {
     if deg < 135 { return "west (-X)" }
     if deg < 225 { return "north (-Z)" }
     return "east (+X)"
+}
+
+
+// ---- LAN name tags -------------------------------------------------------------
+extension HUD {
+    /// names over other players (LAN), dimmed while they sneak, hidden behind walls
+    func drawNameTags(_ ui: UIManager, _ game: GameCore) {
+        guard game.isNetworked, let r = gAppDelegate?.renderer, let me = game.player else { return }
+        let w = game.world
+        let t = r.lastPartial
+        for e in w.entities {
+            guard let p = e as? Player, p !== me, !p.dead, p.deathTime == 0 else { continue }
+            let x = p.prevX + (p.x - p.prevX) * t
+            let y = p.prevY + (p.y - p.prevY) * t + (p.sneaking ? 1.75 : 2.05)
+            let z = p.prevZ + (p.z - p.prevZ) * t
+            let dx = x - r.lastCamPos.x, dy = y - r.lastCamPos.y, dz = z - r.lastCamPos.z
+            let dist = (dx * dx + dy * dy + dz * dz).squareRoot()
+            if dist > 64 || dist < 0.5 { continue }
+            // occluded by terrain? (sneaking players hide behind anything)
+            let blocked = w.raycast(r.lastCamPos.x, r.lastCamPos.y, r.lastCamPos.z,
+                                    dx / dist, dy / dist, dz / dist, dist - 0.3) != nil
+            if blocked && p.sneaking { continue }
+            guard let (sx, sy, _) = r.project(x, y, z, ui.width, ui.height) else { continue }
+            let tw = Double(textWidth(p.name))
+            let alpha = blocked ? 0.25 : (p.sneaking ? 0.45 : 0.6)
+            ui.cv.setFill("rgba(0,0,0,\(alpha))")
+            ui.cv.fillRect((sx - tw / 2 - 2).rounded(), (sy - 10).rounded(), tw + 4, 10)
+            ui.cv.drawTextCentered(p.name, sx.rounded(), (sy - 9).rounded(), 1, blocked || p.sneaking ? "#a0a0a0" : "#ffffff")
+        }
+    }
 }

@@ -14,9 +14,22 @@ public enum GameMode {
     public static let creative = 1
 }
 
+/// LAN host: a guest's player lives on the guest's machine — what happens to
+/// its copy in the host world (damage, pickups, XP, effects) is sent there
+public protocol NetPlayerLink: AnyObject {
+    func netHurt(_ amount: Double, _ source: String, _ attacker: Entity?) -> Bool
+    func netGive(_ stack: ItemStack) -> Bool
+    func netAddXP(_ points: Int)
+    func netAddEffect(_ id: String, _ duration: Int, _ amplifier: Int, _ ambient: Bool)
+}
+
 public final class Player: LivingEntity {
     public override var type: String { "player" }
     public override var isPlayer: Bool { true }
+    /// shown on name tags and in chat (LAN)
+    public var name = "Player"
+    /// set on the host for a guest's player — see NetPlayerLink
+    public weak var netLink: NetPlayerLink?
     private var _gameMode = GameMode.survival
     public override var gameMode: Int { _gameMode }
     public func setGameMode(_ m: Int) { _gameMode = m }
@@ -89,8 +102,8 @@ public final class Player: LivingEntity {
         }
         if sleepTicks > 0 { sleepTicks += 1 }
         if portalTicks > 0 && insidePortalKind == nil { portalTicks = max(0, portalTicks - 4) }
-        // item magnet pickup
-        if age % 2 == 0 && !dead {
+        // item magnet pickup (a LAN guest's pickups happen on the host)
+        if age % 2 == 0 && !dead && !world.isRemote {
             for e in world.getEntitiesNear(x, y + 0.5, z, 1.6) {
                 if let item = e as? ItemEntity, item.pickupDelay <= 0 {
                     let before = item.stack.count
@@ -446,6 +459,7 @@ public final class Player: LivingEntity {
         return 7 + level * 2
     }
     public func addXP(_ pointsIn: Int) {
+        if let netLink { netLink.netAddXP(pointsIn); return }
         var points = pointsIn
         // mending first
         if points > 0 {
@@ -487,6 +501,7 @@ public final class Player: LivingEntity {
     @discardableResult
     public override func give(_ stackIn: ItemStack?) -> Bool {
         guard let stack = stackIn else { return false }
+        if let netLink { return netLink.netGive(stack) }
         // merge into existing
         for i in 0..<inventory.count where stack.count > 0 {
             if let s = inventory[i], canMerge(s, stack) {
@@ -610,6 +625,7 @@ public final class Player: LivingEntity {
     // ---- combat / death -------------------------------------------------------
     @discardableResult
     public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+        if let netLink { return netLink.netHurt(amount, source, attacker) }
         if gameMode == GameMode.creative && source != "void" { return false }
         // shield: negate frontal physical damage from an attacker we're facing
         if amount > 0, isBlocking(), let attacker, shieldFacesAttacker(attacker),

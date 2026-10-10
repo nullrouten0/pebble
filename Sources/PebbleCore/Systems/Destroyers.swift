@@ -93,6 +93,15 @@ public var pendingBlasts: [(Double, Double, Double, Double)] = []
     b.set(x, y, z, 0, rim ? SET_DEFAULT : SET_NO_NEIGHBORS)
 }
 
+/// run `body` with edits credited to whoever `e` is (a LAN guest's player
+/// gets their own undo history; everything else is the local player's)
+func withEditOwner(_ e: Entity?, _ body: () -> Void) {
+    let prev = editOwner
+    if let p = e as? Player, p.isNetProxy { editOwner = p.id }
+    body()
+    editOwner = prev
+}
+
 private func addJob(_ j: DestroyJob, _ b: EditBatch) {
     carveJobs.append(j)
     b.jobs.append(j)
@@ -161,7 +170,7 @@ public final class Rocket: Projectile {
     }
     private func detonate() {
         if dead { return }
-        startCarve(world, x, y, z, radius, rough: 0.3, speed: 2.0, source: owner)
+        withEditOwner(owner) { startCarve(world, x, y, z, radius, rough: 0.3, speed: 2.0, source: owner) }
         remove()
     }
 }
@@ -210,7 +219,7 @@ public final class VoidBomb: Projectile {
     }
     private func detonate() {
         if dead { return }
-        startVoid(world, x, y, z, radius)
+        withEditOwner(owner) { startVoid(world, x, y, z, radius) }
         remove()
     }
 }
@@ -327,7 +336,7 @@ public func fireLaser(_ w: World, _ p: Player, wide: Bool, tick: Int) {
 
     let key = ObjectIdentifier(p)
     let batch: EditBatch
-    if let (b, last) = laserBatch[key], last >= w.time - 2, undoStack.last === b { batch = b }
+    if let (b, last) = laserBatch[key], last >= w.time - 2, undoStack.last(where: { $0.owner == b.owner }) === b { batch = b }
     else { batch = beginEdit(w, "mining laser") }
     laserBatch[key] = (batch, w.time)
     let R = wide ? 4.5 : 2.5

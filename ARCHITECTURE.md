@@ -18,6 +18,7 @@ This is the technical tour. The one-paragraph version: **PebbleCore** is a headl
 ┌────────────────────────────┴─────────────────────────────────────┐
 │                         PebbleCore                               │
 │  GameCore (20Hz tick orchestrator)  ·  GameWorld  ·  LightEngine │
+│  Net (LAN host/guest sessions over TCP + Bonjour)                │
 │  Gen (terrain/biomes/features/structures)  ·  Entity (AI)        │
 │  Items (recipes/enchants/loot)  ·  Systems (redstone/interact/…) │
 │  Render (mesher + texture atlas — data only, no Metal)           │
@@ -62,9 +63,19 @@ CPU/GPU synchronization leans on `CAMetalLayer`'s default 3-drawable back-pressu
 
 No samples. `Audio.swift` is a synthesizer: each sound effect is a recipe that spawns voices (oscillator or filtered noise) with envelopes, pitch sweeps, and vibrato, mixed in an `AVAudioSourceNode` render callback at 48 kHz. Effects: RBJ biquad filters, positional stereo panning, underwater lowpass, and a cave reverb built from two coprime-length feedback delay lines. Music (ambient + jukebox discs) is generated on the fly from scale/tempo configs. The render thread owns the voice list; the main thread communicates through a locked inbox.
 
+## LAN multiplayer (Net/)
+
+The host runs the only real simulation; guests run a copy of the world that the host fills in. Transport is Network.framework TCP (Nagle off) with length-prefixed binary frames (`NetCodec.swift`), and games are advertised and found over Bonjour (`_pebble._tcp`). Frames are parsed on each connection's queue and handed to the main thread through a locked inbox, drained once per tick, so game state stays main-thread only.
+
+- **Host (`NetHost`).** Each guest gets a stand-in `Player` in the host world, so mobs target it and pressure plates see it. The guest moves it and owns its health and inventory; anything the host world does to the stand-in (damage, pickups, XP, effects, knockback, teleports) is forwarded to the guest through `NetPlayerLink`. Per tick the host streams lzfse-compressed chunks nearest-first around each guest, sends block changes (a whole chunk is resent after a big edit), tracks entities in range (spawn with their save data, then per-tick pose snapshots), syncs changed block entities, and relays sounds, particles, time, weather and chat. Chunk loading, random ticks, entity simulation and mob spawning cover every player, not just the host.
+- **Guest (`NetClient`).** The guest simulates only its own player; entities are drawn copies that are never ticked. Actions run locally for instant feedback and are also sent to the host, which replays them with the guest's held items (`performUse`, `finishBreaking`, `playerAttack`…) so world effects happen once. Item and XP drops the guest predicts are forwarded instead of duplicated. After each action the host resends the cells around it, which repairs any misprediction.
+- **Edits and undo.** `EditBatch` records an owner (`editOwner`), so each player's undo/redo only touches their own edits.
+
+The determinism contract isn't needed for this: guests never re-simulate anything, they only show what the host sends.
+
 ## Persistence
 
-One SQLite database (WAL, FULLMUTEX, serial save queue): `worlds(id, json, lastPlayed)`, `chunks(world, dim, cx, cz, data)`, `player(world, json)`, `advancements(world, json)`. Chunk blobs are a small binary container (`VCK1`: flags, u16 block array, biome array, JSON tail for block entities + entities). Unmodified chunks save as entity-only stubs and regenerate from seed; once a chunk has block data on disk, every rewrite keeps it (tracked via `savedFullKeys`). Failed batches log and re-mark chunks dirty for retry. Corrupt blobs are clamped (out-of-range block ids → air) rather than trusted.
+One SQLite database (WAL, FULLMUTEX, serial save queue): `worlds(id, json, lastPlayed)`, `chunks(world, dim, cx, cz, data)`, `player(world, json)`, `advancements(world, json)`. LAN guests who visit a world are stored in `player` under `<world id>#guest:<name>`. Chunk blobs are a small binary container (`VCK1`: flags, u16 block array, biome array, JSON tail for block entities + entities). Unmodified chunks save as entity-only stubs and regenerate from seed; once a chunk has block data on disk, every rewrite keeps it (tracked via `savedFullKeys`). Failed batches log and re-mark chunks dirty for retry. Corrupt blobs are clamped (out-of-range block ids → air) rather than trusted.
 
 ## The test harness (pebsmoke)
 

@@ -5,7 +5,8 @@
 <h3 align="center">The open-source alternative to Minecraft: Java Edition.</h3>
 
 <p align="center">
-  <em>A complete block-survival game, built from scratch in Swift + Metal.<br>
+  <em>A complete block game, built from scratch in Swift + Metal.<br>
+  Survive alone, or build together over LAN with a creative toolkit.<br>
   Every sound synthesized in real time. Every chunk carved from noise.</em>
 </p>
 
@@ -15,33 +16,43 @@
 
 ---
 
-**Pebble** is the open-source alternative to Minecraft: Java Edition — a native macOS voxel survival game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids, and boss fights — implemented in **~45,000 lines of Swift** with **zero external dependencies**. No game engine, no .xcodeproj. The renderer is hand-written Metal, the audio engine synthesizes every sound from oscillators at runtime, and the game looks the way it does thanks to [Faithful 32x](https://faithfulpack.net) as its built-in texture set.
+> ### New in Pebble 1.2: build together
+> **LAN multiplayer** — open your world to the local network from the pause menu, and friends on the same Wi-Fi join from **Multiplayer (LAN)** on the title screen. Pebble finds the game for you. Everyone shares one world: blocks, mobs, items, chests, chat, day and night.
+>
+> **A creative toolkit to build with** — drop whole structures (up to a 101-block Giza pyramid) with `/place`, raise 16×16 walls and 16×16×16 boxes in one click, carve terrain with a bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. In a LAN game, everyone's undo is their own.
+>
+> See [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
+
+**Pebble** is the open-source alternative to Minecraft: Java Edition — a native macOS voxel game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids, and boss fights — plus a creative building toolkit and LAN multiplayer. It is implemented in **~50,000 lines of Swift** with **zero external dependencies**. No game engine, no .xcodeproj. The renderer is hand-written Metal, the audio engine synthesizes every sound from oscillators at runtime, multiplayer runs on Apple's Network framework, and the game looks the way it does thanks to [Faithful 32x](https://faithfulpack.net) as its built-in texture set.
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft** in any way, and contains no Mojang code or assets. Full statement in [Disclaimer](#disclaimer) below.
 
-> **Pebble 1.1.0 is a beta.** The engine is pinned by 461 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. If you hit one, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
+> **Pebble 1.2.0 is a beta.** The engine is pinned by 461 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
 
 ## By the numbers
 
 | | |
 |---|---|
-| Lines of Swift | ~48,000 across 88 files |
+| Lines of Swift | ~50,700 across 92 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
 | Items | 1,194 |
 | Biomes | 63 (overworld, nether, end, cave biomes) |
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
-| Structures | 19 types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…), plus 11 placeable starters and landmarks |
+| Structures | 19 worldgen types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…), plus 11 placeable starters and landmarks |
+| Multiplayer | LAN: one host, any number of guests, found automatically on the local network (Bonjour) |
 | Golden regression checks | 461, all green (`pebble test`) |
 | Renderer | Metal, 15+ passes, runtime-compiled MSL |
 | Textures | [Faithful 32x](https://faithfulpack.net) by the Faithful team (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized (AVAudioSourceNode + biquad filters) |
-| Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air |
+| Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
 | World load | ~2–4 s cold |
 
 ## Features
 
 - **Full survival loop** — mining with tool tiers, hunger/saturation, XP, sleeping, fall damage, drowning, fire, status effects, death messages, respawn/keep-inventory game rules.
+- **LAN multiplayer** — host from the pause menu, join from the title screen; shared blocks, mobs, items, containers, chat, time and weather, with name tags over other players and everyone's progress saved in the host's world. See [Multiplayer (LAN)](#multiplayer-lan).
+- **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. See [Creative tools](#creative-tools).
 - **Worldgen** — multi-noise climate sampling (temperature/humidity/continentalness/erosion/weirdness) through spline-driven terrain, 3D density caves (cheese/spaghetti/noodle), ravines, aquifers, ore distribution per vanilla 1.20 tables, snow lines, and 63 biomes including lush caves, dripstone caves, and the deep dark.
 - **Three dimensions** — overworld, nether (fortresses, bastions, all five nether biomes), and the end (dragon fight, end cities, gateways), connected by working portals.
 - **Structures** — villages with professioned villagers and working trades, strongholds with the portal room, mineshafts, desert/jungle temples, igloos with basements, witch huts, ocean monuments and ruins, shipwrecks, buried treasure, ruined portals, woodland mansions, amethyst geodes, ancient cities with sculk and shriekers.
@@ -51,7 +62,6 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 - **Vanilla-exact player physics** — walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks, sprint-jumping, water/lava/elytra movement, ice slipperiness, soul sand, honey — verified by independent-derivation tests in the suite.
 - **Faithful 32x textures, built in** — the complete [Faithful 32x](https://faithfulpack.net) art (third-party, fully credited — see [Disclaimer](#disclaimer)) ships inside the app and loads through Pebble's own zip/`.mcmeta` reader: atlas textures, animations with interpolation, GUIs, fonts, entity skins, and sun/moon art. Self-restoring if the file goes missing.
 - **Ultra graphics** — a built-in enhanced pipeline: SSAO, shadow-marched volumetric god rays, Poisson soft shadows, and ACES tonemapping. One toggle in Options → Video.
-- **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. See [Creative tools](#creative-tools).
 - **Generative music** — no audio files anywhere; ambient music, jukebox discs, and all ~hundreds of sound effects are synthesized from oscillator/noise recipes with envelopes, vibrato, positional stereo, underwater lowpass, and cave reverb.
 
 ## Install
@@ -74,13 +84,52 @@ pebble test         run the 461-check golden test suite
 
 For development you can also run straight from the checkout — `swift run -c release Pebble` — and the app will find its packaged assets in `packaging/`.
 
+For LAN play, everyone needs the same Pebble version: each player runs `pebble update` (or installs the same release) before playing together.
+
 ## Controls
 
-WASD to move, mouse to look, Space to jump, Shift to sneak, Ctrl (or double-tap forward) to sprint, E for inventory, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen (also in Options → Video). Scroll the hotbar with the wheel or trackpad. Everything is rebindable in Options → Controls. Cmd+Z / Cmd+Shift+Z undo and redo large edits (see below).
+WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shift to sneak, Ctrl (or double-tap forward) to sprint, E for inventory, Q to drop, F to swap hands, T to chat, `/` for a command, F5 to change perspective, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen (also in Options → Video). Scroll the hotbar with the wheel or trackpad. Movement and the other game keys are rebindable in Options → Controls. Cmd+Z / Cmd+Shift+Z undo and redo large edits (see [Creative tools](#creative-tools)).
+
+## Multiplayer (LAN)
+
+Play in the same world with people on your local network. One player hosts; everyone else joins.
+
+**To host:** load any world, press Esc, and click **Open to LAN** (or type `/host`). The pause menu shows the address to share. Click **Close LAN Game** to stop.
+
+**To join:** on the title screen, click **Multiplayer (LAN)**. Games on your network appear in the list; double-click one, or type the host's address (e.g. `192.168.1.20`) and click **Direct Connect**. Set the name others will see at the top of that screen.
+
+| Command | What it does |
+|---|---|
+| `/host [port]` | Open your world to LAN (default port 25575) |
+| `/join <address[:port]>` | Join a LAN game by address |
+| `/list` | Who's playing |
+| `/leave` | Disconnect (as a guest), or close the LAN game (as the host) |
+| `/name <name>` | Your name in LAN games |
+
+What you share:
+
+- **The world** — every block change, including `/place`, `/fill` and the creative tools, appears for everyone.
+- **Mobs and items** — mobs chase and hurt every player, drops can be picked up by anyone, and PvP works.
+- **Containers and signs** — chest, furnace and sign edits reach everyone.
+- **Chat, time and weather** — `/time`, `/weather`, `/difficulty` and `/gamerule` from any player apply to the shared world.
+- **Your own undo** — each player's Cmd+Z undoes only their own edits.
+- **Your progress** — the host's world keeps each guest's inventory, health and position for their next visit.
+
+Good to know:
+
+- **The world never pauses.** The pause menu doesn't stop the game while others are playing, and the host keeps running even with its window in the background.
+- **The host leads between dimensions.** When the host goes through a portal, everyone comes along; guests can't use portals on their own yet.
+- **Sleeping skips the night only when everyone is in bed.**
+- **When the host quits,** guests return to the title screen with a message.
+- **Everyone needs the same Pebble version.**
+- **Some things stay local to a guest for now:** villager trade limits, and anvils wearing out.
+- **Two people editing the same chest at the same moment** can overwrite each other's change; the last edit wins.
+- **macOS may ask first.** The host may see "accept incoming network connections?" the first time; click Allow. Guests may be asked to let Pebble find devices on the local network.
+- **Your network is trusted.** LAN games have no password and aren't encrypted, and the host trusts guests' actions. Open your world only on networks where you'd let everyone in.
 
 ## Creative tools
 
-Fast building and demolition for creative play. Get the tools with `/give <id>`. Sneak while using a tool for its alternate size.
+Fast building and demolition for creative play. Get the tools with `/give <id>`. Sneak while using a tool for its alternate size. All of them work for LAN guests too.
 
 | Tool / command | What it does | Sneak |
 |---|---|---|
@@ -91,7 +140,7 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
 | `mining_laser` | Hold use to bore a tunnel 5 blocks wide, reaching up to 64 blocks | 9 wide |
 | `void_bomb` | A thrown orb that wipes out a sphere of radius 12 | radius 24 |
 | `quarry_charge` | Digs a 9×9 shaft straight down to bedrock | 17×17 |
-| `/undo [n]`, `/redo [n]` | Undo or redo the last *n* edits (also Cmd+Z / Cmd+Shift+Z) | — |
+| `/undo [n]`, `/redo [n]` | Undo or redo your last *n* edits (also Cmd+Z / Cmd+Shift+Z) | — |
 
 - **Structures you can place:**
   - Starters: `cabin`, `watchtower`, `bunker`, `farm`, `portal`
@@ -105,6 +154,7 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
   - otherwise, stone bricks
 - **Undo covers** every tool above plus `/fill`, and restores chest contents too.
   - It keeps the last 64 edits, and the history is cleared when you quit.
+  - In a LAN game, each player undoes only their own edits.
   - Blocks you mine or place by hand aren't tracked.
   - Mobs killed and items dropped don't come back.
 - **Chat:** long lines wrap, and `/chatsize <1-3>` scales the chat text.
@@ -113,8 +163,10 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
 
 | Path | What |
 |---|---|
-| `~/Library/Application Support/Pebble/pebble.db` | All worlds, chunks, players, advancements (single SQLite database) |
-| `~/Library/Application Support/Pebble/settings.json` + `keybinds.json` | Settings and keybinds |
+| `~/Library/Application Support/Pebble/pebble.db` | All worlds, chunks, players, advancements (single SQLite database), including the saved players of LAN guests who visited your worlds |
+| `~/Library/Application Support/Pebble/settings.json` + `keybinds.json` | Settings (including your LAN name) and keybinds |
+
+A LAN guest stores nothing about the host's world; the host keeps it all.
 
 To uninstall completely: delete `~/Applications/Pebble.app`, `~/Library/Application Support/Pebble/`, and the `pebble` symlink on your PATH (`/opt/homebrew/bin/pebble` or `/usr/local/bin/pebble`).
 
@@ -129,6 +181,8 @@ Sources/PebbleCore/   the engine — headless, no AppKit, fully testable
   Items/              item registry (1,194), recipes, enchants, potions, loot
   Systems/            interact, redstone, fluids, farming, combat, raids, portals,
                       placement, destroyers, builders, undo history
+  Net/                LAN multiplayer: wire format, TCP + Bonjour transport,
+                      host and guest sessions
   Render/             section mesher, texture atlas, entity models
   Game/               GameCore tick orchestrator, SQLite saves, settings
 Sources/Pebble/       the macOS app — window, Metal renderer, UI, audio, input
@@ -144,6 +198,8 @@ A deeper tour lives in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Pebble's engine is **fully deterministic**: a portable fdlibm implementation of `sin/cos/atan2` (pure IEEE-754 operations, no platform math library), 32-bit-wrapping integer hashes, and seeded RNG everywhere mean the same seed produces the identical world — bit for bit, on any machine, across releases. That contract is enforced by golden baseline files: `pebble test` runs 461 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps and compared at checkpoints, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. The goldens are the contract that keeps the engine honest — a change that moves a single block in an existing world fails the suite.
 
+Multiplayer doesn't rely on that contract: the LAN host runs the one real simulation and sends guests what happened, so a guest never has to reproduce the host's world on its own.
+
 ## Development hooks
 
 Useful environment variables for testing and automation:
@@ -152,9 +208,15 @@ Useful environment variables for testing and automation:
 |---|---|
 | `PEBBLE_AUTOLOAD=1` | skip menus, load the most recent world |
 | `PEBBLE_NEWWORLD=<seed>` | create a fresh world with that seed (worldgen testing) |
-| `PEBBLE_CMD="/tp 0 120 0;/time set 1000"` | run chat commands once the world is up (`#wait N` pauses N frames between them) |
+| `PEBBLE_CMD="/tp 0 120 0;/time set 1000"` | run chat commands once the world is up (see the scripted steps below) |
 | `PEBBLE_SHOT="/tmp/x.png@300"` | capture a frame N frames after load |
+| `PEBBLE_SHOT_UI=1` | include the UI (HUD, chat, menus) in `PEBBLE_SHOT` captures, and allow captures on menu screens |
 | `PEBBLE_WORLDS=1` | jump straight to the world-select screen |
+| `PEBBLE_MULTIPLAYER=1` | jump straight to the LAN games screen |
+| `PEBBLE_JOIN=127.0.0.1[:port]` | join a LAN game at launch |
+| `PEBBLE_NAME=Bob` | play as Bob in LAN games (not saved to settings) |
+| `PEBBLE_WINDOWED=1` | start in a window instead of fullscreen, and don't auto-pause in the background; `PEBBLE_WINSIZE=900x506` and `PEBBLE_WINPOS=0,0` place it (side-by-side LAN testing) |
+| `PEBBLE_NETLOG=1` | print LAN message counts and chat every 5 s |
 | `PEBBLE_BOT=1` | run the physics validation bot through the real input path |
 | `PEBBLE_PHOTOBOOTH=1` | studio rig that captures every mob and block to PNGs (`PEBBLE_BOOTH_MOBS=cow,sheep` / `PEBBLE_BOOTH_BLOCKS=-` to filter) |
 | `PEBBLE_PROF=1` | print per-stage load/tick timings |
@@ -162,9 +224,20 @@ Useful environment variables for testing and automation:
 | `PEBBLE_GEOM_DEBUG=1` | log entity geometry construction |
 | `PEBBLE_REGOLD=1` | **rewrites golden baselines** — see CONTRIBUTING before using |
 
+Scripted steps you can mix into `PEBBLE_CMD`:
+
+| Step | Effect |
+|---|---|
+| `#wait N` | pause N frames before the next command |
+| `#waitguests N` | pause until N LAN guests have joined |
+| `#down B` / `#up B` | press / release mouse button B (0 left, 2 right) |
+| `#key Code` | tap a key, e.g. `#key KeyQ` |
+| `#slot N` | select hotbar slot N (1–9) |
+| `#type text` / `#uikey Key` | type into / press a key on the open screen (e.g. a sign) |
+
 ## Reporting bugs & contributing
 
-**Contribution is incredibly welcome.** This is a first public beta: the engine is golden-tested, but the bug list is unknown by definition — the bugs are out there, and you will find them before we do. Every report genuinely helps.
+**Contribution is incredibly welcome.** This is a public beta: the engine is golden-tested, but the bug list is unknown by definition — the bugs are out there, and you will find them before we do. Every report genuinely helps.
 
 Found a bug? [Open an issue](https://github.com/thebriangao/pebble/issues). To help us identify and fix it, please include:
 
@@ -172,6 +245,7 @@ Found a bug? [Open an issue](https://github.com/thebriangao/pebble/issues). To h
 - **Pebble version** — bottom-left of the title screen.
 - **What you did, what happened, what you expected** — rough steps to reproduce are fine.
 - **World context** if it's an in-world bug: the **seed**, the **dimension**, and your **coordinates** (the F3 overlay shows all three).
+- **For LAN bugs:** whether you were the host or a guest, how many people were playing, and what the other players saw.
 - **Settings that matter**: render distance and whether ultra graphics are on.
 - **Screenshots or video** for anything visual.
 - For crashes: the crash report from `~/Library/Logs/DiagnosticReports`, and terminal output if you launched with `pebble run` from a terminal.
@@ -180,7 +254,7 @@ Found a bug? [Open an issue](https://github.com/thebriangao/pebble/issues). To h
 Even better than a bug report is a **pull request with a fix** — see [CONTRIBUTING.md](CONTRIBUTING.md) for the build/test workflow and the conventions that are load-bearing (registration order, RNG discipline, determinism rules). PRs of all sizes are wanted, from typo fixes to subsystem work.
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — build, test, golden workflow, load-bearing conventions.
-- [SECURITY.md](SECURITY.md) — threat model and how to report vulnerabilities privately. Pebble makes **zero network connections** and collects nothing.
+- [SECURITY.md](SECURITY.md) — threat model and how to report vulnerabilities privately. Pebble collects nothing, and touches the network only when you host or join a LAN game.
 - [LICENSE](LICENSE) — MIT, covering the code in this repository. The bundled Faithful artwork is third-party content under its own terms.
 - [CHANGELOG.md](CHANGELOG.md) — release history.
 
@@ -192,7 +266,7 @@ Pebble's *gameplay design* is inspired by Minecraft: Java Edition 1.20 — game 
 
 - **No Mojang/Microsoft source code is used.** Every line of game code was written for this project by its author — the sole third-party-derived code is the fdlibm trigonometry port in `Sources/PebbleCore/Core/DetMath.swift` (Sun Microsystems' permissive license, notice preserved there). Nothing is decompiled, disassembled, copied, or derived from Minecraft's code.
 - **No Mojang/Microsoft asset files are included.** The engine's texture atlas is generated by code; the default visual layer is the third-party Faithful 32x pack (credited below — the Faithful team's own artwork); sounds and music are synthesized in real time from oscillator recipes; fonts are a built-in bitmap glyph set; entity models are hand-written Swift reproducing the vanilla mobs' publicly documented box dimensions and UV layouts — required for Java Edition-format entity textures to map onto them correctly. There are no extracted game files anywhere in this repository.
-- Pebble is free, open-source, non-commercial, **singleplayer only**, and connects to nothing.
+- **Pebble is free, open-source, and non-commercial.** Its multiplayer is local-network only, using its own protocol between copies of Pebble. It never connects to Mojang or Microsoft services, or to any internet server, and it collects nothing.
 
 **Third-party content:** the app bundle ships the complete, unmodified [Faithful 32x](https://faithfulpack.net) (1.20.1) as its built-in texture set. That artwork is the work of the Faithful team and its contributors, distributed under the [Faithful License](packaging/FAITHFUL-LICENSE.txt) (included verbatim here and in the app bundle, as it requires) — it is **not** covered by this repository's MIT license. Pebble is free and non-commercial, consistent with that license's no-monetization requirement. If anyone with rights in that artwork prefers it not be bundled, contact the address below and it will be removed promptly; Pebble remains fully functional without it. Pebble's ability to *read* the file format the artwork ships in is an independently implemented compatibility feature and implies no affiliation.
 
@@ -200,4 +274,4 @@ Pebble is provided "as is", without warranty of any kind (see [LICENSE](LICENSE)
 
 ---
 
-<p align="center"><em>Singleplayer, for now.</em></p>
+<p align="center"><em>Singleplayer &amp; LAN — better together.</em></p>

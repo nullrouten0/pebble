@@ -9,6 +9,8 @@ import Foundation
 public final class EditBatch {
     public let label: String
     let world: World
+    /// whose edit this is: 0 = the local player, else a LAN guest's entity id
+    public let owner: Int
     var keys: [Int64] = []
     var olds: [UInt16] = []
     var bes: [Int64: BlockEntityData] = [:]
@@ -16,9 +18,10 @@ public final class EditBatch {
     /// carve/quarry jobs still writing into this batch (stopped on undo)
     var jobs: [DestroyJob] = []
 
-    init(_ world: World, _ label: String) {
+    init(_ world: World, _ label: String, owner: Int = editOwner) {
         self.world = world
         self.label = label
+        self.owner = owner
     }
 
     public var count: Int { keys.count }
@@ -49,6 +52,9 @@ public final class EditBatch {
 
 public private(set) var undoStack: [EditBatch] = []
 public private(set) var redoStack: [EditBatch] = []
+/// owner stamped on new edits — the LAN host sets it while running a guest's
+/// action, so everyone's Cmd+Z undoes only their own edits
+public var editOwner = 0
 private let UNDO_MAX_BATCHES = 64
 private let UNDO_MAX_CELLS = 6_000_000
 
@@ -56,7 +62,7 @@ private let UNDO_MAX_CELLS = 6_000_000
 public func beginEdit(_ w: World, _ label: String) -> EditBatch {
     let b = EditBatch(w, label)
     undoStack.append(b)
-    redoStack.removeAll()
+    redoStack.removeAll { $0.owner == b.owner }
     var total = undoStack.reduce(0) { $0 + $1.count }
     while undoStack.count > UNDO_MAX_BATCHES || (total > UNDO_MAX_CELLS && undoStack.count > 1) {
         total -= undoStack.removeFirst().count
@@ -68,7 +74,7 @@ public func beginEdit(_ w: World, _ label: String) -> EditBatch {
 private func revert(_ b: EditBatch) -> EditBatch {
     stopJobs(of: b)
     let w = b.world
-    let inv = EditBatch(w, b.label)
+    let inv = EditBatch(w, b.label, owner: b.owner)
     for i in stride(from: b.keys.count - 1, through: 0, by: -1) {
         let k = b.keys[i]
         let (x, y, z) = EditBatch.unpack(k)
@@ -79,17 +85,24 @@ private func revert(_ b: EditBatch) -> EditBatch {
     return inv
 }
 
-/// undo the most recent edit; nil when there's nothing to undo
-public func undoLastEdit() -> EditBatch? {
+/// undo `owner`'s most recent edit; nil when there's nothing to undo
+public func undoLastEdit(owner: Int = 0) -> EditBatch? {
     // skip edits that never changed anything (a rocket that hit only air)
-    while let b = undoStack.last, b.count == 0, b.jobs.allSatisfy({ $0.done }) { undoStack.removeLast() }
-    guard let b = undoStack.popLast() else { return nil }
+    undoStack.removeAll { $0.owner == owner && $0.count == 0 && $0.jobs.allSatisfy({ $0.done }) }
+    guard let i = undoStack.lastIndex(where: { $0.owner == owner }) else { return nil }
+    let b = undoStack.remove(at: i)
     redoStack.append(revert(b))
     return b
 }
 
-public func redoLastEdit() -> EditBatch? {
-    guard let b = redoStack.popLast() else { return nil }
+public func redoLastEdit(owner: Int = 0) -> EditBatch? {
+    guard let i = redoStack.lastIndex(where: { $0.owner == owner }) else { return nil }
+    let b = redoStack.remove(at: i)
     undoStack.append(revert(b))
     return b
+}
+
+/// how many undo / redo steps `owner` has
+public func editCounts(owner: Int = 0) -> (undo: Int, redo: Int) {
+    (undoStack.filter { $0.owner == owner }.count, redoStack.filter { $0.owner == owner }.count)
 }

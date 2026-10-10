@@ -44,6 +44,8 @@ public struct Settings: Codable {
     public var shader: String? = nil
     /// chat text scale (1…3); optional so older settings.json files still decode
     public var chatScale: Double? = nil
+    /// name shown to others in LAN games (nil = the Mac user's first name)
+    public var playerName: String? = nil
 
     public init() {}
 }
