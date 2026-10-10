@@ -25,13 +25,13 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 | | |
 |---|---|
-| Lines of Swift | ~45,000 across 82 files |
+| Lines of Swift | ~48,000 across 88 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
 | Items | 1,194 |
 | Biomes | 63 (overworld, nether, end, cave biomes) |
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
-| Structures | 19 types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…) |
+| Structures | 19 types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…), plus 11 placeable starters and landmarks |
 | Golden regression checks | 461, all green (`pebble test`) |
 | Renderer | Metal, 15+ passes, runtime-compiled MSL |
 | Textures | [Faithful 32x](https://faithfulpack.net) by the Faithful team (third-party, fully credited) |
@@ -51,6 +51,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 - **Vanilla-exact player physics** — walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks, sprint-jumping, water/lava/elytra movement, ice slipperiness, soul sand, honey — verified by independent-derivation tests in the suite.
 - **Faithful 32x textures, built in** — the complete [Faithful 32x](https://faithfulpack.net) art (third-party, fully credited — see [Disclaimer](#disclaimer)) ships inside the app and loads through Pebble's own zip/`.mcmeta` reader: atlas textures, animations with interpolation, GUIs, fonts, entity skins, and sun/moon art. Self-restoring if the file goes missing.
 - **Ultra graphics** — a built-in enhanced pipeline: SSAO, shadow-marched volumetric god rays, Poisson soft shadows, and ACES tonemapping. One toggle in Options → Video.
+- **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. See [Creative tools](#creative-tools).
 - **Generative music** — no audio files anywhere; ambient music, jukebox discs, and all ~hundreds of sound effects are synthesized from oscillator/noise recipes with envelopes, vibrato, positional stereo, underwater lowpass, and cave reverb.
 
 ## Install
@@ -75,7 +76,38 @@ For development you can also run straight from the checkout — `swift run -c re
 
 ## Controls
 
-WASD to move, mouse to look, Space to jump, Shift to sneak, Ctrl (or double-tap forward) to sprint, E for inventory, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen (also in Options → Video). Scroll the hotbar with the wheel or trackpad. Everything is rebindable in Options → Controls.
+WASD to move, mouse to look, Space to jump, Shift to sneak, Ctrl (or double-tap forward) to sprint, E for inventory, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen (also in Options → Video). Scroll the hotbar with the wheel or trackpad. Everything is rebindable in Options → Controls. Cmd+Z / Cmd+Shift+Z undo and redo large edits (see below).
+
+## Creative tools
+
+Fast building and demolition for creative play. Get the tools with `/give <id>`. Sneak while using a tool for its alternate size.
+
+| Tool / command | What it does | Sneak |
+|---|---|---|
+| `/place <structure> [<x> <y\|ground> <z>] [variant]` | Places a whole structure. Without coordinates it lands in front of you. It clears its footprint, so trees and terrain can't leave holes, and fills a foundation under it. `/place list` shows every option. | — |
+| `wall_builder` | Right-click a block to build a 16×16 wall across your view | 8×8 |
+| `box_builder` | Right-click to build a 16×16×16 box with a solid floor and open top; the inside is cleared | 8×8×8 |
+| `bazooka` | Fires a rocket that blows out a crater of radius 9 | — |
+| `mining_laser` | Hold use to bore a tunnel 5 blocks wide, reaching up to 64 blocks | 9 wide |
+| `void_bomb` | A thrown orb that wipes out a sphere of radius 12 | radius 24 |
+| `quarry_charge` | Digs a 9×9 shaft straight down to bedrock | 17×17 |
+| `/undo [n]`, `/redo [n]` | Undo or redo the last *n* edits (also Cmd+Z / Cmd+Shift+Z) | — |
+
+- **Structures you can place:**
+  - Starters: `cabin`, `watchtower`, `bunker`, `farm`, `portal`
+  - Landmarks: `giza_pyramid` (101 wide, with internal tunnels and chambers), `castle`, `lighthouse`, `windmill`, `treehouse`, `sky_island`
+  - Every worldgen structure, such as villages, strongholds and end cities. A different `variant` number gives a different layout.
+- **Underground structures get a marked entrance.** A lit ladder shaft leads down from a flag pole that stands above the trees, and `/place` prints a `/tp` to it.
+- **Walls and boxes snap to a 16-block grid,** so they line up edge to edge. Click the top of a build to stack on it; click a side to build alongside at the same height.
+- **Builder material:**
+  - the block in your off hand
+  - otherwise, the block in the hotbar slot just right of the builder
+  - otherwise, stone bricks
+- **Undo covers** every tool above plus `/fill`, and restores chest contents too.
+  - It keeps the last 64 edits, and the history is cleared when you quit.
+  - Blocks you mine or place by hand aren't tracked.
+  - Mobs killed and items dropped don't come back.
+- **Chat:** long lines wrap, and `/chatsize <1-3>` scales the chat text.
 
 ## Where things live
 
@@ -92,10 +124,11 @@ To uninstall completely: delete `~/Applications/Pebble.app`, `~/Library/Applicat
 Sources/PebbleCore/   the engine — headless, no AppKit, fully testable
   Core/               deterministic math: fdlibm trig, seeded RNG, simplex noise
   World/              chunks, block registry (879), light engine, block entities
-  Gen/                terrain, biomes, features, all structures
+  Gen/                terrain, biomes, features, all structures, placeable starters/landmarks
   Entity/             100 entity types, AI, pathfinding, player physics
   Items/              item registry (1,194), recipes, enchants, potions, loot
-  Systems/            interact, redstone, fluids, farming, combat, raids, portals
+  Systems/            interact, redstone, fluids, farming, combat, raids, portals,
+                      placement, destroyers, builders, undo history
   Render/             section mesher, texture atlas, entity models
   Game/               GameCore tick orchestrator, SQLite saves, settings
 Sources/Pebble/       the macOS app — window, Metal renderer, UI, audio, input
