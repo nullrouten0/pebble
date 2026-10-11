@@ -1,5 +1,26 @@
 # Pebble on iPad / iPhone — feasibility, performance, and port plan
 
+## Status (2026-10-10, branch `ios-port`)
+
+**Done and verified in the simulator** (iPad Pro 13" M5, iPhone 18 Pro, iOS 27):
+- Step 0: noise tables moved to raw buffers. Cold 361-chunk gen went from 0.57 s at best (6 threads) to 0.12 s (14 threads), and it keeps scaling. `MAX_GEN_INFLIGHT` now follows the core count, and the stronghold cache is locked.
+- Step 1: `PebbleApp` library + thin AppKit shell. macOS behavior is unchanged: shots match within run-to-run noise, and LAN host+guest work.
+- Step 2: XcodeGen project, UIKit shell, lifecycle saves (background → kill → relaunch keeps the world), audio session, device presets, safe area, `pebble ios [open|build|run]`.
+- Step 3: hardware keyboard (HID map, Cmd-. = Escape, Cmd-V), mouse/trackpad with pointer lock, game controllers. The controller code is shared, so it works on the Mac too.
+- Step 4: touch overlay, touch over screens (long-press = right-click, drag-and-drop, Quick Move, ×, drag-scroll), soft keyboard for chat/signs/fields, and `GameCore.analogMove`, which has pebsmoke checks.
+- `pebble test ios`: 488/488 inside the iOS Simulator.
+- Milestone 2: memoryless scene depth, lazy ultra targets, the title photo freed in-world (iOS), the mesh arena releasing empty pages, adaptive render scale (GPU-time and thermal driven), a memory-warning handler, and light-frustum culling of the shadow pass (26–47% fewer shadow draws).
+- Milestone 3 (started): Settings fits the 240-unit iPhone GUI.
+
+**Not done yet:**
+- **On-device testing** on the M-series iPad and the iPhone: signing (`ios/Config/Local.xcconfig`), real touch feel, pointer lock, controllers, thermals/Metal HUD, the `ultra_fs` depth-sampler check.
+- Reading the Faithful pack straight from the bundle and loading it off the main thread. It loads in ~0.2 s and is copied once (11 MB), so this was left alone.
+- `half` precision in shaders and a precompiled `.metallib`.
+- Touch-control tuning: layout, sizes and look speed need a real hand on a real screen.
+- iPhone: non-integer GUI scale and touch-sized inventory slots.
+
+---
+
 ## Context
 
 Pebble is a ~46k-line Swift + Metal voxel survival game (Minecraft-like) that currently ships only as a macOS app built with SwiftPM. You asked how hard it would be to run it on iPad or iPhone, and how well an iPad would perform, before committing to the port. This document has the evidence first, then the plan for the port itself.
