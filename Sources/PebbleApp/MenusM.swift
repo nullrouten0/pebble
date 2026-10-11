@@ -639,7 +639,10 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                 }))
         }
-        buttons.append(Button(cx - 100, ui.height - 30, 200, 20, "Done", { [weak ui, weak game] in
+        // short screens (iPhone landscape, ~240 units): the bottom Done would
+        // sit on the last row, so it joins the tab strip instead
+        let doneFrame = ui.height < 250 ? (cx + 164, 20.0, 50.0, 16.0) : (cx - 100, ui.height - 30, 200.0, 20.0)
+        buttons.append(Button(doneFrame.0, doneFrame.1, doneFrame.2, doneFrame.3, "Done", { [weak ui, weak game] in
             guard let ui, let game else { return }
             game.applySettings()
             ui.closeTop(game)
