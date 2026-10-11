@@ -3,7 +3,12 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
-## Unreleased — iPad and iPhone (in progress, `ios-port` branch)
+## iPad Beta — `ios-port` branch
+
+Not a main release yet: build it yourself from the branch (see the README
+banner). Known rough edges: frame rate dips while new terrain streams in,
+the touch buttons are plain text labels for now, and iPhone layouts are
+only lightly polished.
 
 - **Pebble runs on iPad and iPhone.** The same game, built from the same
   repo: `pebble ios run` launches it in the simulator. Touch controls (move

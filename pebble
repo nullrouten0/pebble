@@ -251,10 +251,12 @@ cmd_ios() {
             [ -n "$udid" ] || die "no simulator named '$IOS_SIM' — set PEBBLE_SIM, or add one in Xcode"
             ios_build_sim "$udid"
             xcrun simctl boot "$udid" 2>/dev/null || true
-            open -a Simulator
-            xcrun simctl install "$udid" "$IOS_BUILD/Build/Products/${PEBBLE_IOS_CONFIG:-Release}-iphonesimulator/Pebble.app"
+            open -b com.apple.iphonesimulator 2>/dev/null || true   # show it, where the app exists
+            local app="$IOS_BUILD/Build/Products/${PEBBLE_IOS_CONFIG:-Release}-iphonesimulator/Pebble.app"
+            xcrun simctl install "$udid" "$app"
             say "Launching in $(xcrun simctl list devices | grep -F "$udid" | sed -E 's/ \(.*//; s/^ +//')…"
-            xcrun simctl launch "$udid" net.stonekitty.pebble >/dev/null ;;
+            # (the bundle id may be overridden in Local.xcconfig)
+            xcrun simctl launch "$udid" "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")" >/dev/null ;;
         *)
             die "usage: pebble ios [open|build|run]" ;;
     esac

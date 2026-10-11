@@ -16,6 +16,18 @@
 
 ---
 
+> ### 🧪 iPad Beta — this branch (`ios-port`)
+> Pebble runs on **iPad** (and iPhone, in landscape) — the same game and worlds, and it plays LAN games with the Mac version. Touch controls (move stick, drag to look, tap to place, hold to break), hardware keyboard and mouse, and game controllers all work. It's a **beta**: not in the App Store or a main release yet, performance while new terrain streams in still needs work, and the touch controls will change. See the [iPad Beta notes](CHANGELOG.md#ipad-beta--ios-port-branch).
+>
+> **Install it on your iPad** (needs a Mac with Xcode 16+ and a free Apple ID):
+> ```bash
+> brew install xcodegen
+> git clone -b ios-port https://github.com/nullrouten0/pebble.git && cd pebble
+> cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # add your team ID + a unique bundle ID
+> ./pebble ios                                                     # generates and opens the Xcode project
+> ```
+> In Xcode: **Settings → Accounts** → add your Apple ID (your team ID is shown there), plug in the iPad, pick it as the run destination, and press **⌘R**. On the iPad, turn on **Settings → Privacy & Security → Developer Mode** if asked, and trust your Apple ID under **Settings → General → VPN & Device Management**. Apps signed with a free Apple ID expire after 7 days — press ⌘R again to refresh. No iPad handy? `./pebble ios run` launches it in the simulator.
+
 > ### New in Pebble 1.2: build together
 > **LAN multiplayer** — click **Host LAN Game** on the title screen, pick a world, and you're in and open to the local network. Friends on the same Wi-Fi click **Join LAN Game**. Pebble finds the game for you. Everyone shares one world: blocks, mobs, items, chests, chat, day and night.
 >
