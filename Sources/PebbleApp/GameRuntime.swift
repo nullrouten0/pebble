@@ -135,6 +135,18 @@ final class HostBridge: GameHost {
     }
 }
 
+/// physical footprint (what the iOS memory limit counts), in MB
+func processFootprintMB() -> Int {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+    let kr = withUnsafeMutablePointer(to: &info) {
+        $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+        }
+    }
+    return kr == KERN_SUCCESS ? Int(info.phys_footprint >> 20) : 0
+}
+
 // pushChat lives in ScreensM at module scope; alias avoids name shadowing here
 func Pebble_pushChat(_ line: String) { pushChat(line) }
 
@@ -414,7 +426,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
             hud.debugInfo["chunkUpdates"] = String(n)
             hud.debugInfo["sections"] = String(renderer.sections.count)
             hud.debugInfo["drawCalls"] = String(renderer.drawCalls)
-            hud.debugInfo["mem"] = "n/a"
+            hud.debugInfo["mem"] = "\(processFootprintMB()) MB (meshes \(renderer.arena.residentBytes >> 20) MB)"
             audio.applyVolumes(game.settings.volumes)
             platform.applyMaxFps(game.settings.maxFps)
             if game.hasWorld(), let p = game.player {
@@ -531,6 +543,11 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                         continue
                     }
                     // "#pos" prints the player's position and look (scripted movement tests)
+                    // "#mem" prints the process footprint and mesh arena size
+                    if c == "#mem" {
+                        print("[mem] footprint \(processFootprintMB()) MB, mesh arena \(renderer.arena.residentBytes >> 20) MB, \(renderer.sections.count) sections")
+                        continue
+                    }
                     if c == "#pos" {
                         print(String(format: "[pos] %.3f %.3f %.3f yaw %.3f pitch %.3f slot %d%@", p.x, p.y, p.z, p.yaw, p.pitch,
                                      p.selectedSlot, ui.current().map { " screen \(type(of: $0))" } ?? ""))

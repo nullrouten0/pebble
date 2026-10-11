@@ -37,9 +37,11 @@ final class SectionGPU {
 /// draws from the same few buffers (only offsets change between draws), which
 /// removes the per-draw buffer-bind/residency work that dominated CPU encode.
 /// Frees are deferred 3 frames so in-flight GPU work never reads freed blocks.
+/// A page that empties out entirely goes back to the system (one stays warm),
+/// so the footprint shrinks again after a big world or a long trip.
 final class MeshArena {
     private let device: MTLDevice
-    private(set) var pages: [MTLBuffer] = []
+    private var pages: [MTLBuffer?] = []   // nil = released slot, reused by the next new page
     private var free: [[(Int, Int)]] = []
     private var pendingFree: [(MeshBlock, Int)] = []
     private var frame = 0
@@ -63,11 +65,23 @@ final class MeshArena {
             }
         }
         let buf = device.makeBuffer(length: max(Self.pageSize, sz), options: .storageModeShared)!
-        pages.append(buf)
         let used = (size + 255) & ~255
-        free.append(used < buf.length ? [(used, buf.length - used)] : [])
+        let rest: [(Int, Int)] = used < buf.length ? [(used, buf.length - used)] : []
+        if let slot = pages.firstIndex(where: { $0 == nil }) {
+            pages[slot] = buf
+            free[slot] = rest
+            return (slot, 0)
+        }
+        pages.append(buf)
+        free.append(rest)
         return (pages.count - 1, 0)
     }
+
+    /// the buffer behind a live block's page
+    func page(_ i: Int) -> MTLBuffer { pages[i]! }
+
+    /// bytes held in live pages (the F3 overlay / memory hooks)
+    var residentBytes: Int { pages.reduce(0) { $0 + ($1?.length ?? 0) } }
 
     func release(_ b: MeshBlock?) {
         if let b { pendingFree.append((b, frame)) }
@@ -84,6 +98,20 @@ final class MeshArena {
             } else {
                 i += 1
             }
+        }
+        releaseEmptyPages()
+    }
+
+    private func releaseEmptyPages() {
+        var live = pages.reduce(0) { $0 + ($1 == nil ? 0 : 1) }
+        for pi in pages.indices where live > 1 {
+            guard let buf = pages[pi], free[pi].count == 1,
+                  free[pi][0].0 == 0, free[pi][0].1 == buf.length else { continue }
+            // nothing pending may still point into it (frees wait 3 frames)
+            if pendingFree.contains(where: { $0.0.page == pi }) { continue }
+            pages[pi] = nil
+            free[pi] = []
+            live -= 1
         }
     }
 
@@ -764,7 +792,7 @@ final class WorldRenderer {
             let vbBytes = layer.data.count * 4
             let ibBytes = layer.idx.count * 4
             let (page, offset) = arena.alloc(vbBytes + ibBytes)
-            let base = arena.pages[page].contents().advanced(by: offset)
+            let base = arena.page(page).contents().advanced(by: offset)
             layer.data.withUnsafeBytes { base.copyMemory(from: $0.baseAddress!, byteCount: vbBytes) }
             layer.idx.withUnsafeBytes { base.advanced(by: vbBytes).copyMemory(from: $0.baseAddress!, byteCount: ibBytes) }
             return MeshBlock(page: page, offset: offset, ibRel: vbBytes,
@@ -953,12 +981,12 @@ final class WorldRenderer {
                 senc.setVertexBytes(&origin, length: 16, index: 2)
                 if buf.page != boundPage {
                     boundPage = buf.page
-                    senc.setVertexBuffer(arena.pages[buf.page], offset: buf.offset, index: 0)
+                    senc.setVertexBuffer(arena.page(buf.page), offset: buf.offset, index: 0)
                 } else {
                     senc.setVertexBufferOffset(buf.offset, index: 0)
                 }
                 senc.drawIndexedPrimitives(type: .triangle, indexCount: buf.indexCount, indexType: .uint32,
-                                           indexBuffer: arena.pages[buf.page], indexBufferOffset: buf.offset + buf.ibRel)
+                                           indexBuffer: arena.page(buf.page), indexBufferOffset: buf.offset + buf.ibRel)
                 drawCalls += 1
             }
             senc.endEncoding()
@@ -1074,12 +1102,12 @@ final class WorldRenderer {
                 enc.setVertexBytes(&origin, length: 16, index: 2)
                 if buf.page != boundPage {
                     boundPage = buf.page
-                    enc.setVertexBuffer(arena.pages[buf.page], offset: buf.offset, index: 0)
+                    enc.setVertexBuffer(arena.page(buf.page), offset: buf.offset, index: 0)
                 } else {
                     enc.setVertexBufferOffset(buf.offset, index: 0)
                 }
                 enc.drawIndexedPrimitives(type: .triangle, indexCount: buf.indexCount, indexType: .uint32,
-                                          indexBuffer: arena.pages[buf.page], indexBufferOffset: buf.offset + buf.ibRel)
+                                          indexBuffer: arena.page(buf.page), indexBufferOffset: buf.offset + buf.ibRel)
                 drawCalls += 1
             }
         }
