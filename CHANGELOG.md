@@ -18,6 +18,8 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   `/join <address[:port]>`. Set your name there or with `/name`.
 - **One shared world.** Shared between all players:
   - block changes (including `/place`, `/fill` and the creative tools)
+  - rockets and void bombs in flight, with their launch sounds and the blast
+    screen shake, even when a guest fires them
   - mobs, items and projectiles
   - chests, furnaces and signs
   - time, weather, game rules, difficulty, sounds and particles
@@ -51,6 +53,9 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   format uses a narrow no-break space, which the font doesn't have.
 - **Title screen fits short windows.** The Options / Quit row no longer
   covers the texture credit in the bottom-left corner.
+- **Rockets no longer freeze in mid-air.** A rocket (or void bomb) that flew
+  past simulation distance stopped moving and never went off. Now it keeps
+  flying and detonates at the end of its range.
 
 ### Development
 - **New test hooks** for LAN and UI testing:

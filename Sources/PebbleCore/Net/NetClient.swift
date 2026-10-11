@@ -275,6 +275,12 @@ public final class NetClient {
                 p.sleepTicks = 0
                 p.bedPos = nil
             }
+        case .blasts:
+            let n = try r.u16()
+            for _ in 0..<n {
+                let x = try r.f64(), y = try r.f64(), z = try r.f64(), radius = try r.f32()
+                pendingBlasts.append((x, y, z, radius))
+            }
         case .gameMode:
             game.applyGameMode(try r.u8())
             game.host?.pushChat("§7Game mode set to \(game.player.gameMode == GameMode.creative ? "Creative" : "Survival")")

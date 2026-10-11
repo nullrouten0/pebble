@@ -30,8 +30,10 @@ public let SPRITE_TYPES: Set<String> = [
     "eye_of_ender", "fishing_bobber", "wither_skull", "dragon_fireball", "fireball",
     "shulker_bullet", "llama_spit", "rocket", "void_bomb",
 ]
-/// entities that tick regardless of sim distance (bosses roam the whole arena)
-let ALWAYS_TICK: Set<String> = ["ender_dragon", "wither", "warden", "end_crystal", "eye_of_ender", "lightning"]
+/// entities that tick regardless of sim distance (bosses roam the whole arena;
+/// rockets and void bombs outfly it and would hang in the air)
+let ALWAYS_TICK: Set<String> = ["ender_dragon", "wither", "warden", "end_crystal", "eye_of_ender", "lightning",
+                                "rocket", "void_bomb"]
 
 // =============================================================================
 // Load-path profiler (PEBBLE_PROF=1) — aggregates per-stage wall time
@@ -1927,6 +1929,7 @@ public final class GameCore {
     private var shake = 0.0
     private func tickShake() {
         shake *= 0.85
+        netHost?.broadcastBlasts(pendingBlasts)
         guard let p = player else { pendingBlasts.removeAll(); return }
         for (x, y, z, r) in pendingBlasts {
             let d = detHyp3(p.x - x, p.y - y, p.z - z)

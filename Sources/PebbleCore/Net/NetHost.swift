@@ -225,6 +225,8 @@ public final class NetHost {
     private var particles: [(String, Double, Double, Double, Int, Double, Int, Int)] = []
     /// the guest whose action is running right now (their own sounds are skipped)
     private var actor: RemoteClient?
+    /// the actor didn't run this action itself, so it gets the sounds too
+    private var echoActor = false
     /// item drops are suppressed while replaying a guest action that the guest
     /// already predicted (its copies of the drops arrive as spawnItem)
     private(set) var suppressDrops = false
@@ -347,7 +349,9 @@ public final class NetHost {
             }
             try readHeld(c, &r)
             let target = targetId != 0 ? c.proxy.world.entityById[targetId] as? Entity : nil
-            replay(c, drops: false) {
+            // host-only tools (bazooka, void bomb…) never ran on the guest
+            let hostOnly = HOST_ONLY_TOOLS.contains(c.proxy.mainHand.map { itemDef($0.id).name } ?? "")
+            replay(c, drops: hostOnly, echo: hostOnly) {
                 _ = game.performUse(c.proxy, InteractCtx(world: c.proxy.world, player: c.proxy),
                                     target: target, hit: hit)
             }
@@ -562,12 +566,16 @@ public final class NetHost {
     }
 
     /// run a guest action against the real world. `drops`: false when the
-    /// guest predicted it and forwards its own copies of any item drops
-    private func replay(_ c: RemoteClient, drops: Bool, _ body: () -> Void) {
-        let prev = suppressDrops
+    /// guest predicted it and forwards its own copies of any item drops.
+    /// `echo`: the guest didn't run it at all, so it gets the sounds and
+    /// particles too
+    private func replay(_ c: RemoteClient, drops: Bool, echo: Bool = false, _ body: () -> Void) {
+        let prev = suppressDrops, prevEcho = echoActor
         suppressDrops = !drops
+        echoActor = echo
         withActor(c, body)
         suppressDrops = prev
+        echoActor = prevEcho
         // the actor's prediction may have differed: send what really happened
         c.appliedX = c.proxy.x; c.appliedY = c.proxy.y; c.appliedZ = c.proxy.z
     }
@@ -596,11 +604,11 @@ public final class NetHost {
     }
     func sound(_ name: String, _ x: Double, _ y: Double, _ z: Double, _ vol: Double, _ pitch: Double) {
         if clients.isEmpty { return }
-        sounds.append((name, x, y, z, vol, pitch, actor?.conn.id ?? -1))
+        sounds.append((name, x, y, z, vol, pitch, echoActor ? -1 : actor?.conn.id ?? -1))
     }
     func particle(_ type: String, _ x: Double, _ y: Double, _ z: Double, _ n: Int, _ spread: Double, _ data: Int) {
         if clients.isEmpty { return }
-        particles.append((type, x, y, z, n, spread, data, actor?.conn.id ?? -1))
+        particles.append((type, x, y, z, n, spread, data, echoActor ? -1 : actor?.conn.id ?? -1))
     }
     /// called for every entity added to the host world
     func shouldSpawn(_ e: EntityRef) -> Bool {
@@ -998,6 +1006,15 @@ public final class NetHost {
     /// the night was slept through
     func wakeEveryone() {
         for c in clients where c.joined { c.queue(.wake, ByteWriter()) }
+    }
+
+    /// this tick's blasts, for guests' screen shake
+    func broadcastBlasts(_ list: [(Double, Double, Double, Double)]) {
+        if list.isEmpty || clients.isEmpty { return }
+        var m = ByteWriter()
+        m.u16(min(list.count, 1000))
+        for (x, y, z, r) in list.prefix(1000) { m.f64(x); m.f64(y); m.f64(z); m.f32(r) }
+        for c in clients where c.joined { c.queue(.blasts, m) }
     }
 
     /// the host changed game mode: everyone follows

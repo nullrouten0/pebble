@@ -10,6 +10,11 @@ private func reg(_ name: String, _ f: @escaping EntityFactory) {
     FACTORIES.append((name, f))
     FACTORY_BY_NAME[name] = f
 }
+/// types added after the baseline: creatable by name (LAN guests' copies,
+/// saves, /summon) but kept out of entityTypes(), whose order is frozen
+private func regLate(_ name: String, _ f: @escaping EntityFactory) {
+    FACTORY_BY_NAME[name] = f
+}
 
 private var entitiesRegistered = false
 
@@ -68,6 +73,7 @@ public func registerAllEntities() {
     reg("fishing_bobber") { FishingBobber(world: $0) }; reg("llama_spit") { LlamaSpit(world: $0) }
     reg("boat") { Boat(world: $0) }; reg("minecart") { Minecart(world: $0) }
     reg("player") { Player(world: $0) }
+    regLate("rocket") { Rocket(world: $0) }; regLate("void_bomb") { VoidBomb(world: $0) }
 
     bindSpawnMob(spawnMob)
 }
