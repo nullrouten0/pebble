@@ -1,7 +1,6 @@
 // Menus — title screen, world select/create, pause,
 // settings (video/audio/controls/accessibility), advancements tree, credits.
 
-import AppKit
 import Foundation
 import QuartzCore
 import PebbleCore
@@ -54,7 +53,7 @@ final class TitleScreen: Screen {
             ui.open(SettingsScreen(), game)
         }))
         buttons.append(Button(cx + 2, y, 98, 20, "Quit Game", {
-            NSApp.terminate(nil)
+            gRuntime?.platform.quit()
         }))
     }
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
@@ -321,7 +320,7 @@ final class LoadingScreen: Screen {
     }
     /// sections meshed within 2 chunks of the player
     private func progress(_ game: GameCore) -> (Int, Int, Bool) {
-        guard let renderer = gAppDelegate?.renderer, game.hasWorld(), let p = game.player else {
+        guard let renderer = gRuntime?.renderer, game.hasWorld(), let p = game.player else {
             return (0, Self.target, false)
         }
         let pcx = Int(p.x.rounded(.down)) >> 4, pcz = Int(p.z.rounded(.down)) >> 4
@@ -486,11 +485,7 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                     // re-layout immediately — applySettings only persists,
                     // and ui.resize otherwise waits for a window resize
-                    if let a = gAppDelegate {
-                        a.ui.resize(Double(a.gameView.drawableSize.width),
-                                    Double(a.gameView.drawableSize.height),
-                                    a.game.settings.guiScale, relayout: a.game)
-                    }
+                    gRuntime?.relayoutUI()
                 }))
             y += 22
             toggle("Fancy Graphics", { game.settings.fancyGraphics }, { game.settings.fancyGraphics = $0 }, 0)
@@ -503,8 +498,8 @@ final class SettingsScreen: Screen {
             toggle("View Bobbing", { game.settings.viewBobbing }, { game.settings.viewBobbing = $0 }, 1)
             y += 22
             toggle("Fullscreen",
-                   { gAppDelegate?.window?.styleMask.contains(.fullScreen) ?? false },
-                   { _ in gAppDelegate?.window?.toggleFullScreen(nil) }, 0)
+                   { gRuntime?.platform.isFullscreen ?? false },
+                   { _ in gRuntime?.platform.toggleFullscreen() }, 0)
             y += 22
             sliders.append(Slider(cx - 160, y, W, 18,
                 { [weak game] in "Particles: \(["Minimal", "Decreased", "All"][min(2, game?.settings.particles ?? 2)])" },
@@ -803,7 +798,7 @@ final class MultiplayerScreen: Screen {
             guard let self, let game, let b = self.browser, self.selected >= 0, self.selected < b.games.count else { return }
             let target = b.games[self.selected]
             self.saveName(game)
-            gAppDelegate?.beginJoin { $0.joinLAN(target) }
+            gRuntime?.beginJoin { $0.joinLAN(target) }
         })
         buttons.append(joinBtn)
         buttons.append(Button(cx + 4, by, 150, 20, "Direct Connect", { [weak self, weak game] in
@@ -812,7 +807,7 @@ final class MultiplayerScreen: Screen {
             if addr.isEmpty { self.addrField.focused = true; return }
             self.saveName(game)
             let (h, port) = parseLANAddress(addr)
-            gAppDelegate?.beginJoin { $0.joinLAN(host: h, port: port) }
+            gRuntime?.beginJoin { $0.joinLAN(host: h, port: port) }
         }))
         buttons.append(Button(cx - 100, by + 24, 200, 20, "Back", { [weak ui, weak game] in
             guard let ui, let game else { return }
@@ -862,7 +857,7 @@ final class MultiplayerScreen: Screen {
                 if selected == i {
                     saveName(game)
                     let target = games[i]
-                    gAppDelegate?.beginJoin { $0.joinLAN(target) }
+                    gRuntime?.beginJoin { $0.joinLAN(target) }
                 }
                 selected = i
                 return true
@@ -893,7 +888,7 @@ final class JoinScreen: Screen {
         if game.hasWorld() {
             ui.closeAll(game)
             ui.open(LoadingScreen(), game)
-            gAppDelegate?.gameView.captureMouse()
+            gRuntime?.input.captureMouse()
             return
         }
         ui.drawDirtBg()

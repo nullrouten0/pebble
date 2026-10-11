@@ -442,7 +442,7 @@ private func facingName(_ yaw: Double) -> String {
 extension HUD {
     /// names over other players (LAN), dimmed while they sneak, hidden behind walls
     func drawNameTags(_ ui: UIManager, _ game: GameCore) {
-        guard game.isNetworked, let r = gAppDelegate?.renderer, let me = game.player else { return }
+        guard game.isNetworked, let r = gRuntime?.renderer, let me = game.player else { return }
         let w = game.world
         let t = r.lastPartial
         for e in w.entities {

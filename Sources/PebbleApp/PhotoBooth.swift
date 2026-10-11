@@ -4,7 +4,6 @@
 // builds a lit platform, summons/places each subject, settles a few ticks,
 // then reads back the scene framebuffer (no UI) and writes a PNG.
 
-import AppKit
 import Foundation
 import ImageIO
 import Metal
@@ -31,7 +30,7 @@ final class PhotoBooth {
     private var blockList: [Int] = []
     private var currentMob: Entity?
     private var captured = 0
-    private let outRoot = "/tmp/vc-captures"
+    private let outRoot = debugOutputDir() + "/vc-captures"
 
     // set geometry
     private let SX = 0, SY = 200, SZ = 0          // subject position

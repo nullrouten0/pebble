@@ -157,10 +157,10 @@ final class PhysicsBot {
 
     private func finish() {
         done = true
-        try? log.joined(separator: "\n").write(toFile: "/tmp/vc-bot.log", atomically: true, encoding: .utf8)
+        try? log.joined(separator: "\n").write(toFile: debugOutputDir() + "/vc-bot.log", atomically: true, encoding: .utf8)
         let failures = report.filter { $0.hasPrefix("FAIL") }.count
         report.append("\(report.count - failures)/\(report.count) passed")
-        try? report.joined(separator: "\n").write(toFile: "/tmp/vc-bot-report.txt", atomically: true, encoding: .utf8)
+        try? report.joined(separator: "\n").write(toFile: debugOutputDir() + "/vc-bot-report.txt", atomically: true, encoding: .utf8)
         print("[bot] done — \(report.last!)")
         fflush(stdout)
     }

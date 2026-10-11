@@ -1,10 +1,10 @@
-// Pebble — native macOS app shell. Window + MTKView, NSEvent → key-code-style
-// key codes, pointer capture, the frame loop, and the GameHost bridge wiring
-// GameCore to the UI stack (title/menus/HUD/screens) and renderer.
+// Pebble — native macOS app shell. Window + MTKView, NSEvent → internal key
+// codes, pointer capture, fullscreen, and the menu bar. Everything else (game,
+// renderer, UI, frame loop) lives in PebbleApp's GameRuntime.
 
 import AppKit
 import MetalKit
-import PebbleCore
+import PebbleApp
 
 // ---------------------------------------------------------------------------
 // NSEvent keyCode (kVK_*) → internal key-code strings (GameCore keybinds)
@@ -47,310 +47,113 @@ func bundleResourcePath(_ name: String) -> String? {
 }
 
 // ---------------------------------------------------------------------------
-// host bridge: GameCore ↔ UI stack / renderer / audio
+// platform hooks: what the shared runtime needs from AppKit
 // ---------------------------------------------------------------------------
-final class HostBridge: GameHost {
-    weak var app: AppDelegate?
-    var ui: UIManager { app!.ui }
-    var hud: HUD { app!.hud }
-    var game: GameCore { app!.game }
+final class MacPlatform: PlatformHooks {
+    weak var window: NSWindow?
+    weak var view: GameView?
+    private var uncappedMode = false
+    private var uncapTimer: Timer?
 
-    func hasScreen() -> Bool { app?.ui.hasScreen() ?? false }
-    func screenPausesGame() -> Bool { app?.ui.current()?.pausesGame ?? false }
+    func resourcePath(_ name: String) -> String? { bundleResourcePath(name) }
 
-    func openScreen(_ kind: String, _ data: ScreenData?) {
-        guard let app else { return }
-        switch kind {
-        case "crafting": ui.open(CraftingScreen(), game)
-        case "inventory": ui.open(InventoryScreen(), game)
-        case "creative": ui.open(CreativeScreen(), game)
-        case "chest":
-            if let be = data?.be {
-                ui.open(ChestScreen(be, data?.title ?? "Chest", data?.other), game)
+    var canQuit: Bool { true }
+    func quit() { NSApp.terminate(nil) }
+
+    var supportsFullscreen: Bool { true }
+    var isFullscreen: Bool { window?.styleMask.contains(.fullScreen) ?? false }
+    func toggleFullscreen() { window?.toggleFullScreen(nil) }
+
+    func setPointerCaptured(_ captured: Bool) {
+        CGAssociateMouseAndMouseCursorPosition(captured ? 0 : 1)
+        if captured { NSCursor.hide() } else { NSCursor.unhide() }
+    }
+
+    func pasteboardString() -> String? { NSPasteboard.general.string(forType: .string) }
+
+    func showStatus(_ title: String) { window?.title = title }
+
+    /// maxFps >= 250 = unlimited: MTKView's display link can't exceed the panel
+    /// refresh, so drive draw() from a runloop timer with vsync off instead
+    func applyMaxFps(_ maxFps: Int) {
+        guard let view else { return }
+        let unlimited = maxFps >= 250
+        if unlimited != uncappedMode {
+            uncappedMode = unlimited
+            (view.layer as? CAMetalLayer)?.displaySyncEnabled = !unlimited
+            view.isPaused = unlimited
+            view.enableSetNeedsDisplay = false
+            uncapTimer?.invalidate()
+            uncapTimer = nil
+            if unlimited {
+                let t = Timer(timeInterval: 0.0001, repeats: true) { [weak view] _ in
+                    view?.draw()
+                }
+                RunLoop.main.add(t, forMode: .common)
+                uncapTimer = t
             }
-        case "ender_chest":
-            let p = game.player!
-            ui.open(ChestScreen(items: { p.enderChest }, set: { p.enderChest[$0] = $1 },
-                                count: p.enderChest.count, "Ender Chest"), game)
-        case "furnace":
-            if let be = data?.be { ui.open(FurnaceScreen(be), game) }
-        case "brewing":
-            if let be = data?.be { ui.open(BrewingScreen(be), game) }
-        case "enchanting":
-            ui.open(EnchantingScreen((data?.x ?? 0, data?.y ?? 0, data?.z ?? 0)), game)
-        case "anvil":
-            ui.open(AnvilScreen((data?.x ?? 0, data?.y ?? 0, data?.z ?? 0, data?.damage ?? 0)), game)
-        case "grindstone": ui.open(GrindstoneScreen(), game)
-        case "stonecutter": ui.open(StonecutterScreen(), game)
-        case "smithing": ui.open(SmithingScreen(), game)
-        case "beacon":
-            if let be = data?.be { ui.open(BeaconScreen(be), game) }
-        case "sign":
-            ui.open(SignScreen(data?.be, (data?.x ?? 0, data?.y ?? 0, data?.z ?? 0)), game)
-        case "toast":
-            hud.showActionBar(data?.text ?? "")
-        default:
-            break
         }
-        if ui.hasScreen() { app.gameView.releaseMouse() }
-    }
-    func openTrading(_ villager: Mob) {
-        ui.open(TradingScreen(villager), game)
-        app?.gameView.releaseMouse()
-    }
-    func openVehicleChest(_ kind: String, _ vehicle: Entity) {
-        let title = kind == "boat_chest" ? "Chest Boat" : "Minecart with Chest"
-        if let boat = vehicle as? Boat {
-            ui.open(ChestScreen(vehicle: boat, title), game)
-        } else if let cart = vehicle as? Minecart {
-            ui.open(ChestScreen(vehicle: cart, title), game)
+        if !unlimited {
+            view.preferredFramesPerSecond = max(30, maxFps)
         }
-        app?.gameView.releaseMouse()
-    }
-    func openChat(_ prefix: String) {
-        let g = game
-        ui.open(ChatScreen({ cmd in runCommand(g, cmd) }, prefix), g)
-        app?.gameView.releaseMouse()
-    }
-    func openDeathScreen(_ message: String) {
-        ui.open(DeathScreen(message), game)
-    }
-    func openPauseScreen() {
-        ui.open(PauseScreen(), game)
-        app?.gameView.releaseMouse()
-    }
-    func openTitleScreen() {
-        ui.titlePhoto = app?.renderer.titleBgTex != nil; ui.titleLogo = app?.renderer.titleLogoTex != nil
-        ui.open(TitleScreen(), game)
-        app?.gameView.releaseMouse()
-    }
-    func closeAllScreens() { ui.closeAll(game) }
-    func releasePointer() { app?.gameView.releaseMouse() }
-
-    func showActionBar(_ text: String, _ time: Int) {
-        hud.showActionBar(text)
-        hud.actionBarTime = time
-    }
-    func pushChat(_ line: String) { Pebble_pushChat(line) }
-    func pushToast(_ adv: AdvancementDef) { hud.pushToast(adv) }
-    func setBossBars(_ bars: [BossBarInfo]) { hud.bossBars = bars }
-
-    func playSound(_ name: String, _ x: Double, _ y: Double, _ z: Double, _ volume: Double, _ pitch: Double) {
-        guard let app else { return }
-        if name.hasPrefix("jukebox.play.") {
-            app.audio.playDisc(name, x, y, z)
-            return
-        }
-        app.audio.play(name, x, y, z, volume, pitch)
-    }
-    func playUI(_ name: String) { app?.audio.playUI(name) }
-    func setAudioEnvironment(_ underwater: Bool, _ caveFactor: Double) {
-        app?.audio.setEnvironment(underwater, caveFactor)
-    }
-    func setAudioListener(_ x: Double, _ y: Double, _ z: Double, _ yaw: Double) {
-        app?.audio.setListener(x, y, z, yaw)
-    }
-    func tickMusic(_ mood: String, _ enabled: Bool) { app?.audio.tickMusic(mood, enabled) }
-    func stopDisc() { app?.audio.stopDisc() }
-
-    func addParticles(_ type: String, _ x: Double, _ y: Double, _ z: Double, _ count: Int, _ spread: Double, _ cell: Int) {
-        guard let app, app.game.hasWorld() else { return }
-        app.renderer?.particles.spawn(app.game.world, type, x, y, z, count, spread, cell: cell)
-    }
-    func spawnPrecipitation(_ kind: String, _ x: Double, _ y: Double, _ z: Double, _ groundY: Double) {
-        guard let app, app.game.hasWorld() else { return }
-        app.renderer?.particles.spawn(app.game.world, kind, x, y, z, 1, 0.1, groundY: groundY)
-    }
-    func uploadMesh(_ cx: Int, _ sy: Int, _ cz: Int, _ minY: Int, _ mesh: MeshOutput) {
-        app?.renderer?.uploadMesh(cx, sy, cz, minY, mesh)
-    }
-    func removeChunkMeshes(_ cx: Int, _ cz: Int, _ sections: Int) {
-        app?.renderer?.removeChunkMeshes(cx, cz, sections)
-    }
-    func clearAllSections() {
-        app?.renderer?.clearAllSections()
     }
 }
 
-// pushChat lives in ScreensM at module scope; alias avoids name shadowing here
-func Pebble_pushChat(_ line: String) { pushChat(line) }
-
-/// LoadingScreen reads mesh progress off the renderer through this
-weak var gAppDelegate: AppDelegate?
-
 // ---------------------------------------------------------------------------
-// MTKView with keyboard/mouse capture + screen routing
+// MTKView: NSEvent → InputRouter
 // ---------------------------------------------------------------------------
 final class GameView: MTKView {
-    weak var appd: AppDelegate?
-    private(set) var mouseCaptured = false
+    var input: InputRouter?
 
     override var acceptsFirstResponder: Bool { true }
 
-    func captureMouse() {
-        if mouseCaptured { return }
-        mouseCaptured = true
-        CGAssociateMouseAndMouseCursorPosition(0)
-        NSCursor.hide()
-    }
-    func releaseMouse() {
-        if !mouseCaptured { return }
-        mouseCaptured = false
-        CGAssociateMouseAndMouseCursorPosition(1)
-        NSCursor.unhide()
-    }
-
-    private func nowMs() -> Double { CACurrentMediaTime() * 1000 }
-    private var ui: UIManager? { appd?.ui }
-    private var game: GameCore? { appd?.game }
-
-    private func uiPos(_ event: NSEvent) -> (Double, Double) {
-        // AppKit origin is bottom-left in points; UI space is top-left in
-        // drawable pixels / guiScale
+    /// AppKit origin is bottom-left in points; the router wants top-left drawable pixels
+    private func pixelPos(_ event: NSEvent) -> (Double, Double) {
         let p = convert(event.locationInWindow, from: nil)
         let bsf = Double(window?.backingScaleFactor ?? 1)
-        let scale = ui?.scale ?? 1
-        return (Double(p.x) * bsf / scale, (Double(bounds.height) - Double(p.y)) * bsf / scale)
+        return (Double(p.x) * bsf, (Double(bounds.height) - Double(p.y)) * bsf)
     }
 
     override func keyDown(with event: NSEvent) {
-        guard let game, let ui = ui else { return }
-        let code = KEYCODE_MAP[event.keyCode] ?? ""
-        // fullscreen toggle works everywhere, including over open screens
-        if code == "F11" {
-            window?.toggleFullScreen(nil)
-            return
-        }
-        if let screen = ui.current() {
-            if event.isARepeat && code != "Backspace" && !code.hasPrefix("Arrow") { return }
-            if code == "Escape" {
-                if screen.closeOnEsc {
-                    ui.closeTop(game)
-                    recaptureIfClear()
-                }
-                return
-            }
-            if screen.onKey(ui, game, code) { return }
-            if let chars = event.characters, !chars.isEmpty, !event.modifierFlags.contains(.command),
-               !event.modifierFlags.contains(.control),
-               chars.allSatisfy({ !$0.isNewline && $0.asciiValue.map { $0 >= 32 } ?? true }) {
-                if screen.onChar(ui, game, chars) { return }
-            }
-            // inventory key closes inventory-style screens (never text screens)
-            if code == game.keybinds["inventory"], screen.closeOnEsc, !(screen is ChatScreen),
-               !screen.fields.contains(where: { $0.focused }) {
-                ui.closeTop(game)
-                recaptureIfClear()
-            }
-            return
-        }
-        guard game.hasWorld() else { return }
-        if event.isARepeat { return }
-        // HUD toggles stay app-side
-        if code == "F3" {
-            appd?.hud.debugVisible.toggle()
-            return
-        }
-        if code == "F1" {
-            appd?.hud.hideGui.toggle()
-            return
-        }
-        // Cmd/Ctrl+Z undoes the last big edit (blasts, /place, /fill, builders); +Shift redoes
-        if code == "KeyZ" && (event.modifierFlags.contains(.command) || event.modifierFlags.contains(.control)) {
-            runCommand(game, event.modifierFlags.contains(.shift) ? "/redo" : "/undo")
-            return
-        }
-        game.keyDown(code, now: nowMs(),
-                     ctrlOrCmd: event.modifierFlags.contains(.command) || event.modifierFlags.contains(.control))
+        let f = event.modifierFlags
+        input?.keyDown(KEYCODE_MAP[event.keyCode] ?? "", characters: event.characters, isRepeat: event.isARepeat,
+                       command: f.contains(.command), control: f.contains(.control), shift: f.contains(.shift))
     }
     override func keyUp(with event: NSEvent) {
-        guard let game, let code = KEYCODE_MAP[event.keyCode] else { return }
-        game.keyUp(code)
+        guard let code = KEYCODE_MAP[event.keyCode] else { return }
+        input?.keyUp(code)
     }
     override func flagsChanged(with event: NSEvent) {
-        guard let game, let ui = ui else { return }
-        let shift = event.modifierFlags.contains(.shift)
-        let ctrl = event.modifierFlags.contains(.control)
-        let wasShift = ui.shiftDown, wasCtrl = ui.ctrlDown
-        ui.shiftDown = shift
-        ui.ctrlDown = ctrl
-        if ui.hasScreen() {
-            // a modifier PRESS reaches the open screen so it can be bound as a
-            // keybind (Shift/Control fire flagsChanged, not keyDown)
-            if let screen = ui.current() {
-                if shift && !wasShift { _ = screen.onKey(ui, game, "ShiftLeft") }
-                if ctrl && !wasCtrl { _ = screen.onKey(ui, game, "ControlLeft") }
-            }
-            // releases must still reach the game — eating them left the
-            // player permanently sneaking after shift+E, release, close
-            if !shift { game.keyUp("ShiftLeft") }
-            if !ctrl { game.keyUp("ControlLeft") }
-            return
-        }
-        // sneak/sprint default binds are modifier keys — synthesize code events
-        if shift { game.keyDown("ShiftLeft", now: nowMs()) } else { game.keyUp("ShiftLeft") }
-        if ctrl { game.keyDown("ControlLeft", now: nowMs()) } else { game.keyUp("ControlLeft") }
+        input?.modifiers(shift: event.modifierFlags.contains(.shift), ctrl: event.modifierFlags.contains(.control))
     }
 
-    private func recaptureIfClear() {
-        if let ui = ui, !ui.hasScreen(), let game = game, game.hasWorld() {
-            captureMouse()
-        }
+    private func down(_ event: NSEvent, _ btn: Int) {
+        let (x, y) = pixelPos(event)
+        input?.pointerDown(x: x, y: y, button: btn)
     }
-
-    private func routeMouseDown(_ event: NSEvent, _ btn: Int) {
-        guard let game, let ui = ui else { return }
-        if let screen = ui.current() {
-            let (mx, my) = uiPos(event)
-            ui.mouseX = mx
-            ui.mouseY = my
-            _ = screen.onMouseDown(ui, game, mx, my, btn)
-            recaptureIfClear()
-            return
-        }
-        guard game.hasWorld() else { return }
-        if !mouseCaptured {
-            captureMouse()
-            return
-        }
-        game.mouseDown(btn)
+    private func up(_ event: NSEvent, _ btn: Int) {
+        let (x, y) = pixelPos(event)
+        input?.pointerUp(x: x, y: y, button: btn)
     }
-
-    override func mouseDown(with event: NSEvent) { routeMouseDown(event, 0) }
-    override func rightMouseDown(with event: NSEvent) { routeMouseDown(event, 2) }
+    override func mouseDown(with event: NSEvent) { down(event, 0) }
+    override func rightMouseDown(with event: NSEvent) { down(event, 2) }
     override func otherMouseDown(with event: NSEvent) {
-        if event.buttonNumber == 2 { routeMouseDown(event, 1) }
+        if event.buttonNumber == 2 { down(event, 1) }
     }
     override func otherMouseUp(with event: NSEvent) {
-        if event.buttonNumber == 2 { game?.mouseUp(1) }
+        if event.buttonNumber == 2 { up(event, 1) }
     }
-    override func mouseUp(with event: NSEvent) {
-        if let screen = ui?.current(), let game, let ui = ui {
-            let (mx, my) = uiPos(event)
-            screen.onMouseUp(ui, game, mx, my)
-        }
-        game?.mouseUp(0)
-    }
-    override func rightMouseUp(with event: NSEvent) { game?.mouseUp(2) }
+    override func mouseUp(with event: NSEvent) { up(event, 0) }
+    override func rightMouseUp(with event: NSEvent) { up(event, 2) }
     override func mouseDragged(with event: NSEvent) { handleMove(event) }
     override func rightMouseDragged(with event: NSEvent) { handleMove(event) }
     override func mouseMoved(with event: NSEvent) { handleMove(event) }
     private func handleMove(_ event: NSEvent) {
-        guard let game, let ui = ui else { return }
-        if ui.hasScreen() || !mouseCaptured {
-            let (mx, my) = uiPos(event)
-            let oldX = ui.mouseX, oldY = ui.mouseY
-            _ = (oldX, oldY)
-            ui.current()?.onMouseMove(ui, game, mx, my)
-            ui.mouseX = mx
-            ui.mouseY = my
-            return
-        }
-        game.mouseDelta(Double(event.deltaX), Double(event.deltaY))
+        let (x, y) = pixelPos(event)
+        input?.pointerMoved(x: x, y: y, dx: Double(event.deltaX), dy: Double(event.deltaY))
     }
     private var scrollAccum = 0.0
     override func scrollWheel(with event: NSEvent) {
-        guard let game, let ui = ui else { return }
         var dy = event.scrollingDeltaY
         if event.hasPreciseScrollingDeltas {
             // trackpads deliver many sub-notch deltas — accumulate to a
@@ -363,73 +166,22 @@ final class GameView: MTKView {
         } else if abs(dy) < 0.5 {
             return
         }
-        if let screen = ui.current() {
-            _ = screen.onWheel(ui, game, dy > 0 ? -1 : 1)
-            return
-        }
-        if game.hasWorld() {
-            game.wheelHotbar(dy > 0 ? 1 : -1)
-        }
+        input?.wheel(up: dy > 0)
     }
 }
 
 // ---------------------------------------------------------------------------
-// app delegate: window, game, renderer, UI, frame loop
+// app delegate: window, fullscreen, lifecycle
 // ---------------------------------------------------------------------------
-final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var window: NSWindow!
     var gameView: GameView!
-    var renderer: WorldRenderer!
-    let host = HostBridge()
-    var game: GameCore!
-    var ui: UIManager!
-    let hud = HUD()
-    let audio = AudioEngineM()
-    private var lastFrame = CACurrentMediaTime()
-    private var startTime = CACurrentMediaTime()
-    private var fpsCounter = 0
-    private var fpsTimer = 0.0
-    private var fps = 0
-    private var uncappedMode = false
-    private var uncapTimer: Timer?
-    var bot: PhysicsBot?
-    var booth: PhotoBooth?
-    // test hook: PEBBLE_CMD="/tp 0 120 0;/time set 1000" runs once the world is up
-    private var pendingCmds = ProcessInfo.processInfo.environment["PEBBLE_CMD"]
-    private var pendingCmdDelay = 0
-    // test hook: PEBBLE_MENU="Host LAN Game>Create New>Create & Host" clicks
-    // menu buttons by label, one every half second (menu-flow testing)
-    private var pendingMenu = ProcessInfo.processInfo.environment["PEBBLE_MENU"]?
-        .components(separatedBy: ">").filter { !$0.isEmpty } ?? []
-    private var pendingMenuDelay = 0
-    // test hook: PEBBLE_SHOT="/tmp/x.png@300" captures the frame N frames after load
-    private var shotQuitFrames = 0
-    private var pendingShot: (path: String, frames: Int)? = {
-        guard let v = ProcessInfo.processInfo.environment["PEBBLE_SHOT"] else { return nil }
-        let parts = v.components(separatedBy: "@")
-        return (parts[0], parts.count > 1 ? Int(parts[1]) ?? 240 : 240)
-    }()
+    let platform = MacPlatform()
+    var runtime: GameRuntime!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        gAppDelegate = self
-        let t0 = CFAbsoluteTimeGetCurrent()
-        game = GameCore()
-        game.host = host
-        host.app = self
-        game.netCommandRunner = { [weak self] guest, text in
-            guard let self else { return [] }
-            return runCommandAs(self.game, guest, text)
-        }
-        // test hook: PEBBLE_NAME=Bob plays as Bob (not saved to settings)
-        if let n = ProcessInfo.processInfo.environment["PEBBLE_NAME"] { game.settings.playerName = n }
-        print(String(format: "registries: %.0fms (%d blocks, %d items, %d biomes)",
-                     (CFAbsoluteTimeGetCurrent() - t0) * 1000, blockDefs.count, itemDefs.count, BIOMES.count))
-
         guard let device = MTLCreateSystemDefaultDevice() else { fatalError("no Metal device") }
-        let t1 = CFAbsoluteTimeGetCurrent()
-        renderer = WorldRenderer(device: device)
-        ui = UIManager(cv: UICanvas(device: device))
-        print(String(format: "renderer: %.0fms (atlas + pipelines)", (CFAbsoluteTimeGetCurrent() - t1) * 1000))
+        runtime = GameRuntime(platform: platform, device: device)
 
         // test hooks: PEBBLE_WINDOWED=1 skips fullscreen; PEBBLE_WINSIZE=960x540,
         // PEBBLE_WINPOS=0,0 (two side-by-side windows for LAN testing)
@@ -447,16 +199,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
             window.setFrameOrigin(NSPoint(x: pos[0], y: pos[1]))
         }
         gameView = GameView(frame: rect, device: device)
-        gameView.appd = self
-        gameView.delegate = self
+        gameView.input = runtime.input
+        gameView.delegate = runtime
         gameView.colorPixelFormat = .bgra8Unorm
         gameView.depthStencilPixelFormat = .invalid
         gameView.preferredFramesPerSecond = 120
-        // capture hooks blit from the drawable, which framebufferOnly forbids
-        let env = ProcessInfo.processInfo.environment
-        if env["PEBBLE_SHOT"] != nil || env["PEBBLE_PHOTOBOOTH"] != nil {
-            gameView.framebufferOnly = false
-        }
+        if GameRuntime.needsReadableFramebuffer { gameView.framebufferOnly = false }
+        platform.window = window
+        platform.view = gameView
         window.contentView = gameView
         window.acceptsMouseMovedEvents = true
         window.delegate = self
@@ -480,105 +230,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
         }
         // a LAN game must keep ticking while the window is hidden (the view
         // stops drawing when occluded, and drawing is what drives ticks)
-        let bg = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.backgroundTick() }
+        let bg = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.runtime.backgroundTick() }
         RunLoop.main.add(bg, forMode: .common)
 
-        audio.initEngine()
-        audio.applyVolumes(game.settings.volumes)
-        audio.onSubtitle = { [weak self] text in
-            guard let self, self.game.settings.subtitles else { return }
-            self.hud.pushSubtitle(text)
-        }
-
-        ui.resize(Double(gameView.drawableSize.width), Double(gameView.drawableSize.height), game.settings.guiScale)
-
-        // settings.resourcePacks holds USER packs only — the default pack
-        // (Faithful base layer) is self-healing and force-applied inside
-        // applyResourcePacks, so this always runs, even with no user packs.
-        // older settings that listed the default explicitly migrate cleanly
-        // (withDefaultPack dedupes it to the base slot).
-        applyResourcePacks(game.settings.resourcePacks ?? [], game: game, renderer: renderer, ui: ui)
-
-        ui.titlePhoto = renderer.titleBgTex != nil ; ui.titleLogo = renderer.titleLogoTex != nil
-        ui.open(TitleScreen(), game)
-        // test hook: jump straight to the world list (UI testing)
-        if ProcessInfo.processInfo.environment["PEBBLE_WORLDS"] != nil {
-            ui.open(WorldSelectScreen(), game)
-        }
-
-        // test hook: PEBBLE_MULTIPLAYER=1 opens the LAN browser at launch
-        if ProcessInfo.processInfo.environment["PEBBLE_MULTIPLAYER"] != nil {
-            ui.open(MultiplayerScreen(), game)
-        }
-        // test hook: PEBBLE_JOIN=127.0.0.1[:port] joins a LAN game at launch
-        if let addr = ProcessInfo.processInfo.environment["PEBBLE_JOIN"] {
-            let (h, port) = parseLANAddress(addr)
-            beginJoin { $0.joinLAN(host: h, port: port) }
-        }
-
-        // test hook: skip the menus and jump straight into the latest world.
-        // PEBBLE_NEWWORLD=<seed> creates a fresh world instead (worldgen testing)
-        if ProcessInfo.processInfo.environment["PEBBLE_AUTOLOAD"] != nil {
-            if let seedText = ProcessInfo.processInfo.environment["PEBBLE_NEWWORLD"] {
-                game.createWorld(name: "WGTest-\(seedText)", seedText: seedText,
-                                 mode: GameMode.survival, difficulty: 2)
-            } else if let rec = game.listWorlds().sorted(by: { $0.lastPlayed > $1.lastPlayed }).first {
-                game.loadWorld(rec.id)
-            } else {
-                game.createWorld(name: "New World", seedText: "", mode: GameMode.survival, difficulty: 2)
-            }
-            ui.open(LoadingScreen(), game)
-            gameView.captureMouse()
-            if ProcessInfo.processInfo.environment["PEBBLE_BOT"] != nil {
-                bot = PhysicsBot(game: game)
-            }
-            if ProcessInfo.processInfo.environment["PEBBLE_PHOTOBOOTH"] != nil {
-                booth = PhotoBooth(game: game, renderer: renderer)
-            }
-        }
+        runtime.start(drawableSize: gameView.drawableSize)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        if game.hasWorld() {
-            game.saveAndFlush(synchronous: true)
-            if game.isNetworked {
-                // tell guests / the host we're gone, and let that reach the wire
-                game.exitToTitle()
-                RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-            }
-        }
+        runtime.willTerminate()
     }
 
-    /// leave whatever world we're in and start joining a LAN game
-    func beginJoin(_ start: (GameCore) -> Void) {
-        if game.hasWorld() { game.exitToTitle() }
-        ui.closeAll(game)
-        ui.open(TitleScreen(), game)
-        start(game)
-        ui.open(JoinScreen(), game)
-        gameView.releaseMouse()
-    }
-
-    /// drive ticks from a timer when frames stop (window hidden) in a LAN game
-    private func backgroundTick() {
-        guard let game, game.isNetworked, game.hasWorld() else { return }
-        let now = CACurrentMediaTime()
-        if now - lastFrame < 0.2 { return }
-        _ = game.frame(dtMs: (now - lastFrame) * 1000)
-        lastFrame = now
-    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     /// Edit→Paste (Cmd-V): route pasteboard text into the focused screen field
-    /// — the UI fields are canvas-drawn, so the standard NSText paste path
-    /// never reaches them
     @objc func pasteText(_ sender: Any?) {
-        guard let game, let ui, let screen = ui.current(),
-              screen.fields.contains(where: { $0.focused }),
-              let s = NSPasteboard.general.string(forType: .string) else { return }
-        for ch in s where !ch.isNewline && (ch.asciiValue.map { $0 >= 32 } ?? true) {
-            _ = screen.onChar(ui, game, String(ch))
-        }
+        if let s = platform.pasteboardString() { runtime.paste(s) }
     }
 
     /// AppKit refuses toggleFullScreen while the app is still activating
@@ -608,206 +274,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MTKViewDelegate, NSWin
 
     /// Cmd-Tab away: release every held key (keyUps go to the other app),
     /// give the system its cursor back (capture sets GLOBAL state that froze
-    /// the cursor system-wide), and auto-pause like vanilla.
+    /// the cursor system-wide), and auto-pause like vanilla
+    /// (scripted windowed test runs keep playing in the background).
     func applicationDidResignActive(_ notification: Notification) {
-        game?.clearInput()
-        gameView?.releaseMouse()
-        // (scripted windowed test runs keep playing in the background)
-        if let game, let ui, game.hasWorld(), !ui.hasScreen(),
-           ProcessInfo.processInfo.environment["PEBBLE_WINDOWED"] == nil {
-            ui.open(PauseScreen(), game)
-        }
-    }
-
-    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        renderer.resize(Int(size.width), Int(size.height))
-        ui.resize(Double(size.width), Double(size.height), game.settings.guiScale, relayout: game)
-    }
-
-    /// maxFps >= 250 = unlimited: MTKView's display link can't exceed the panel
-    /// refresh, so drive draw() from a runloop timer with vsync off instead
-    private func applyFpsMode() {
-        let unlimited = game.settings.maxFps >= 250
-        if unlimited != uncappedMode {
-            uncappedMode = unlimited
-            (gameView.layer as? CAMetalLayer)?.displaySyncEnabled = !unlimited
-            gameView.isPaused = unlimited
-            gameView.enableSetNeedsDisplay = false
-            uncapTimer?.invalidate()
-            uncapTimer = nil
-            if unlimited {
-                let t = Timer(timeInterval: 0.0001, repeats: true) { [weak self] _ in
-                    self?.gameView.draw()
-                }
-                RunLoop.main.add(t, forMode: .common)
-                uncapTimer = t
-            }
-        }
-        if !unlimited {
-            gameView.preferredFramesPerSecond = max(30, game.settings.maxFps)
-        }
-    }
-
-    func draw(in view: MTKView) {
-        let now = CACurrentMediaTime()
-        let dt = (now - lastFrame) * 1000
-        lastFrame = now
-        let timeSec = (now - startTime).truncatingRemainder(dividingBy: 1800)
-
-        fpsTimer += dt
-        fpsCounter += 1
-        if fpsTimer >= 1000 {
-            fps = fpsCounter
-            fpsCounter = 0
-            fpsTimer -= 1000
-            let n = game.harvestMeshCounter()
-            hud.debugInfo["fps"] = String(fps)
-            hud.debugInfo["chunkUpdates"] = String(n)
-            hud.debugInfo["sections"] = String(renderer.sections.count)
-            hud.debugInfo["drawCalls"] = String(renderer.drawCalls)
-            hud.debugInfo["mem"] = "n/a"
-            audio.applyVolumes(game.settings.volumes)
-            applyFpsMode()
-            if game.hasWorld(), let p = game.player {
-                window.title = String(format: "Pebble — %d fps · %d sections · (%.0f, %.0f, %.0f)",
-                                      fps, renderer.sections.count, p.x, p.y, p.z)
-            } else {
-                window.title = "Pebble"
-            }
-        }
-
-        guard let drawable = view.currentDrawable,
-              let rpd = view.currentRenderPassDescriptor,
-              let cmd = renderer.queue.makeCommandBuffer() else { return }
-
-        if renderer.fbWidth == 0 {
-            renderer.resize(Int(view.drawableSize.width), Int(view.drawableSize.height))
-            ui.resize(Double(view.drawableSize.width), Double(view.drawableSize.height), game.settings.guiScale, relayout: game)
-        }
-
-        renderer.tickTileAnimations(dtMs: dt)   // resource-pack .mcmeta frames
-        renderer.flushAtlasUploads(cmd)         // staged slice blits, GPU-ordered
-
-        if !pendingMenu.isEmpty {
-            pendingMenuDelay += 1
-            if pendingMenuDelay > 30 {
-                pendingMenuDelay = 0
-                let label = pendingMenu.removeFirst()
-                if let b = ui.current()?.buttons.first(where: { $0.label == label && $0.enabled }) {
-                    print("[menu] clicked \(label)")
-                    b.onClick()
-                } else {
-                    print("[menu] no button \(label) on \(ui.current().map { String(describing: type(of: $0)) } ?? "nil")")
-                }
-                fflush(stdout)
-            }
-        }
-
-        if let cmds = pendingCmds, game.hasWorld(), let p = game.player {
-            pendingCmdDelay += 1
-            if pendingCmdDelay > 90 {
-                if p.dead { game.respawnPlayer() }
-                pendingCmds = nil
-                let list = cmds.components(separatedBy: ";").filter { !$0.isEmpty }
-                for (i, c) in list.enumerated() {
-                    // "#down B" / "#up B" press / release mouse button B (0 left, 2 right),
-                    // "#slot N" picks hotbar slot N (1-9) — scripted interaction tests
-                    if c.hasPrefix("#down") || c.hasPrefix("#up") {
-                        let b = Int(c.split(separator: " ").last ?? "") ?? 0
-                        if c.hasPrefix("#down") { game.mouseDown(b) } else { game.mouseUp(b) }
-                        continue
-                    }
-                    // "#type text" / "#uikey Key" go to the open screen (sign text, fields)
-                    if c.hasPrefix("#type ") {
-                        print("[cmd] \(c) → screen \(ui.current().map { String(describing: type(of: $0)) } ?? "none")")
-                        for ch in c.dropFirst(6) { _ = ui.current()?.onChar(ui, game, String(ch)) }
-                        continue
-                    }
-                    if c.hasPrefix("#uikey ") {
-                        let k = String(c.dropFirst(7))
-                        if k == "Escape" { ui.closeTop(game) } else { _ = ui.current()?.onKey(ui, game, k) }
-                        continue
-                    }
-                    if c.hasPrefix("#key") {
-                        let code = String(c.split(separator: " ").last ?? "")
-                        game.keyDown(code, now: CACurrentMediaTime() * 1000)
-                        game.keyUp(code)
-                        continue
-                    }
-                    if c.hasPrefix("#slot") {
-                        game.player.selectedSlot = max(0, min(8, (Int(c.split(separator: " ").last ?? "") ?? 1) - 1))
-                        continue
-                    }
-                    // "#waitguests N" holds the rest until N LAN guests are in
-                    if c.hasPrefix("#waitguests") {
-                        let n = Int(c.dropFirst(11).trimmingCharacters(in: .whitespaces)) ?? 1
-                        if game.lanGuests.count < n {
-                            pendingCmds = list[i...].joined(separator: ";")
-                            pendingCmdDelay = 60
-                            break
-                        }
-                        continue
-                    }
-                    // "#wait N" defers the rest by N frames
-                    if c.hasPrefix("#wait") {
-                        pendingCmds = list[(i + 1)...].joined(separator: ";")
-                        pendingCmdDelay = 90 - (Int(c.dropFirst(5).trimmingCharacters(in: .whitespaces)) ?? 60)
-                        break
-                    }
-                    let before = chatLog.count
-                    runCommand(game, c.trimmingCharacters(in: .whitespaces))
-                    for m in chatLog.suffix(max(0, chatLog.count - before)) { print("[cmd] \(c) → \(m.text)") }
-                    fflush(stdout)
-                }
-            }
-        }
-        if let shot = pendingShot, game.hasWorld() || renderer.captureWithUI, pendingCmds == nil {
-            hud.hideGui = !renderer.captureWithUI
-            pendingShot = (shot.path, shot.frames - 1)
-            if shot.frames <= 0 {
-                renderer.requestCapture(path: shot.path)
-                pendingShot = nil
-                hud.hideGui = false
-                print("[shot] captured \(shot.path)")
-                fflush(stdout)
-                // scripted-shot runs quit on their own — leave a beat for the
-                // async blit + PNG write to land before terminating
-                shotQuitFrames = 120
-            }
-        }
-        if shotQuitFrames > 0 {
-            shotQuitFrames -= 1
-            if shotQuitFrames == 0 { NSApp.terminate(nil) }
-        }
-
-        let enc: MTLRenderCommandEncoder
-        // (frame() can end the world: a LAN host dropping us mid-frame)
-        let partial = game.hasWorld() ? game.frame(dtMs: dt) : 0
-        if game.hasWorld() {
-            bot?.tick()
-            booth?.tickBooth()
-            renderer.particles.tick(game.world)
-            let cam = game.camState(partial, timeSec: timeSec)
-            enc = renderer.render(cmd: cmd, rpd: rpd, game: game, cam: cam, partial: partial, timeSec: timeSec)
-        } else {
-            enc = renderer.renderTitle(cmd: cmd, rpd: rpd)
-        }
-
-        // ---- UI pass ----
-        ui.beginFrame()
-        let screen = ui.current()
-        if game.hasWorld() && (screen == nil || screen!.showHUD || !screen!.pausesGame) {
-            hud.draw(ui, game, 0)
-            if !(screen is ChatScreen) { drawChatOverlay(ui) }
-        }
-        screen?.draw(ui, game, 0)
-        ui.endFrame()
-        ui.cv.flush(enc, pipeline: renderer.uiPipeline)
-
-        enc.endEncoding()
-        renderer.captureFinalFrame(cmd, drawable.texture)
-        cmd.present(drawable)
-        cmd.commit()
+        runtime?.didResignActive(autoPause: ProcessInfo.processInfo.environment["PEBBLE_WINDOWED"] == nil)
     }
 }
 

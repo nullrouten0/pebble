@@ -2,7 +2,6 @@
 // selection drawing from the frozen baseline. Owns every pipeline, the offscreen scene
 // target, the bloom chain and the composite pass; draws camera-relative.
 
-import AppKit
 import Metal
 import MetalKit
 import simd
@@ -391,12 +390,12 @@ final class WorldRenderer {
         compositePipeline = pipe("fs_vs", "composite_fs", vd: nil, depth: .invalid)
         titlePipeline = pipe("fs_vs", "title_fs", vd: nil, depth: .invalid)
         logoPipeline = pipe("logo_vs", "logo_fs", vd: nil, blend: true, depth: .invalid)
-        if let path = bundleResourcePath("logo.png"),
+        if let path = gRuntime?.platform.resourcePath("logo.png"),
            let d = FileManager.default.contents(atPath: path),
            let img = decodePNG(d) {
             titleLogoTex = makeImageTexture(img)
         }
-        if let path = bundleResourcePath("title-bg.png"),
+        if let path = gRuntime?.platform.resourcePath("title-bg.png"),
            let d = FileManager.default.contents(atPath: path),
            let img = decodePNG(d) {
             let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,

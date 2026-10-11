@@ -1387,7 +1387,7 @@ func drawChatOverlay(_ ui: UIManager) {
     drawChatLines(ui, recent.reversed(), ui.height - 34, 0.45)
 }
 
-var chatScale: Double { min(3, max(1, gAppDelegate?.game.settings.chatScale ?? 1)) }
+var chatScale: Double { min(3, max(1, gRuntime?.game.settings.chatScale ?? 1)) }
 
 /// wrap a chat message to `maxW` (unscaled px), carrying the active §color
 /// code onto continuation lines
