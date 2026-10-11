@@ -613,6 +613,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                     // "#pos" prints the player's position and look (scripted movement tests)
                     // "#mem" prints the process footprint and mesh arena size
                     if c == "#mem" {
+                        print("[draws] \(renderer.drawCalls) scene, \(renderer.shadowDraws) of \(renderer.shadowCandidates) shadow candidates")
                         print("[mem] footprint \(processFootprintMB()) MB, mesh arena \(renderer.arena.residentBytes >> 20) MB, \(renderer.sections.count) sections")
                         continue
                     }

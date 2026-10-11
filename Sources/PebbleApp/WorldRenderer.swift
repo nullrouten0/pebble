@@ -286,6 +286,8 @@ final class WorldRenderer {
     var ultraB: MTLTexture!
     var ultraDummy: MTLTexture!     // 1×1 neutral bound when ultra is off
     var fbWidth = 0, fbHeight = 0
+    private(set) var shadowDraws = 0   // sections drawn into the shadow map last frame
+    private(set) var shadowCandidates = 0   // …of those within the horizontal shadow range
     private var shadowSizeNow = 0   // rebuilt when the ultra preset changes it
 
     var sections: [SectionKey: SectionGPU] = [:]
@@ -878,6 +880,8 @@ final class WorldRenderer {
     func render(cmd: MTLCommandBuffer, rpd: MTLRenderPassDescriptor,
                 game: GameCore, cam: CamState, partial: Double, timeSec: Double) -> MTLRenderCommandEncoder {
         drawCalls = 0
+        shadowDraws = 0
+        shadowCandidates = 0
         arena.tick()
         let world = game.world
         let settings = game.settings
@@ -970,6 +974,9 @@ final class WorldRenderer {
             var su = ChunkSharedU(viewProj: shadowMat, shadowMat: shadowMat,
                                   light: .zero, fog: .zero, fogColor: .zero, misc: .zero)
             senc.setVertexBytes(&su, length: MemoryLayout<ChunkSharedU>.stride, index: 1)
+            // only sections inside the light's ortho box can write the map
+            var lightFrustum = Frustum()
+            lightFrustum.setFromMatrix(shadowMat)
             var boundPage = -1
             for gpu in sections.values {
                 guard let buf = gpu.opaque else { continue }
@@ -977,6 +984,9 @@ final class WorldRenderer {
                 let oy = Float(Double(gpu.minY + gpu.key.sy * 16) - cam.y)
                 let oz = Float(Double(gpu.key.cz * 16) - cam.z)
                 if abs(ox + 8) > r + 24 || abs(oz + 8) > r + 24 { continue }
+                shadowCandidates += 1
+                if !lightFrustum.intersectsBox(ox, oy, oz, ox + 16, oy + 16, oz + 16) { continue }
+                shadowDraws += 1
                 var origin = SIMD4<Float>(ox, oy, oz, 0)
                 senc.setVertexBytes(&origin, length: 16, index: 2)
                 if buf.page != boundPage {
