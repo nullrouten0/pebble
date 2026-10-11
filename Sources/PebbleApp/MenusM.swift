@@ -48,13 +48,17 @@ final class TitleScreen: Screen {
         }))
         // keep the bottom row clear of the corner credits on short windows
         y = max(y + 28, min(y + 36, ui.height - 46))
-        buttons.append(Button(cx - 100, y, 98, 20, "Options...", { [weak ui, weak game] in
+        // (no Quit on iOS — apps don't quit themselves)
+        let canQuit = gRuntime?.platform.canQuit ?? true
+        buttons.append(Button(cx - 100, y, canQuit ? 98 : 200, 20, "Options...", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.open(SettingsScreen(), game)
         }))
-        buttons.append(Button(cx + 2, y, 98, 20, "Quit Game", {
-            gRuntime?.platform.quit()
-        }))
+        if canQuit {
+            buttons.append(Button(cx + 2, y, 98, 20, "Quit Game", {
+                gRuntime?.platform.quit()
+            }))
+        }
     }
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         let cv = ui.cv
@@ -497,10 +501,12 @@ final class SettingsScreen: Screen {
             toggle("Clouds", { game.settings.clouds }, { game.settings.clouds = $0 }, 0)
             toggle("View Bobbing", { game.settings.viewBobbing }, { game.settings.viewBobbing = $0 }, 1)
             y += 22
-            toggle("Fullscreen",
-                   { gRuntime?.platform.isFullscreen ?? false },
-                   { _ in gRuntime?.platform.toggleFullscreen() }, 0)
-            y += 22
+            if gRuntime?.platform.supportsFullscreen ?? true {
+                toggle("Fullscreen",
+                       { gRuntime?.platform.isFullscreen ?? false },
+                       { _ in gRuntime?.platform.toggleFullscreen() }, 0)
+                y += 22
+            }
             sliders.append(Slider(cx - 160, y, W, 18,
                 { [weak game] in "Particles: \(["Minimal", "Decreased", "All"][min(2, game?.settings.particles ?? 2)])" },
                 { [weak game] in Double(game?.settings.particles ?? 2) / 2 },
@@ -508,16 +514,27 @@ final class SettingsScreen: Screen {
                     game?.settings.particles = Int((v * 2).rounded())
                     game?.applySettings()
                 }))
-            sliders.append(Slider(cx - 2, y, W, 18,
-                { [weak game] in
-                    let f = game?.settings.maxFps ?? 250
-                    return "Max FPS: \(f >= 250 ? "Unlimited" : String(f))"
-                },
-                { [weak game] in Double((game?.settings.maxFps ?? 250) - 30) / 220 },
-                { [weak game] v in
-                    game?.settings.maxFps = 30 + Int((v * 220).rounded())
-                    game?.applySettings()
-                }))
+            if let cap = gRuntime?.platform.maxFrameRate, cap > 30 {
+                // capped to the panel (iOS): 30…refresh rate, no "Unlimited"
+                sliders.append(Slider(cx - 2, y, W, 18,
+                    { [weak game] in "Max FPS: \(min(cap, game?.settings.maxFps ?? cap))" },
+                    { [weak game] in Double(min(cap, game?.settings.maxFps ?? cap) - 30) / Double(cap - 30) },
+                    { [weak game] v in
+                        game?.settings.maxFps = 30 + Int((v * Double(cap - 30)).rounded())
+                        game?.applySettings()
+                    }))
+            } else {
+                sliders.append(Slider(cx - 2, y, W, 18,
+                    { [weak game] in
+                        let f = game?.settings.maxFps ?? 250
+                        return "Max FPS: \(f >= 250 ? "Unlimited" : String(f))"
+                    },
+                    { [weak game] in Double((game?.settings.maxFps ?? 250) - 30) / 220 },
+                    { [weak game] v in
+                        game?.settings.maxFps = 30 + Int((v * 220).rounded())
+                        game?.applySettings()
+                    }))
+            }
             y += 22
             let shaderB = Button(cx - 160, y, W, 18, "", {})
             func shaderLabel() -> String {

@@ -92,11 +92,62 @@ final class AudioEngineM {
             self?.render(frameCount, audioBufferList)
             return noErr
         }
+        #if os(iOS)
+        configureSession()
+        #endif
         engine.attach(srcNode)
         engine.connect(srcNode, to: engine.mainMixerNode, format: renderFormat)
         try? engine.start()
         applyVolumes(volumes)
     }
+
+    /// app backgrounded: stop pulling render callbacks
+    func suspend() {
+        guard inited else { return }
+        engine.pause()
+    }
+    func resume() {
+        guard inited else { return }
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        #endif
+        if !engine.isRunning { try? engine.start() }
+    }
+
+    #if os(iOS)
+    private var sessionObservers: [NSObjectProtocol] = []
+
+    /// ambient: mixes with the user's music and honors the silent switch.
+    /// Calls/Siri interrupt the engine; a new route (AirPods, HDMI) can
+    /// change the hardware rate, which stops the engine and needs a rewire.
+    private func configureSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.ambient, mode: .default)
+        try? session.setActive(true)
+        let nc = NotificationCenter.default
+        sessionObservers.append(nc.addObserver(forName: AVAudioSession.interruptionNotification,
+                                               object: session, queue: .main) { [weak self] note in
+            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
+            self?.resume()
+        })
+        sessionObservers.append(nc.addObserver(forName: .AVAudioEngineConfigurationChange,
+                                               object: engine, queue: .main) { [weak self] _ in
+            self?.rewireForCurrentRoute()
+        })
+    }
+
+    private func rewireForCurrentRoute() {
+        let rate = engine.outputNode.outputFormat(forBus: 0).sampleRate
+        if rate > 0 && rate != sampleRate {
+            sampleRate = rate   // engine is stopped here, so the render thread isn't reading it
+            engine.disconnectNodeOutput(srcNode)
+            engine.connect(srcNode, to: engine.mainMixerNode,
+                           format: AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2)!)
+        }
+        resume()
+    }
+    #endif
 
     func applyVolumes(_ v: [String: Double]) {
         volumes = v

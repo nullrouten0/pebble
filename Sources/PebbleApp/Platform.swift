@@ -27,6 +27,10 @@ public protocol PlatformHooks: AnyObject {
     /// settings.maxFps changed (>= 250 means "unlimited" where the shell supports it)
     func applyMaxFps(_ maxFps: Int)
 
+    /// the panel's top refresh rate when the frame rate is capped to it (iOS);
+    /// nil where Settings offers "Unlimited" (macOS)
+    var maxFrameRate: Int? { get }
+
     /// once a second: a status line the shell may show (the Mac window title)
     func showStatus(_ title: String)
 }
@@ -40,6 +44,7 @@ public extension PlatformHooks {
     func pasteboardString() -> String? { nil }
     var safeAreaInsets: (top: Double, left: Double, bottom: Double, right: Double) { (0, 0, 0, 0) }
     func showStatus(_ title: String) {}
+    var maxFrameRate: Int? { nil }
 }
 
 /// where debug hooks (bot logs, photo booth, scripted shots) drop files: /tmp

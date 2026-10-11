@@ -148,6 +148,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     public let platform: PlatformHooks
     public let device: MTLDevice
     public private(set) var input: InputRouter!
+    public private(set) var touch: TouchControls!
     var renderer: WorldRenderer!
     let host = HostBridge()
     var game: GameCore!
@@ -192,6 +193,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         super.init()
         gRuntime = self
         input = InputRouter(self)
+        touch = TouchControls(self)
         let t0 = CFAbsoluteTimeGetCurrent()
         game = GameCore()
         game.host = host
@@ -299,6 +301,34 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         if game.hasWorld() { game.saveAndFlush(synchronous: true) }
     }
 
+    /// the app went to the background / came back (iOS): silence the synth
+    public func suspendAudio() { audio.suspend() }
+    public func resumeAudio() { audio.resume() }
+
+    /// true once settings.json exists — false means first launch, when a
+    /// shell may apply a device preset
+    public static var hasSavedSettings: Bool {
+        FileManager.default.fileExists(atPath: vcSupportDir().appendingPathComponent("settings.json").path)
+    }
+
+    public enum DevicePreset { case tablet, phone }
+
+    /// first-launch video defaults for passively cooled devices
+    public func applyDevicePreset(_ preset: DevicePreset) {
+        switch preset {
+        case .tablet:
+            game.settings.renderDistance = 8
+            game.settings.shadows = true
+        case .phone:
+            game.settings.renderDistance = 6
+            game.settings.shadows = false
+        }
+        game.settings.bloom = true
+        game.settings.shader = nil
+        game.settings.maxFps = 60
+        game.applySettings()
+    }
+
     /// leave whatever world we're in and start joining a LAN game
     func beginJoin(_ start: (GameCore) -> Void) {
         if game.hasWorld() { game.exitToTitle() }
@@ -326,6 +356,11 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         for ch in s where !ch.isNewline && (ch.asciiValue.map { $0 >= 32 } ?? true) {
             _ = screen.onChar(ui, game, String(ch))
         }
+    }
+
+    /// the shell's safe area changed (rotation, multitasking): re-read it
+    public func safeAreaChanged() {
+        if drawableSize.width > 0 { relayoutUI() }
     }
 
     /// GUI scale changed: lay the UI out again at the current size

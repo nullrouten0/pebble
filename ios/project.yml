@@ -1,0 +1,36 @@
+# XcodeGen spec for the iOS app. Generate with `pebble ios` (the .xcodeproj
+# is git-ignored). The app is a thin UIKit shell around the PebbleApp
+# library from the repo's Package.swift.
+name: Pebble
+options:
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Shared.xcconfig
+  Release: Config/Shared.xcconfig
+packages:
+  Pebble:
+    path: ..
+targets:
+  PebbleiOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: PebbleiOS
+        excludes:
+          - Info.plist
+      # the same bundled assets the Mac app ships (see `bundle` in ./pebble)
+      - path: "../packaging/Faithful 32x - 1.20.1.zip"
+        buildPhase: resources
+      - path: ../packaging/FAITHFUL-LICENSE.txt
+        buildPhase: resources
+      - path: ../packaging/logo.png
+        buildPhase: resources
+      - path: ../packaging/title-bg.png
+        buildPhase: resources
+    dependencies:
+      - package: Pebble
+        product: PebbleApp
+    scheme:
+      environmentVariables: {}

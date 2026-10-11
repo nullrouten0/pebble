@@ -1384,7 +1384,7 @@ func drawChatOverlay(_ ui: UIManager) {
         if age > 8000 { break }
         recent.append((msg, age > 6000 ? 1 - (age - 6000) / 2000 : 1))
     }
-    drawChatLines(ui, recent.reversed(), ui.height - 34, 0.45)
+    drawChatLines(ui, recent.reversed(), ui.height - ui.safeBottom - 34, 0.45, left: ui.safeLeft)
 }
 
 var chatScale: Double { min(3, max(1, gRuntime?.game.settings.chatScale ?? 1)) }
@@ -1405,7 +1405,8 @@ func wrapChat(_ text: String, _ maxW: Int) -> [String] {
 }
 
 /// messages oldest→newest, newest line sitting on `bottom`; stops at the top of the screen
-private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ bottom: Double, _ bgAlpha: Double) {
+private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ bottom: Double, _ bgAlpha: Double,
+                           left: Double = 0) {
     let cv = ui.cv
     let s = chatScale
     let lineH = 10 * s
@@ -1418,8 +1419,8 @@ private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ b
             if y < 4 { return }
             cv.globalAlpha = Float(alpha)
             cv.setFill("rgba(0,0,0,\(bgAlpha))")
-            cv.fillRect(2, y, Double(textWidth(line)) * s + 4 * s, lineH)
-            cv.drawText(line, 2 + 2 * s, y + s, s)
+            cv.fillRect(left + 2, y, Double(textWidth(line)) * s + 4 * s, lineH)
+            cv.drawText(line, left + 2 + 2 * s, y + s, s)
             cv.globalAlpha = 1
         }
     }
