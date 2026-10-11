@@ -46,6 +46,8 @@ public struct Settings: Codable {
     public var chatScale: Double? = nil
     /// name shown to others in LAN games (nil = the Mac user's first name)
     public var playerName: String? = nil
+    /// touch-drag look speed, 0…1 (nil = 0.5); separate from mouse sensitivity
+    public var touchSensitivity: Double? = nil
 
     public init() {}
 }

@@ -24,6 +24,8 @@ final class IOSPlatform: PlatformHooks {
 
     func pasteboardString() -> String? { UIPasteboard.general.string }
 
+    func setTextInputActive(_ active: Bool) { controller?.setTextInput(active) }
+
     var safeAreaInsets: (top: Double, left: Double, bottom: Double, right: Double) {
         guard let v = controller?.view else { return (0, 0, 0, 0) }
         let s = Double(v.contentScaleFactor)

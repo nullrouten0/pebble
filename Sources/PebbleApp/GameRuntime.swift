@@ -149,6 +149,8 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     public let device: MTLDevice
     public private(set) var input: InputRouter!
     public private(set) var touch: TouchControls!
+    private(set) var controller: ControllerInput!
+    private var textInputActive = false
     var renderer: WorldRenderer!
     let host = HostBridge()
     var game: GameCore!
@@ -194,6 +196,9 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         gRuntime = self
         input = InputRouter(self)
         touch = TouchControls(self)
+        controller = ControllerInput(self)
+        // test hook: PEBBLE_TOUCH=1 shows the touch controls on the Mac too
+        if ProcessInfo.processInfo.environment["PEBBLE_TOUCH"] != nil { touch.enabled = true }
         let t0 = CFAbsoluteTimeGetCurrent()
         game = GameCore()
         game.host = host
@@ -358,6 +363,21 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         }
     }
 
+    /// raise / dismiss the on-screen keyboard as text screens come and go
+    private func updateTextInput() {
+        let s = ui.current()
+        let want = s is ChatScreen || s is SignScreen || (s?.fields.contains { $0.focused } ?? false)
+        if want != textInputActive {
+            textInputActive = want
+            platform.setTextInputActive(want)
+        }
+    }
+
+    /// on-screen keyboard height in drawable pixels (0 when hidden)
+    public func setKeyboardHeight(_ px: Double) {
+        ui.keyboardInset = (px / ui.scale).rounded(.up)
+    }
+
     /// the shell's safe area changed (rotation, multitasking): re-read it
     public func safeAreaChanged() {
         if drawableSize.width > 0 { relayoutUI() }
@@ -418,6 +438,9 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         renderer.flushAtlasUploads(cmd)         // staged slice blits, GPU-ordered
 
         runTestHooks()
+        controller.poll(dtMs: dt)
+        touch.frame()
+        updateTextInput()
 
         let enc: MTLRenderCommandEncoder
         // (frame() can end the world: a LAN host dropping us mid-frame)
@@ -438,9 +461,12 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         if game.hasWorld() && (screen == nil || screen!.showHUD || !screen!.pausesGame) {
             hud.draw(ui, game, 0)
             if !(screen is ChatScreen) { drawChatOverlay(ui) }
+            if screen == nil { touch.drawWorld(ui) }
         }
         screen?.draw(ui, game, 0)
+        touch.drawScreen(ui)
         ui.endFrame()
+        controller.drawCursor(ui)
         ui.cv.flush(enc, pipeline: renderer.uiPipeline)
 
         enc.endEncoding()
@@ -489,6 +515,24 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                     if c.hasPrefix("#uikey ") {
                         let k = String(c.dropFirst(7))
                         if k == "Escape" { ui.closeTop(game) } else { _ = ui.current()?.onKey(ui, game, k) }
+                        continue
+                    }
+                    // "#tdown ID X Y" / "#tmove ID X Y" / "#tup ID X Y": scripted
+                    // touches in UI units (touch-control tests)
+                    if c.hasPrefix("#tdown") || c.hasPrefix("#tmove") || c.hasPrefix("#tup") {
+                        let a = c.split(separator: " ").compactMap { Double($0) }
+                        if a.count == 3 {
+                            let (id, x, y) = (Int(a[0]), a[1] * ui.scale, a[2] * ui.scale)
+                            if c.hasPrefix("#tdown") { touch.began(id: id, x: x, y: y) }
+                            else if c.hasPrefix("#tmove") { touch.moved(id: id, x: x, y: y) }
+                            else { touch.ended(id: id, x: x, y: y) }
+                        }
+                        continue
+                    }
+                    // "#pos" prints the player's position and look (scripted movement tests)
+                    if c == "#pos" {
+                        print(String(format: "[pos] %.3f %.3f %.3f yaw %.3f pitch %.3f slot %d%@", p.x, p.y, p.z, p.yaw, p.pitch,
+                                     p.selectedSlot, ui.current().map { " screen \(type(of: $0))" } ?? ""))
                         continue
                     }
                     if c.hasPrefix("#key") {

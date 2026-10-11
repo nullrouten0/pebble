@@ -33,6 +33,10 @@ public protocol PlatformHooks: AnyObject {
 
     /// once a second: a status line the shell may show (the Mac window title)
     func showStatus(_ title: String)
+
+    /// a text field / chat / sign wants typing: raise the on-screen keyboard
+    /// (true) or dismiss it (false). Typed text comes back via InputRouter.
+    func setTextInputActive(_ active: Bool)
 }
 
 public extension PlatformHooks {
@@ -45,6 +49,7 @@ public extension PlatformHooks {
     var safeAreaInsets: (top: Double, left: Double, bottom: Double, right: Double) { (0, 0, 0, 0) }
     func showStatus(_ title: String) {}
     var maxFrameRate: Int? { nil }
+    func setTextInputActive(_ active: Bool) {}
 }
 
 /// where debug hooks (bot logs, photo booth, scripted shots) drop files: /tmp

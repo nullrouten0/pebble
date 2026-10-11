@@ -271,6 +271,9 @@ public final class GameCore {
     public var targetedBlock: (x: Int, y: Int, z: Int, cell: Int)?
     public var perspective = 0          // 0 first, 1 back, 2 front
     private var sprintHeld = false
+    /// analog movement from a stick or touch pad (forward +1, right +1, each
+    /// -1…1), added to the keyboard intent; nil = keyboard only
+    public var analogMove: (forward: Double, right: Double)? = nil
     private var lastJumpPress = 0.0
     private var lastForwardPress = 0.0
 
@@ -1680,6 +1683,10 @@ public final class GameCore {
             // applyInput's strafe basis points +strafe to the LEFT of the view
             // direction (golden baselines shipped the same quirk) — flip here so D=right
             p.moveStrafe = (k("right") ? -1 : 0) + (k("left") ? 1 : 0)
+            if let a = analogMove {
+                p.moveForward = clampD(p.moveForward + a.forward, -1, 1)
+                p.moveStrafe = clampD(p.moveStrafe - a.right, -1, 1)
+            }
             // vanilla: eating / drawing a bow slows movement to 20%
             if p.usingItem {
                 p.moveForward *= 0.2
@@ -2420,6 +2427,21 @@ public final class GameCore {
         p.pitch = clampD(p.pitch, -Double.pi / 2 + 0.001, Double.pi / 2 - 0.001)
     }
 
+    /// touch controls: does a tap at the crosshair hit something to attack?
+    public var crosshairOnEntity: Bool {
+        guard inWorld, player != nil else { return false }
+        return crosshairEntity(ATTACK_REACH) != nil
+    }
+
+    /// touch controls: the held item does something while use is HELD (eat,
+    /// drink, draw a bow, raise a shield), so a long press means use, not break
+    public var heldItemUsesOnHold: Bool {
+        guard let p = player, let s = p.mainHand else { return false }
+        let def = itemDefs[s.id]
+        if def.food != nil { return true }
+        return ["potion", "bow", "trident", "crossbow", "shield", "spyglass", "goat_horn", "mining_laser"].contains(def.name)
+    }
+
     public func wheelHotbar(_ dir: Int) {
         guard inWorld, let p = player else { return }
         p.selectedSlot = posMod(p.selectedSlot + dir, 9)
@@ -2491,6 +2513,7 @@ public final class GameCore {
     /// window blur / screen opened — release all held input
     public func clearInput() {
         keys.removeAll()
+        analogMove = nil
         leftDown = false
         rightDown = false
     }

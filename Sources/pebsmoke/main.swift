@@ -2328,5 +2328,51 @@ do {
     }
 }
 
+// ---------------------------------------------------------------------------
+section("analog movement (touch / controller input)")
+do {
+    // a real GameCore on a scratch profile: the stick path must move the
+    // player exactly like the keys, and stay inert when unset
+    let home = NSTemporaryDirectory() + "pebsmoke-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    /// settle a fresh world's player on the ground, apply `input`, walk 30 ticks
+    func walk(_ input: (GameCore) -> Void) -> (dx: Double, dz: Double)? {
+        let g = GameCore()
+        g.createWorld(name: "smoke", seedText: "12345", mode: GameMode.creative, difficulty: 0)
+        var grounded = 0
+        let deadline = Date().addingTimeInterval(30)
+        while grounded < 20 {
+            if Date() > deadline { return nil }
+            _ = g.frame(dtMs: 50)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.005))
+            grounded = g.player.onGround ? grounded + 1 : 0
+        }
+        let x0 = g.player.x, z0 = g.player.z
+        input(g)
+        for _ in 0..<30 { _ = g.frame(dtMs: 50) }
+        let d = (g.player.x - x0, g.player.z - z0)
+        g.exitToTitle()
+        return d
+    }
+    let fwd = DEFAULT_KEYBINDS["forward"]!
+    // (now: 0 would read as a double-tap sprint against lastForwardPress = 0)
+    if let keys = walk({ $0.keyDown(fwd, now: 100_000) }),
+       let stick = walk({ $0.analogMove = (1, 0) }),
+       let idle = walk({ $0.analogMove = (0, 0) }),
+       let none = walk({ _ in }) {
+        check("forward key walks the player", hypot(keys.dx, keys.dz) > 1, "moved \(keys)")
+        check("full stick forward == forward key",
+              abs(keys.dx - stick.dx) < 1e-9 && abs(keys.dz - stick.dz) < 1e-9, "keys \(keys) stick \(stick)")
+        check("centered stick and no stick both stand still",
+              hypot(idle.dx, idle.dz) < 1e-9 && hypot(none.dx, none.dz) < 1e-9, "idle \(idle) none \(none)")
+    } else {
+        check("analog movement world loads", false)
+    }
+}
+
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

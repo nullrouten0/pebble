@@ -116,6 +116,7 @@ final class WorldSelectScreen: Screen {
     init(hosting: Bool = false) {
         self.hosting = hosting
         super.init()
+        touchScrolls = true
     }
 
     private func play(_ ui: UIManager, _ game: GameCore, _ i: Int) {
@@ -247,6 +248,7 @@ final class WorldCreateScreen: Screen {
     init(hosting: Bool = false) {
         self.hosting = hosting
         super.init()
+        touchScrolls = true
     }
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
@@ -576,6 +578,16 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                 }))
             toggle("Invert Y", { game.settings.invertY }, { game.settings.invertY = $0 }, 1)
+            if gRuntime?.touch.enabled == true {
+                y += 22
+                sliders.append(Slider(cx - 160, y, W, 18,
+                    { [weak game] in "Touch Look: \(Int(((game?.settings.touchSensitivity ?? 0.5) * 200).rounded()))%" },
+                    { [weak game] in game?.settings.touchSensitivity ?? 0.5 },
+                    { [weak game] v in
+                        game?.settings.touchSensitivity = v
+                        game?.applySettings()
+                    }))
+            }
             y += 26
             let binds: [(String, String)] = [
                 ("forward", "Forward"), ("back", "Back"), ("left", "Left"), ("right", "Right"),

@@ -1089,6 +1089,7 @@ final class CreativeScreen: ContainerScreen {
 
     override init() {
         super.init()
+        touchScrolls = true
         panelW = 195
         panelH = 186
         title = ""
@@ -1223,7 +1224,8 @@ final class SignScreen: Screen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDarkBg(0.5)
         let w = 140.0, h = 80.0
-        let px = ((ui.width - w) / 2).rounded(.down), py = ((ui.height - h) / 2).rounded(.down)
+        let px = ((ui.width - w) / 2).rounded(.down)
+        let py = max(4, ((ui.height - ui.keyboardInset - h) / 2).rounded(.down))
         let cv = ui.cv
         cv.setFill("#9a7444")
         cv.fillRect(px, py, w, h)
@@ -1330,15 +1332,17 @@ final class ChatScreen: Screen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         let cv = ui.cv
         let s = chatScale
-        drawChatLines(ui, chatLog.map { ($0, 1.0) }, ui.height - 4 - 12 * s, 0.5)
+        // sit on top of the on-screen keyboard / home indicator when there is one
+        let bottom = ui.height - max(ui.keyboardInset, ui.safeBottom)
+        drawChatLines(ui, chatLog.map { ($0, 1.0) }, bottom - 4 - 12 * s, 0.5)
         cv.setFill("rgba(0,0,0,0.6)")
-        cv.fillRect(2, ui.height - 2 - 12 * s, ui.width - 4, 12 * s)
+        cv.fillRect(2, bottom - 2 - 12 * s, ui.width - 4, 12 * s)
         let blink = Int(CACurrentMediaTime() * 1000 / 400) % 2 == 0 ? "_" : ""
         // keep the caret in view when the line is wider than the screen
         let maxW = Int((ui.width - 12) / s)
         var shown = input + blink
         while textWidth(shown) > maxW && !shown.isEmpty { shown.removeFirst() }
-        cv.drawText(shown, 4, ui.height - 2 - 12 * s + 2 * s, s)
+        cv.drawText(shown, 4, bottom - 2 - 12 * s + 2 * s, s)
     }
     override func onChar(_ ui: UIManager, _ game: GameCore, _ ch: String) -> Bool {
         input += ch

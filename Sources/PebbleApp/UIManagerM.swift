@@ -97,6 +97,8 @@ class Screen {
     var closeOnEsc = true
     var showHUD = false
     var pausesGame = false
+    /// a vertical finger drag scrolls this screen (sent as wheel notches)
+    var touchScrolls = false
     var buttons: [Button] = []
     var sliders: [Slider] = []
     var fields: [TextField] = []
@@ -150,7 +152,17 @@ class Screen {
         return false
     }
     func slotAt(_ mx: Double, _ my: Double) -> SlotDef? {
-        slots.first { mx >= $0.x && mx < $0.x + 18 && my >= $0.y && my < $0.y + 18 }
+        if let s = slots.first(where: { mx >= $0.x && mx < $0.x + 18 && my >= $0.y && my < $0.y + 18 }) {
+            return s
+        }
+        // fingers are blunt: on touch, take the nearest slot a few units out
+        guard gRuntime?.ui.touchMode == true else { return nil }
+        var best: SlotDef?, bestD = 13.0
+        for s in slots {
+            let d = hypot(mx - (s.x + 9), my - (s.y + 9))
+            if d < bestD { best = s; bestD = d }
+        }
+        return best
     }
     /// shift-click routing — override in container screens
     func quickMove(_ game: GameCore, _ slot: SlotDef) {}
@@ -169,6 +181,10 @@ final class UIManager {
     var shiftDown = false
     var ctrlDown = false
     var cursorStack: ItemStack?
+    /// a finger is the pointer: the held stack and tooltips ride above it
+    var touchMode = false
+    /// on-screen keyboard height in UI units (text screens lift above it)
+    var keyboardInset = 0.0
     private var stack: [Screen] = []
     var tooltipLines: [String]?
 
@@ -247,11 +263,12 @@ final class UIManager {
         tooltipLines = nil
     }
     func endFrame() {
+        let lift = touchMode ? 20.0 : 0
         if let c = cursorStack {
-            drawItemStack(c, mouseX - 8, mouseY - 8)
+            drawItemStack(c, mouseX - 8, mouseY - 8 - lift)
         }
         if let lines = tooltipLines, !lines.isEmpty {
-            drawTooltipBox(lines, mouseX + 6, mouseY - 6)
+            drawTooltipBox(lines, mouseX + 6, mouseY - 6 - lift * 1.5)
         }
     }
 
@@ -327,9 +344,9 @@ final class UIManager {
         }
     }
     func drawSlots(_ screen: Screen, slotBg: Bool = true) {
+        let hovered = screen.slotAt(mouseX, mouseY)
         for s in screen.slots {
-            let hover = mouseX >= s.x && mouseX < s.x + 18 && mouseY >= s.y && mouseY < s.y + 18
-            drawSlot(s, hover, slotBg: slotBg)
+            drawSlot(s, s === hovered, slotBg: slotBg)
         }
     }
     func drawButton(_ b: Button, _ hover: Bool) {

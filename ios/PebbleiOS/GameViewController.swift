@@ -11,6 +11,8 @@ final class GameViewController: UIViewController {
     private(set) var runtime: GameRuntime!
     private(set) var mtkView: MTKView!
     private var started = false
+    private let textInput = TextInputView(frame: .zero)
+    private var textActive = false
 
     // keyboard modifier state (iOS reports modifiers as separate presses)
     private var shiftDown = false, ctrlDown = false, cmdDown = false
@@ -33,6 +35,9 @@ final class GameViewController: UIViewController {
         if GameRuntime.needsReadableFramebuffer { v.framebufferOnly = false }
         mtkView = v
         view = v
+        runtime.touch.enabled = true
+        textInput.runtime = runtime
+        v.addSubview(textInput)
 
         // mouse/trackpad cursor position while no button is held
         let hover = UIHoverGestureRecognizer(target: self, action: #selector(hovered(_:)))
@@ -44,6 +49,40 @@ final class GameViewController: UIViewController {
         v.addGestureRecognizer(scroll)
 
         observeMice()
+        observeKeyboard()
+    }
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        becomeFirstResponder()   // hardware key presses come to us
+    }
+
+    // MARK: on-screen keyboard
+
+    func setTextInput(_ active: Bool) {
+        textActive = active
+        if active {
+            textInput.becomeFirstResponder()
+        } else {
+            textInput.resignFirstResponder()
+            becomeFirstResponder()
+        }
+    }
+
+    private func observeKeyboard() {
+        let nc = NotificationCenter.default
+        nc.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] n in
+            guard let self, let end = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+            // how far the keyboard reaches up into our view
+            let local = self.view.convert(end, from: nil)
+            let overlap = max(0, self.view.bounds.maxY - local.minY)
+            self.runtime.setKeyboardHeight(Double(overlap * self.mtkView.contentScaleFactor))
+        }
+        nc.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.runtime.setKeyboardHeight(0)
+        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -111,6 +150,7 @@ final class GameViewController: UIViewController {
         for t in touches {
             let (x, y) = pixel(t)
             if t.type == .indirectPointer {
+                runtime.touch.hardwareInputUsed()
                 if pointerLocked { continue }   // GCMouse handles locked clicks
                 pointerButton = button(event)
                 runtime.input.pointerMoved(x: x, y: y, dx: 0, dy: 0)
@@ -186,6 +226,7 @@ final class GameViewController: UIViewController {
         input.mouseMovedHandler = { [weak self] _, dx, dy in
             DispatchQueue.main.async {
                 guard let self, self.runtime.input.mouseCaptured else { return }
+                self.runtime.touch.hardwareInputUsed()
                 // GameController's y axis points up; mouse-look deltas point down
                 self.runtime.input.look(dx: Double(dx), dy: Double(-dy))
             }
@@ -219,15 +260,24 @@ final class GameViewController: UIViewController {
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         var handled = false
+        var passUp: Set<UIPress> = []
         for p in presses {
             guard let key = p.key else { continue }
             handled = true
+            runtime.touch.hardwareInputUsed()
             let usage = key.keyCode.rawValue
             if let m = modifierKey(usage) {
                 setModifier(m, true)
                 continue
             }
             var code = HID_KEY_MAP[usage] ?? ""
+            // while the text view is up, it receives typing (insertText /
+            // deleteBackward) — only shortcuts and non-text keys come here
+            if textActive && !cmdDown && !ctrlDown && (code == "Enter" || code == "Backspace" || code == "NumpadEnter"
+                || key.characters.contains { !$0.isNewline && ($0.asciiValue.map { $0 >= 32 } ?? true) }) {
+                passUp.insert(p)
+                continue
+            }
             // many iPad keyboards have no Escape key: Cmd-. is the standard stand-in
             if cmdDown && code == "Period" { code = "Escape" }
             // Cmd-V pastes into the focused field
@@ -239,6 +289,7 @@ final class GameViewController: UIViewController {
                                   command: cmdDown, control: ctrlDown, shift: shiftDown)
         }
         if !handled { super.pressesBegan(presses, with: event) }
+        if !passUp.isEmpty { super.pressesBegan(passUp, with: event) }
     }
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
