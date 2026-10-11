@@ -20,6 +20,10 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   - block changes (including `/place`, `/fill` and the creative tools)
   - rockets and void bombs in flight, with their launch sounds and the blast
     screen shake, even when a guest fires them
+  - particles out to each guest's view distance, so a rocket's trail and
+    blast don't vanish partway out
+  - a guest's own mining laser beam and hum, and the sounds and particles of
+    commands a guest runs on the host (`/fill`, `/place`, `/summon`…)
   - mobs, items and projectiles
   - chests, furnaces and signs
   - time, weather, game rules, difficulty, sounds and particles

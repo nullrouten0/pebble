@@ -408,7 +408,7 @@ public final class NetHost {
             broadcastChat("<\(c.name)> \(text)")
         case .command:
             let text = try r.str()
-            let lines = withActor(c) { game.netCommandRunner?(c.proxy, text) ?? ["§cThe host can't run commands"] }
+            let lines = withActor(c, echo: true) { game.netCommandRunner?(c.proxy, text) ?? ["§cThe host can't run commands"] }
             for l in lines { sendChat(c, l) }
         case .blockEntity:
             guard let be = try r.decodable(BlockEntityData.self) else { return }
@@ -557,11 +557,14 @@ public final class NetHost {
         p.onGround = flags & GuestState.ON_GROUND != 0
     }
 
-    private func withActor<T>(_ c: RemoteClient, _ body: () -> T) -> T {
-        let prevActor = actor, prevOwner = editOwner
+    /// run `body` as guest `c` (edits go in their undo history). `echo`: the
+    /// guest didn't run it locally, so it still gets the sounds and particles
+    private func withActor<T>(_ c: RemoteClient, echo: Bool = false, _ body: () -> T) -> T {
+        let prevActor = actor, prevOwner = editOwner, prevEcho = echoActor
         actor = c
         editOwner = c.proxy.id
-        defer { actor = prevActor; editOwner = prevOwner }
+        echoActor = echo
+        defer { actor = prevActor; editOwner = prevOwner; echoActor = prevEcho }
         return body()
     }
 
@@ -570,12 +573,10 @@ public final class NetHost {
     /// `echo`: the guest didn't run it at all, so it gets the sounds and
     /// particles too
     private func replay(_ c: RemoteClient, drops: Bool, echo: Bool = false, _ body: () -> Void) {
-        let prev = suppressDrops, prevEcho = echoActor
+        let prev = suppressDrops
         suppressDrops = !drops
-        echoActor = echo
-        withActor(c, body)
+        withActor(c, echo: echo, body)
         suppressDrops = prev
-        echoActor = prevEcho
         // the actor's prediction may have differed: send what really happened
         c.appliedX = c.proxy.x; c.appliedY = c.proxy.y; c.appliedZ = c.proxy.z
     }
@@ -677,7 +678,7 @@ public final class NetHost {
             if p.dead { continue }
             // the mining laser burns for as long as the guest holds it
             if p.usingItem, let held = p.usingHandStack, itemDef(held.id).name == "mining_laser" {
-                withActor(c) { fireLaser(p.world, p, wide: p.sneaking, tick: p.useItemTicks) }
+                withActor(c, echo: true) { fireLaser(p.world, p, wide: p.sneaking, tick: p.useItemTicks) }
             }
             // item / XP pickup (lands in the guest's inventory via NetPlayerLink)
             if p.age % 2 == 0 {
@@ -912,9 +913,12 @@ public final class NetHost {
             m.data.append(sw.data)
             c.queue(.sounds, m)
         }
+        // as far as the guest tracks entities: a rocket's trail and blast
+        // shouldn't vanish partway out when the host still shows them
+        let pr = Double(min(c.viewDistance * 16, 128))
         var pw = ByteWriter(capacity: 512), np = 0
         for (type, x, y, z, n, spread, data, ex) in particles where ex != c.conn.id {
-            if (x - me.x) * (x - me.x) + (y - me.y) * (y - me.y) + (z - me.z) * (z - me.z) > 64 * 64 { continue }
+            if (x - me.x) * (x - me.x) + (y - me.y) * (y - me.y) + (z - me.z) * (z - me.z) > pr * pr { continue }
             pw.str(type); pw.f64(x); pw.f64(y); pw.f64(z); pw.u16(n); pw.f32(spread); pw.i32(data)
             np += 1
             if np >= 400 { break }
