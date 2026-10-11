@@ -2470,6 +2470,13 @@ public final class GameCore {
         return paused ? 1 : clampD(accumulator / TICK_MS, 0, 1)
     }
 
+    /// change our own game mode; a LAN host's guests follow it
+    public func applyGameMode(_ mode: Int) {
+        player.setGameMode(mode)
+        player.flying = player.flying && mode == GameMode.creative
+        if !player.isNetProxy { netHost?.broadcastGameMode(mode) }
+    }
+
     // ===========================================================================
     // LAN multiplayer
     // ===========================================================================
@@ -2563,10 +2570,10 @@ public final class GameCore {
         let w = world
         player = Player(world: w)
         player.name = nc.name
-        player.setGameMode(mode)
         if let saved {
             player.load(saved)
         }
+        player.setGameMode(mode)   // the host's mode, not the one we last saved in
         player.setPos(pos.0, pos.1, pos.2)
         if saved == nil { player.yaw = pos.3; player.pitch = pos.4 }
         w.addEntity(player)

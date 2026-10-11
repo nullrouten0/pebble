@@ -275,6 +275,9 @@ public final class NetClient {
                 p.sleepTicks = 0
                 p.bedPos = nil
             }
+        case .gameMode:
+            game.applyGameMode(try r.u8())
+            game.host?.pushChat("§7Game mode set to \(game.player.gameMode == GameMode.creative ? "Creative" : "Survival")")
         default:
             break
         }

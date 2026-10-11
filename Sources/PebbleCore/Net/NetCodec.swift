@@ -54,6 +54,7 @@ enum NetMsg: UInt8 {
     case dimChange
     case playerList
     case wake
+    case gameMode
 }
 
 enum NetError: Error { case truncated, badFrame }

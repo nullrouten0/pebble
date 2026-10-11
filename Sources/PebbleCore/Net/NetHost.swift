@@ -452,7 +452,9 @@ public final class NetHost {
         let p = Player(world: w)
         p.isNetProxy = true
         p.name = unique
-        p.setGameMode(rec.gameMode)
+        // the LAN game plays in the host's current mode (the world record only
+        // catches up on save), whatever mode this guest last saved in
+        let mode = game.player.gameMode
         var saved: [String: Any]? = nil
         if let k = guestKey(unique), let rowData = game.db.getPlayer(k) {
             saved = rowData
@@ -462,6 +464,7 @@ public final class NetHost {
         if let pd = saved?["data"] as? [String: Any], savedDim == game.dim.rawValue {
             p.load(pd)
         }
+        p.setGameMode(mode)
         if saved == nil || savedDim != game.dim.rawValue || !p.x.isFinite {
             // first visit (or the host moved dimensions): start beside the host
             let hp = game.player!
@@ -481,7 +484,7 @@ public final class NetHost {
         out.str(rec.name)
         out.i32(Int(rec.seed))
         out.u8(game.dim.rawValue)
-        out.u8(rec.gameMode)
+        out.u8(mode)
         out.f64(p.x); out.f64(p.y); out.f64(p.z)
         out.f32(p.yaw); out.f32(p.pitch)
         out.i32(Int(w.spawnX)); out.i32(Int(w.spawnY)); out.i32(Int(w.spawnZ))
@@ -995,6 +998,17 @@ public final class NetHost {
     /// the night was slept through
     func wakeEveryone() {
         for c in clients where c.joined { c.queue(.wake, ByteWriter()) }
+    }
+
+    /// the host changed game mode: everyone follows
+    func broadcastGameMode(_ mode: Int) {
+        var m = ByteWriter()
+        m.u8(mode)
+        for c in clients where c.joined {
+            c.queue(.gameMode, m)
+            c.proxy?.setGameMode(mode)
+            c.st.gameMode = mode
+        }
     }
 }
 

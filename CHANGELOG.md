@@ -21,6 +21,7 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   - mobs, items and projectiles
   - chests, furnaces and signs
   - time, weather, game rules, difficulty, sounds and particles
+  - game mode: guests play in the host's mode, and follow the host's `/gamemode`
   - chat, with join and leave messages
 - **Each other.** Players see each other with name tags. A name tag dims
   behind walls and while the player sneaks, and is hidden when they sneak

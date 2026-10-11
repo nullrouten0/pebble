@@ -108,11 +108,10 @@ func runCommand(_ game: GameCore, _ raw: String) {
         ok("Weather set to \(arg(0)!)")
     case "gamemode", "gm":
         switch arg(0) {
-        case "creative", "1", "c": p.setGameMode(GameMode.creative)
-        case "survival", "0", "s": p.setGameMode(GameMode.survival)
+        case "creative", "1", "c": game.applyGameMode(GameMode.creative)
+        case "survival", "0", "s": game.applyGameMode(GameMode.survival)
         default: return fail("Usage: /gamemode <survival|creative>")
         }
-        p.flying = p.flying && p.gameMode == GameMode.creative
         ok("Game mode set to \(p.gameMode == GameMode.creative ? "Creative" : "Survival")")
     case "seed":
         ok("Seed: \(world.seed)")
