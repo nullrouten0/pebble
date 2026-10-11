@@ -246,9 +246,14 @@ final class WorldRenderer {
 
     // offscreen targets
     var sceneColor: MTLTexture!
+    /// scene depth when nothing reads it back: tile memory only where the
+    /// GPU allows (Apple GPUs), so it costs no RAM
     var sceneDepth: MTLTexture!
     var bloomA: MTLTexture!
     var bloomB: MTLTexture!
+    // ultra-only targets, allocated while the ultra preset is on (they're
+    // ~45 MB at iPad Pro resolution)
+    var sceneDepthStored: MTLTexture?   // depth the ultra pass samples
     var ultraA: MTLTexture!         // half-res rgba16f: rgb=volumetric, a=AO
     var ultraB: MTLTexture!
     var ultraDummy: MTLTexture!     // 1×1 neutral bound when ultra is off
@@ -395,20 +400,7 @@ final class WorldRenderer {
            let img = decodePNG(d) {
             titleLogoTex = makeImageTexture(img)
         }
-        if let path = gRuntime?.platform.resourcePath("title-bg.png"),
-           let d = FileManager.default.contents(atPath: path),
-           let img = decodePNG(d) {
-            let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
-                                                              width: img.width, height: img.height, mipmapped: false)
-            td.usage = .shaderRead
-            if let t = device.makeTexture(descriptor: td) {
-                img.pixels.withUnsafeBytes { raw in
-                    t.replace(region: MTLRegionMake2D(0, 0, img.width, img.height), mipmapLevel: 0,
-                              withBytes: raw.baseAddress!, bytesPerRow: img.width * 4)
-                }
-                titleBgTex = t
-            }
-        }
+        loadTitleBg()
         ultraPipeline = pipe("fs_vs", "ultra_fs", vd: nil, color: .rgba16Float, depth: .invalid)
         ultraBlurPipeline = pipe("fs_vs", "ultra_blur_fs", vd: nil, color: .rgba16Float, depth: .invalid)
 
@@ -693,8 +685,8 @@ final class WorldRenderer {
         cd.storageMode = .private
         sceneColor = device.makeTexture(descriptor: cd)!
         let dd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: fbWidth, height: fbHeight, mipmapped: false)
-        dd.usage = [.renderTarget, .shaderRead]   // ultra pass reads scene depth
-        dd.storageMode = .private
+        dd.usage = .renderTarget
+        dd.storageMode = device.supportsFamily(.apple4) ? .memoryless : .private
         sceneDepth = device.makeTexture(descriptor: dd)!
         let bw = max(1, fbWidth >> 2), bh = max(1, fbHeight >> 2)
         let bd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: bw, height: bh, mipmapped: false)
@@ -702,12 +694,10 @@ final class WorldRenderer {
         bd.storageMode = .private
         bloomA = device.makeTexture(descriptor: bd)!
         bloomB = device.makeTexture(descriptor: bd)!
-        let uw = max(1, fbWidth >> 1), uh = max(1, fbHeight >> 1)
-        let ud = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: uw, height: uh, mipmapped: false)
-        ud.usage = [.renderTarget, .shaderRead]
-        ud.storageMode = .private
-        ultraA = device.makeTexture(descriptor: ud)!
-        ultraB = device.makeTexture(descriptor: ud)!
+        // size changed: the ultra targets come back at the new size on demand
+        sceneDepthStored = nil
+        ultraA = nil
+        ultraB = nil
         if ultraDummy == nil {
             let dd1 = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: 1, height: 1, mipmapped: false)
             dd1.usage = .shaderRead
@@ -718,6 +708,44 @@ final class WorldRenderer {
                                    withBytes: raw.baseAddress!, bytesPerRow: 8)
             }
         }
+    }
+
+    /// the title photo (~28 MB as a texture)
+    private var titleBgUnavailable = false
+    func loadTitleBg() {
+        guard titleBgTex == nil, !titleBgUnavailable else { return }
+        guard let path = gRuntime?.platform.resourcePath("title-bg.png"),
+              let d = FileManager.default.contents(atPath: path),
+              let img = decodePNG(d) else { titleBgUnavailable = true; return }
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
+                                                          width: img.width, height: img.height, mipmapped: false)
+        td.usage = .shaderRead
+        if let t = device.makeTexture(descriptor: td) {
+            img.pixels.withUnsafeBytes { raw in
+                t.replace(region: MTLRegionMake2D(0, 0, img.width, img.height), mipmapLevel: 0,
+                          withBytes: raw.baseAddress!, bytesPerRow: img.width * 4)
+            }
+            titleBgTex = t
+        }
+    }
+
+    /// allocate (ultra on) or free (off) the ultra preset's targets
+    private func setUltraTargets(_ on: Bool) {
+        if !on {
+            if sceneDepthStored != nil { sceneDepthStored = nil; ultraA = nil; ultraB = nil }
+            return
+        }
+        if sceneDepthStored != nil { return }
+        let dd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: fbWidth, height: fbHeight, mipmapped: false)
+        dd.usage = [.renderTarget, .shaderRead]   // ultra pass reads scene depth
+        dd.storageMode = .private
+        sceneDepthStored = device.makeTexture(descriptor: dd)!
+        let uw = max(1, fbWidth >> 1), uh = max(1, fbHeight >> 1)
+        let ud = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: uw, height: uh, mipmapped: false)
+        ud.usage = [.renderTarget, .shaderRead]
+        ud.storageMode = .private
+        ultraA = device.makeTexture(descriptor: ud)!
+        ultraB = device.makeTexture(descriptor: ud)!
     }
 
     // ---- section meshes (GameHost) ----------------------------------------------
@@ -828,6 +856,12 @@ final class WorldRenderer {
         let ultraOn = settings.shader == "ultra"
         let wantShadowSize = ultraOn ? 4096 : 2048
         if shadowSizeNow != wantShadowSize { buildShadow(size: wantShadowSize) }
+        setUltraTargets(ultraOn)
+        #if os(iOS)
+        // in a world the title photo is dead weight on a phone; the title
+        // screen reloads it (HostBridge.openTitleScreen)
+        titleBgTex = nil
+        #endif
 
         let aspect = Float(fbWidth) / Float(max(1, fbHeight))
         let far = max(256, Float(settings.renderDistance) * 16 * 1.6)
@@ -936,7 +970,7 @@ final class WorldRenderer {
         scenePass.colorAttachments[0].loadAction = .clear
         scenePass.colorAttachments[0].storeAction = .store
         scenePass.colorAttachments[0].clearColor = MTLClearColor(red: Double(fogColor.x), green: Double(fogColor.y), blue: Double(fogColor.z), alpha: 1)
-        scenePass.depthAttachment.texture = sceneDepth
+        scenePass.depthAttachment.texture = ultraOn ? sceneDepthStored : sceneDepth
         scenePass.depthAttachment.loadAction = .clear
         scenePass.depthAttachment.storeAction = ultraOn ? .store : .dontCare
         scenePass.depthAttachment.clearDepth = 1
@@ -1142,7 +1176,7 @@ final class WorldRenderer {
                 fogColor: SIMD4<Float>(fogColor, Float(settings.renderDistance * 16)),
                 texel: SIMD4<Float>(1 / Float(ultraA.width), 1 / Float(ultraA.height), 0, 0))
             ue.setFragmentBytes(&uu, length: MemoryLayout<UltraUniforms>.stride, index: 1)
-            ue.setFragmentTexture(sceneDepth, index: 0)
+            ue.setFragmentTexture(sceneDepthStored, index: 0)
             ue.setFragmentTexture(shadowTexture, index: 1)
             ue.setFragmentSamplerState(linearSampler, index: 0)
             ue.setFragmentSamplerState(shadowSampler, index: 1)
@@ -1196,6 +1230,9 @@ final class WorldRenderer {
     func renderTitle(cmd: MTLCommandBuffer, rpd: MTLRenderPassDescriptor) -> MTLRenderCommandEncoder {
         rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0.02, green: 0.02, blue: 0.05, alpha: 1)
         rpd.colorAttachments[0].loadAction = .clear
+        #if os(iOS)
+        loadTitleBg()   // back from a world, which freed it
+        #endif
         let enc = cmd.makeRenderCommandEncoder(descriptor: rpd)!
         if let tex = titleBgTex, let target = rpd.colorAttachments[0].texture {
             let sA = Double(target.width) / Double(target.height)

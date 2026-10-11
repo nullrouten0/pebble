@@ -82,6 +82,7 @@ final class HostBridge: GameHost {
         app?.input.releaseMouse()
     }
     func openTitleScreen() {
+        app?.renderer.loadTitleBg()
         ui.titlePhoto = app?.renderer.titleBgTex != nil; ui.titleLogo = app?.renderer.titleLogoTex != nil
         ui.open(TitleScreen(), game)
         app?.input.releaseMouse()
