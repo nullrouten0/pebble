@@ -675,6 +675,9 @@ public final class GameCore {
         }
     }
 
+    /// block until queued chunk writes have landed (tests, diagnostics)
+    public func waitForSaves() { saveQueue.sync {} }
+
     /// runs ON the save queue; on failure re-marks the chunks dirty (on main)
     /// so the next autosave retries instead of silently losing the edits
     private func writeChunkBatch(_ records: [ChunkRecord]) {
@@ -717,6 +720,7 @@ public final class GameCore {
             ents.append(ent.save())
         }
         let key = db.chunkKey(worldId, d.rawValue, c.cx, c.cz)
+        c.savedEntities = !ents.isEmpty
         if !c.modified && !savedFullKeys.contains(key) {
             // entity-only record (~KBs): the blocks regenerate from seed
             return ChunkRecord(key: key, worldId: worldId, dim: d.rawValue, cx: c.cx, cz: c.cz, entities: ents)
@@ -839,7 +843,9 @@ public final class GameCore {
             for be in savedBEs {
                 c.setBlockEntity(posMod(be.x, 16), be.y, posMod(be.z, 16), be)
             }
-            c.modified = true // remains a fully-saved chunk
+            // unchanged since it was read: savedFullKeys keeps any rewrite
+            // full (marking it modified re-saved every revisited chunk)
+            c.modified = false
         } else if let beSpecs {
             for spec in beSpecs { resolveBESpec(w, c, spec) }
             c.modified = false
@@ -847,6 +853,7 @@ public final class GameCore {
         w.adoptChunkBlockEntities(c)
         // entities: any saved record (full or entity-only) overrides worldgen spawns
         if let saved {
+            c.savedEntities = !saved.entities.isEmpty
             for ed in saved.entities {
                 if let e = loadEntity(w, ed) {
                     w.addEntity(e)
@@ -1323,7 +1330,9 @@ public final class GameCore {
     }
 
     private func unloadChunk(_ w: World, _ c: Chunk) {
-        // persist if edited, if live entities stand in it, or if a stale record exists
+        // persist if edited, if live entities stand in it, or if its record may
+        // be stale: entities have left it, or block entities (chest contents,
+        // furnaces, signs) changed in place, which doesn't mark the chunk
         var hasEntities = false
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
@@ -1334,7 +1343,8 @@ public final class GameCore {
         }
         if let rec = worldRec {
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
-            if c.modified || hasEntities || savedChunkKeys.contains(dbKey) {
+            let stale = c.savedEntities || !c.blockEntities.isEmpty
+            if c.modified || hasEntities || (stale && savedChunkKeys.contains(dbKey)) {
                 let record = chunkRecord(rec.id, w.dim, w, c)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record

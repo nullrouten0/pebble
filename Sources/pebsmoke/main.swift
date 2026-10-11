@@ -2411,6 +2411,83 @@ do {
     } else {
         check("creative dig world loads", false)
     }
+
+    // saves: a chest edited in place (no block change) in an already-saved
+    // chunk must survive an unload + reload, and the untouched chunks around
+    // it must not be rewritten when they're revisited
+    if let g = settled() {
+        g.settings.renderDistance = 4
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)), bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(B.chest) << 4)
+        let be = BlockEntityData(type: "chest", x: bx, y: by, z: bz)
+        be.items = [ItemStack?](repeating: nil, count: 27)
+        w.setBlockEntity(be)
+        g.saveAndFlush(); g.waitForSaves()
+        be.items![0] = ItemStack(iid("diamond"), 5)   // in place: the chunk isn't marked
+        let key = chunkKey(floorDiv(bx, 16), floorDiv(bz, 16))
+        let home = (p.x, p.y, p.z)
+        func go(_ x: Double, until done: () -> Bool) -> Bool {
+            p.setPos(x, 200, home.2); p.flying = true
+            for _ in 0..<2000 {
+                _ = g.frame(dtMs: 50)
+                RunLoop.main.run(until: Date().addingTimeInterval(0.002))
+                if done() { return true }
+            }
+            return false
+        }
+        let away = go(home.0 + 3000) { w.chunks[key] == nil }
+        for _ in 0..<40 { _ = g.frame(dtMs: 50) }   // the once-a-second unload batch
+        g.waitForSaves()
+        let fullBefore = g.db.fullChunkWrites
+        let back = go(home.0) { w.chunks[key] != nil }
+        for _ in 0..<60 { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)) }
+        let kept: ItemStack? = w.getBlockEntity(bx, by, bz)?.items?[0] ?? nil
+        check("chest edited in place survives unload + reload",
+              away && back && kept?.id == iid("diamond") && kept?.count == 5,
+              "away \(away) back \(back) slot0 \(String(describing: kept))")
+        // revisiting writes nothing on its own (natural block changes may)
+        g.waitForSaves()
+        check("revisiting saved chunks doesn't rewrite them", g.db.fullChunkWrites - fullBefore < 5,
+              "\(g.db.fullChunkWrites - fullBefore) full writes")
+        g.exitToTitle()
+    } else {
+        check("save world loads", false)
+    }
+}
+
+section("chunk saves (VCK1 plain, VCK2 compressed)")
+do {
+    let home = NSTemporaryDirectory() + "pebsmoke-db-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let db = SaveDB()
+    let gen = generateChunk(.overworld, 12345, 3, -2)
+    func record(_ cx: Int) -> ChunkRecord {
+        ChunkRecord(key: db.chunkKey("w", 0, cx, 0), worldId: "w", dim: 0, cx: cx, cz: 0,
+                    blocks: gen.blocks, biomes: gen.biomes, blockEntities: [],
+                    entities: [["type": "cow", "x": 1.5, "y": 70.0, "z": 2.5]])
+    }
+    func write(_ r: ChunkRecord, compressed: Bool) -> Int {
+        db.compressChunks = compressed
+        let before = db.chunkBytesWritten
+        _ = db.putChunks([r])
+        return db.chunkBytesWritten - before
+    }
+    let plainBytes = write(record(0), compressed: false)
+    let zBytes = write(record(1), compressed: true)
+    var stub = ChunkRecord(key: db.chunkKey("w", 0, 2, 0), worldId: "w", dim: 0, cx: 2, cz: 0)
+    stub.entities = [["type": "sheep", "x": 33.0, "y": 64.0, "z": 1.0]]
+    _ = write(stub, compressed: true)
+    let a = db.getChunk("w", 0, 0, 0), b = db.getChunk("w", 0, 1, 0), c = db.getChunk("w", 0, 2, 0)
+    check("plain record reads back", a?.blocks == gen.blocks && a?.biomes == gen.biomes && a?.entities.count == 1)
+    check("compressed record reads back identical",
+          b?.blocks == gen.blocks && b?.biomes == gen.biomes && (b?.entities.first?["type"] as? String) == "cow")
+    check("compressed entity-only record reads back", c?.blocks == nil && (c?.entities.first?["type"] as? String) == "sheep")
+    check("compressed full record is >10× smaller", zBytes * 10 < plainBytes, "\(plainBytes) → \(zBytes) bytes")
 }
 
 print("\n\(passed) passed, \(failed) failed")

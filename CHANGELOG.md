@@ -24,6 +24,15 @@ only lightly polished.
   you're digging, so you can see it and look away or let go to keep it.
   **Options → Controls → Creative Dig** sets the time: 0.4 s by default on
   touch screens, instant on the Mac (where it was before), up to 1 s.
+- **Far fewer disk writes.** A 3-player LAN game made an iPad host write
+  about 1 GB in 10 minutes, enough for iOS to flag it. Chunks you only walk
+  back through are no longer re-saved unless something in them changed, and
+  on iOS chunk saves are compressed (about 50× smaller). Five minutes of
+  exploring went from 233 MB written to 3 MB on iPad (170 MB on the Mac).
+  Every build reads both formats; only iOS writes compressed chunks until
+  this branch reaches main, so Mac worlds still open in older builds.
+- **Fixed: a crash typing in the creative inventory search** after switching
+  tabs (and from accented letters or emoji on the iOS keyboard).
 - **Game controllers on the Mac too.** Plug in an Xbox, PlayStation or MFi
   controller: sticks move and look, triggers break and place, and the left
   stick drives a cursor in menus.
