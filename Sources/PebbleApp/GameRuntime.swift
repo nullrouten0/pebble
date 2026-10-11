@@ -174,6 +174,11 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     private(set) var drawableSize: CGSize = .zero
     private var lastFrame = CACurrentMediaTime()
     private var startTime = CACurrentMediaTime()
+    /// current 3D render scale (settings.renderScale, or the adaptive pick)
+    private(set) var renderScale = 1.0
+    private var autoScale = 1.0
+    private let gpuLock = NSLock()
+    private var gpuMsSum = 0.0, gpuFrames = 0
     private var fpsCounter = 0
     private var fpsTimer = 0.0
     private var fps = 0
@@ -323,6 +328,19 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     public func suspendAudio() { audio.suspend() }
     public func resumeAudio() { audio.resume() }
 
+    /// the OS is about to kill us for memory: shed render distance (the
+    /// biggest lever: chunks + meshes) and tell the player
+    public func memoryWarning() {
+        guard game.hasWorld() else { return }
+        let rd = game.settings.renderDistance
+        if rd > 4 {
+            game.settings.renderDistance = max(4, rd - 2)
+            game.applySettings()
+            hud.showActionBar("Low memory - render distance lowered to \(game.settings.renderDistance)")
+        }
+        print("[mem] memory warning at \(processFootprintMB()) MB, render distance \(rd) -> \(game.settings.renderDistance)")
+    }
+
     /// true once settings.json exists — false means first launch, when a
     /// shell may apply a device preset
     public static var hasSavedSettings: Bool {
@@ -405,8 +423,50 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
 
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         drawableSize = size
-        renderer.resize(Int(size.width), Int(size.height))
+        syncRenderSize()
         ui.resize(Double(size.width), Double(size.height), game.settings.guiScale, relayout: game)
+    }
+
+    /// the scene renders at drawable × renderScale; the composite pass
+    /// samples it by UV, so a smaller target just upscales
+    private func syncRenderSize() {
+        guard drawableSize.width > 0 else { return }
+        let w = max(1, Int((Double(drawableSize.width) * renderScale).rounded()))
+        let h = max(1, Int((Double(drawableSize.height) * renderScale).rounded()))
+        renderer.resize(w, h)
+    }
+
+    /// once a second: pick the render scale. Auto on passively cooled devices
+    /// steps down while the GPU eats most of the frame budget (or the device
+    /// runs hot) and creeps back up when there's headroom.
+    private func updateRenderScale() {
+        gpuLock.lock()
+        let gpuMs = gpuFrames > 0 ? gpuMsSum / Double(gpuFrames) : 0
+        gpuMsSum = 0; gpuFrames = 0
+        gpuLock.unlock()
+        hud.debugInfo["gpu"] = String(format: "%.1f ms @ %.0f%%", gpuMs, renderScale * 100)
+        var want: Double
+        if let fixed = game.settings.renderScale {
+            want = min(1, max(0.5, fixed))
+        } else if platform.adaptiveRenderScale && game.hasWorld() {
+            let budget = 1000 / Double(max(30, min(game.settings.maxFps, platform.maxFrameRate ?? 120)))
+            if gpuMs > budget * 0.85 { autoScale -= 0.1 }
+            else if gpuMs > 0 && gpuMs < budget * 0.55 { autoScale += 0.05 }
+            switch ProcessInfo.processInfo.thermalState {
+            case .critical: autoScale = min(autoScale, 0.6)
+            case .serious: autoScale = min(autoScale, 0.75)
+            default: break
+            }
+            autoScale = min(1, max(0.6, autoScale))
+            want = autoScale
+        } else {
+            want = 1
+        }
+        want = (want * 20).rounded() / 20   // 5% steps: no resize churn
+        if want != renderScale {
+            renderScale = want
+            syncRenderSize()
+        }
     }
 
     public func draw(in view: MTKView) {
@@ -429,6 +489,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
             hud.debugInfo["mem"] = "\(processFootprintMB()) MB (meshes \(renderer.arena.residentBytes >> 20) MB)"
             audio.applyVolumes(game.settings.volumes)
             platform.applyMaxFps(game.settings.maxFps)
+            updateRenderScale()
             if game.hasWorld(), let p = game.player {
                 platform.showStatus(String(format: "Pebble — %d fps · %d sections · (%.0f, %.0f, %.0f)",
                                            fps, renderer.sections.count, p.x, p.y, p.z))
@@ -443,7 +504,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
 
         if renderer.fbWidth == 0 {
             drawableSize = view.drawableSize
-            renderer.resize(Int(view.drawableSize.width), Int(view.drawableSize.height))
+            syncRenderSize()
             ui.resize(Double(view.drawableSize.width), Double(view.drawableSize.height), game.settings.guiScale, relayout: game)
         }
 
@@ -484,6 +545,13 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
 
         enc.endEncoding()
         renderer.captureFinalFrame(cmd, drawable.texture)
+        cmd.addCompletedHandler { [weak self] cb in
+            let ms = (cb.gpuEndTime - cb.gpuStartTime) * 1000
+            guard let self, ms > 0 else { return }
+            self.gpuLock.lock()
+            self.gpuMsSum += ms; self.gpuFrames += 1
+            self.gpuLock.unlock()
+        }
         cmd.present(drawable)
         cmd.commit()
     }

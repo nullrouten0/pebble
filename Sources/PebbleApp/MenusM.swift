@@ -503,12 +503,27 @@ final class SettingsScreen: Screen {
             toggle("Clouds", { game.settings.clouds }, { game.settings.clouds = $0 }, 0)
             toggle("View Bobbing", { game.settings.viewBobbing }, { game.settings.viewBobbing = $0 }, 1)
             y += 22
-            if gRuntime?.platform.supportsFullscreen ?? true {
+            let fsRow = gRuntime?.platform.supportsFullscreen ?? true
+            if fsRow {
                 toggle("Fullscreen",
                        { gRuntime?.platform.isFullscreen ?? false },
                        { _ in gRuntime?.platform.toggleFullscreen() }, 0)
-                y += 22
             }
+            // 0 = Auto, then 50%…100% in 5% steps
+            sliders.append(Slider(cx - 160 + (fsRow ? GAP : 0), y, W, 18,
+                { [weak game] in
+                    let pct = Int(((gRuntime?.renderScale ?? 1) * 100).rounded())
+                    return game?.settings.renderScale == nil ? "Render Scale: Auto (\(pct)%)" : "Render Scale: \(pct)%"
+                },
+                { [weak game] in
+                    guard let s = game?.settings.renderScale else { return 0 }
+                    return 0.05 + (s - 0.5) / 0.5 * 0.95
+                },
+                { [weak game] v in
+                    game?.settings.renderScale = v < 0.05 ? nil : 0.5 + (((v - 0.05) / 0.95 * 10).rounded() / 10) * 0.5
+                    game?.applySettings()
+                }))
+            y += 22
             sliders.append(Slider(cx - 160, y, W, 18,
                 { [weak game] in "Particles: \(["Minimal", "Decreased", "All"][min(2, game?.settings.particles ?? 2)])" },
                 { [weak game] in Double(game?.settings.particles ?? 2) / 2 },

@@ -50,6 +50,10 @@ final class GameViewController: UIViewController {
 
         observeMice()
         observeKeyboard()
+        NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
+                                               object: nil, queue: .main) { [weak self] _ in
+            self?.runtime.memoryWarning()
+        }
     }
 
     override var canBecomeFirstResponder: Bool { true }

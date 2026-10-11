@@ -48,6 +48,9 @@ public struct Settings: Codable {
     public var playerName: String? = nil
     /// touch-drag look speed, 0…1 (nil = 0.5); separate from mouse sensitivity
     public var touchSensitivity: Double? = nil
+    /// 3D scene resolution as a fraction of the window, 0.5…1 (nil = auto:
+    /// full size on the Mac, adaptive on iOS); the UI always renders native
+    public var renderScale: Double? = nil
 
     public init() {}
 }

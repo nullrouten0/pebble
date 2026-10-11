@@ -35,6 +35,8 @@ final class IOSPlatform: PlatformHooks {
 
     /// passively cooled devices: cap at the panel rate, and treat the Mac's
     /// "unlimited" setting as just that
+    var adaptiveRenderScale: Bool { true }
+
     var maxFrameRate: Int? { controller?.view.window?.screen.maximumFramesPerSecond ?? 60 }
 
     func applyMaxFps(_ maxFps: Int) {

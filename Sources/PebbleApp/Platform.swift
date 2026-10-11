@@ -34,6 +34,10 @@ public protocol PlatformHooks: AnyObject {
     /// once a second: a status line the shell may show (the Mac window title)
     func showStatus(_ title: String)
 
+    /// "Auto" render scale adapts to GPU load and heat (passively cooled
+    /// devices); false = Auto means full resolution
+    var adaptiveRenderScale: Bool { get }
+
     /// a text field / chat / sign wants typing: raise the on-screen keyboard
     /// (true) or dismiss it (false). Typed text comes back via InputRouter.
     func setTextInputActive(_ active: Bool)
@@ -50,6 +54,7 @@ public extension PlatformHooks {
     func showStatus(_ title: String) {}
     var maxFrameRate: Int? { nil }
     func setTextInputActive(_ active: Bool) {}
+    var adaptiveRenderScale: Bool { false }
 }
 
 /// where debug hooks (bot logs, photo booth, scripted shots) drop files: /tmp
