@@ -2279,5 +2279,54 @@ do {
     check("wipe zones round-trip through JSON", back?.done == z2.done && back?.radius == z2.radius)
 }
 
+section("town structures (/place city, small_school, large_school)")
+do {
+    func key(_ x: Int, _ y: Int, _ z: Int) -> Int64 { (Int64(x + 4096) << 40) | (Int64(y + 4096) << 20) | Int64(z + 4096) }
+    func capture(_ id: String, _ variant: Int = 0) -> (Prefab, [Int64: UInt16])? {
+        guard let pf = capturePrefab(id, dim: 0, minY: -64, maxY: 320, biome: 1, variant: variant) else { return nil }
+        var m: [Int64: UInt16] = [:]
+        for (x, y, z, c) in pf.cells { m[key(x, y, z)] = c }
+        return (pf, m)
+    }
+    func count(_ m: [Int64: UInt16], _ name: String) -> Int {
+        let id = bid(name)
+        return m.values.filter { $0 >> 4 == id }.count
+    }
+    for (id, floors) in [("small_school", 1), ("large_school", 3)] {
+        guard let (pf, m) = capture(id) else { check("\(id) captures", false); continue }
+        check("\(id) captures", true)
+        // each floor: two partition walls carrying a 6×2 board seen from both rooms
+        check("\(id): \(floors) floor(s) of chalkboards", count(m, "black_concrete") == 24 * floors,
+              "got \(count(m, "black_concrete"))")
+        check("\(id): 4 classrooms per floor of desks", count(m, "oak_slab") == 48 * floors, "got \(count(m, "oak_slab"))")
+        check("\(id): sign over the door", pf.blockEntities.contains { $0.kind == "sign" })
+        if floors > 1 {
+            let stairs = pf.cells.filter { $0.3 >> 4 == bid("stone_brick_stairs") }
+            check("\(id): stair runs between every floor", stairs.count == (floors - 1) * 10, "got \(stairs.count)")
+            // two blocks of headroom over every step
+            let clear = stairs.allSatisfy { (x, y, z, _) in
+                (1...2).allSatisfy { dy in
+                    let c = m[key(x, y + dy, z)] ?? 0
+                    return c == 0 || bid("stone_brick_stairs") == c >> 4
+                }
+            }
+            check("\(id): headroom over every stair", clear)
+        }
+    }
+    if let (pf, m) = capture("city") {
+        check("city captures (\(pf.x1 - pf.x0 + 1) wide, \(pf.y1 - PREFAB_GROUND) tall)",
+              pf.x1 - pf.x0 + 1 == 107 && pf.y1 - PREFAB_GROUND > 40)
+        check("city has streets, crosswalks and lit floors",
+              count(m, "gray_concrete") > 3000 && count(m, "white_concrete") > 100 && count(m, "sea_lantern") > 100)
+        check("city buildings have ladders to the roof", count(m, "ladder") > 200)
+    } else {
+        check("city captures", false)
+    }
+    // a different variant lays the city out differently
+    if let (_, a) = capture("city", 0), let (_, b) = capture("city", 7) {
+        check("city variants differ", a.count != b.count || a != b)
+    }
+}
+
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

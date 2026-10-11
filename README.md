@@ -148,6 +148,7 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
 - **Structures you can place:**
   - Starters: `cabin`, `watchtower`, `bunker`, `farm`, `portal`
   - Landmarks: `giza_pyramid` (101 wide, with internal tunnels and chambers), `castle`, `lighthouse`, `windmill`, `treehouse`, `sky_island`
+  - Town: `city`, a 107-block-wide downtown: a 4×4 grid of glass, brick, stone and white towers (tallest in the middle) with lit floors and a ladder to every roof, plus streets with crosswalks and street lamps, and a park. `small_school` has 4 classrooms, and `large_school` has 3 floors of 4 with a stair tower. Each classroom has desks, a chalkboard and bookshelves. A different `variant` gives a different city.
   - Terrain: `mountain` pours a natural-looking peak about 160 blocks across and 80 tall (1.5× the pyramid) onto the land. Each column fills down through air, water and trees until it meets solid ground, so it buries whatever is under it (handy for covering up old builds) and blends into higher hills around it. It rises over a few seconds, lifting anyone standing there. A different `variant` gives a different mountain.
   - Every worldgen structure, such as villages, strongholds and end cities. A different `variant` number gives a different layout.
 - **Underground structures get a marked entrance.** A lit ladder shaft leads down from a flag pole that stands above the trees, and `/place` prints a `/tp` to it.

@@ -927,6 +927,11 @@ public final class GameCore {
             be.bees = Int(num("bees") ?? 3)
             be.honey = 0
             put(be)
+        case "sign":
+            let be = makeSignBE(x, y, z)
+            let lines = (str("text") ?? "").components(separatedBy: "|")
+            be.lines = (0..<4).map { $0 < lines.count ? lines[$0] : "" }
+            put(be)
         case "pot_plant":
             let be = BlockEntityData(type: "lectern", x: x, y: y, z: z)
             be.plant = str("plant") ?? "poppy"

@@ -74,6 +74,22 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   - It rises over a few seconds, lifting anyone standing where it grows. Like
     any `/place`, Cmd+Z undoes it.
 
+### `/place city`, `small_school`, `large_school`
+- **`city`** builds a dense downtown 107 blocks across on a 4×4 grid of streets.
+  - The streets have dashed center lines, crosswalks and street lamps.
+  - The buildings are glass, brick, stone and white, rising to about 90 blocks
+    in the middle. Floors are lit, storefronts have doors front and back, and
+    a ladder runs to every roof.
+  - Rooftops have antennas, water towers, AC units and gardens. One block is a
+    park with a fountain.
+  - A different `variant` gives a different city.
+- **`small_school`** has 4 classrooms off a central hall. **`large_school`**
+  has 3 floors of 4 rooms with a switchback stair tower.
+  - Each classroom has rows of desks and chairs, a chalkboard, a teacher's
+    desk and bookshelves.
+  - A sign hangs over the front door, with a flag out front.
+- `/place` structures can now carry signs.
+
 ### Fixes
 - **Messages no longer show "?" for dashes and ellipses.** The in-game font is
   ASCII-only, so "—", "…" and "·" in chat lines, the loading screens and the
