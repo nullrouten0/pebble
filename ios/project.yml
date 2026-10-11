@@ -32,5 +32,17 @@ targets:
     dependencies:
       - package: Pebble
         product: PebbleApp
-    scheme:
-      environmentVariables: {}
+schemes:
+  PebbleiOS:
+    build:
+      targets:
+        PebbleiOS: all
+    # ⌘R runs the optimized build: unoptimized Swift makes chunk gen,
+    # lighting and meshing several times slower, which reads as stutter
+    # whenever new terrain streams in
+    run:
+      config: Release
+    profile:
+      config: Release
+    archive:
+      config: Release
