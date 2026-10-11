@@ -63,7 +63,9 @@ final class Slider: Button {
 }
 
 final class TextField {
-    var text = ""
+    /// setting the text (clearing a search, recalling a name) keeps the caret
+    /// inside it — a stale caret past the end traps on the next keystroke
+    var text = "" { didSet { caret = min(max(caret, 0), text.count) } }
     var focused = false
     var caret = 0
     var maxLength = 64
@@ -78,18 +80,21 @@ final class TextField {
         mx >= x && mx < x + w && my >= y && my < y + h
     }
     func type(_ ch: String) {
-        if text.count < maxLength {
-            let i = text.index(text.startIndex, offsetBy: caret)
-            text.insert(contentsOf: ch, at: i)
-            caret += ch.count
-        }
+        caret = min(max(caret, 0), text.count)
+        guard text.count < maxLength else { return }
+        let before = text.count
+        text.insert(contentsOf: ch, at: text.index(text.startIndex, offsetBy: caret))
+        // advance by what the text actually grew: an accent or emoji
+        // modifier from the iOS keyboard can merge into its neighbor
+        caret = min(text.count, caret + max(0, text.count - before))
+        if text.count > maxLength { text = String(text.prefix(maxLength)) }
     }
     func backspace() {
-        if caret > 0 {
-            let i = text.index(text.startIndex, offsetBy: caret - 1)
-            text.remove(at: i)
-            caret -= 1
-        }
+        caret = min(max(caret, 0), text.count)
+        guard caret > 0 else { return }
+        let i = text.index(text.startIndex, offsetBy: caret - 1)
+        caret -= 1   // before the remove, whose didSet would clamp it too
+        text.remove(at: i)
     }
 }
 
