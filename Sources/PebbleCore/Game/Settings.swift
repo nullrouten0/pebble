@@ -68,10 +68,16 @@ public let DEFAULT_KEYBINDS: [String: String] = [
 
 public func defaultSettings() -> Settings { Settings() }
 
-/// ~/Library/Application Support/Pebble — created on first touch
+/// ~/Library/Application Support/Pebble — created on first touch.
+/// Test hook: PEBBLE_HOME=<dir> keeps saves/settings out of the real profile.
 public func vcSupportDir() -> URL {
-    let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let dir = base.appendingPathComponent("Pebble", isDirectory: true)
+    let dir: URL
+    if let home = ProcessInfo.processInfo.environment["PEBBLE_HOME"], !home.isEmpty {
+        dir = URL(fileURLWithPath: home, isDirectory: true)
+    } else {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        dir = base.appendingPathComponent("Pebble", isDirectory: true)
+    }
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     return dir
 }
