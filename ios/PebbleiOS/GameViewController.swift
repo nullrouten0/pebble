@@ -14,8 +14,12 @@ final class GameViewController: UIViewController {
     private let textInput = TextInputView(frame: .zero)
     private var textActive = false
 
-    // keyboard modifier state (iOS reports modifiers as separate presses)
-    private var shiftDown = false, ctrlDown = false, cmdDown = false
+    // keyboard modifier state (iOS reports modifiers as separate presses);
+    // tracked per key so releasing one Shift while the other is held keeps it
+    private var heldModifiers: Set<Int> = []
+    private var shiftDown: Bool { heldModifiers.contains(0xE1) || heldModifiers.contains(0xE5) }
+    private var ctrlDown: Bool { heldModifiers.contains(0xE0) || heldModifiers.contains(0xE4) }
+    private var cmdDown: Bool { heldModifiers.contains(0xE3) || heldModifiers.contains(0xE7) }
 
     override func loadView() {
         guard let device = MTLCreateSystemDefaultDevice() else { fatalError("no Metal device") }
@@ -117,7 +121,7 @@ final class GameViewController: UIViewController {
     // MARK: lifecycle (from SceneDelegate)
 
     func appWillResignActive() {
-        shiftDown = false; ctrlDown = false; cmdDown = false
+        heldModifiers.removeAll()
         runtime.didResignActive()
         mtkView.isPaused = true
     }
@@ -271,14 +275,13 @@ final class GameViewController: UIViewController {
             runtime.touch.hardwareInputUsed()
             let usage = key.keyCode.rawValue
             if let m = modifierKey(usage) {
-                setModifier(m, true)
+                setModifier(m, usage, true)
                 continue
             }
             var code = HID_KEY_MAP[usage] ?? ""
             // while the text view is up, it receives typing (insertText /
             // deleteBackward) — only shortcuts and non-text keys come here
-            if textActive && !cmdDown && !ctrlDown && (code == "Enter" || code == "Backspace" || code == "NumpadEnter"
-                || key.characters.contains { !$0.isNewline && ($0.asciiValue.map { $0 >= 32 } ?? true) }) {
+            if textActive && !cmdDown && !ctrlDown && TEXT_KEY_CODES.contains(code) {
                 passUp.insert(p)
                 continue
             }
@@ -303,7 +306,7 @@ final class GameViewController: UIViewController {
             handled = true
             let usage = key.keyCode.rawValue
             if let m = modifierKey(usage) {
-                setModifier(m, false)
+                setModifier(m, usage, false)
                 continue
             }
             if let code = HID_KEY_MAP[usage] { runtime.input.keyUp(code) }
@@ -315,12 +318,8 @@ final class GameViewController: UIViewController {
         pressesEnded(presses, with: event)
     }
 
-    private func setModifier(_ m: ModifierKey, _ down: Bool) {
-        switch m {
-        case .shift: shiftDown = down
-        case .control: ctrlDown = down
-        case .command: cmdDown = down; return
-        }
-        runtime.input.modifiers(shift: shiftDown, ctrl: ctrlDown)
+    private func setModifier(_ m: ModifierKey, _ usage: Int, _ down: Bool) {
+        if down { heldModifiers.insert(usage) } else { heldModifiers.remove(usage) }
+        if m != .command { runtime.input.modifiers(shift: shiftDown, ctrl: ctrlDown) }
     }
 }

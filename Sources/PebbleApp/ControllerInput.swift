@@ -50,9 +50,12 @@ final class ControllerInput {
         let rx = axis(pad.rightThumbstick.xAxis.value), ry = axis(pad.rightThumbstick.yAxis.value)
         let pressed = now.subtracting(held), released = held.subtracting(now)
         held = now
-        if !pressed.isEmpty || lx != 0 || ly != 0 || rx != 0 || ry != 0 {
-            rt.touch.hardwareInputUsed()
+        // a button, or a stick pushed well past any drift, means the player
+        // picked up the pad: hide the touch controls
+        let pushed = [pad.leftThumbstick, pad.rightThumbstick].contains {
+            abs($0.xAxis.value) > 0.5 || abs($0.yAxis.value) > 0.5
         }
+        if !pressed.isEmpty || pushed { rt.touch.hardwareInputUsed() }
 
         // releases first: a key held in-world must let go even if a screen opened
         for b in released {
@@ -167,6 +170,9 @@ final class ControllerInput {
         if held.contains("lt") { rt.game.mouseUp(2) }
         held.removeAll()
         if stickMoving { rt.game.analogMove = nil; stickMoving = false }
+        // a dead battery mid-click must not leave a slider grabbed
+        if cursorDown { cursorDown = false; rt.input.pointerUp(x: cursorX, y: cursorY, button: 0) }
+        if cursorRightDown { cursorRightDown = false; rt.input.pointerUp(x: cursorX, y: cursorY, button: 2) }
         cursorVisible = false
     }
 

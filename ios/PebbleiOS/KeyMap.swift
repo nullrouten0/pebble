@@ -28,6 +28,18 @@ let HID_KEY_MAP: [Int: String] = {
     return m
 }()
 
+/// keys that type text — while the soft-keyboard view is first responder it
+/// receives these via insertText/deleteBackward, so the press path skips them
+let TEXT_KEY_CODES: Set<String> = {
+    var s: Set<String> = ["Space", "Minus", "Equal", "BracketLeft", "BracketRight", "Backslash",
+                          "Semicolon", "Quote", "Backquote", "Comma", "Period", "Slash", "IntlBackslash",
+                          "Enter", "NumpadEnter", "Backspace", "NumpadDecimal", "NumpadDivide",
+                          "NumpadMultiply", "NumpadSubtract", "NumpadAdd", "NumpadEqual"]
+    for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" { s.insert("Key\(c)") }
+    for i in 0...9 { s.insert("Digit\(i)"); s.insert("Numpad\(i)") }
+    return s
+}()
+
 /// modifier keys arrive as their own presses on iOS (no flagsChanged)
 enum ModifierKey { case shift, control, command }
 

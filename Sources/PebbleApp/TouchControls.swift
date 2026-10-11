@@ -237,7 +237,9 @@ public final class TouchControls {
         case .jump: keyDown(key("jump"))
         case .sneak:
             if game.player?.flying == true {
-                keyDown(key("sneak"))   // flying: hold to descend
+                // flying: hold to descend. A sneak toggled on the ground
+                // becomes this press, so letting go releases it
+                if sneakToggled { sneakToggled = false } else { keyDown(key("sneak")) }
             } else {
                 sneakToggled.toggle()
                 if sneakToggled { keyDown(key("sneak")) } else { rt.input.keyUp(key("sneak")) }
@@ -429,7 +431,19 @@ public final class TouchControls {
     func frame() {
         guard enabled else { return }
         let t = now()
-        if ui.hasScreen() { releaseWorldTouches() }
+        if ui.hasScreen() {
+            releaseWorldTouches()
+        } else {
+            // the screen closed under a finger: that finger must not go on to
+            // click (or long-press) into the world
+            for (id, e) in touches {
+                switch e.role {
+                case .pointer, .screenButton: touches[id] = (.ignored, e.x, e.y)
+                default: break
+                }
+            }
+            dragFrom = nil
+        }
         for (id, var e) in touches {
             switch e.role {
             case .look(let st, let sx, let sy, let moved, nil) where !moved && t - st >= 0.25:

@@ -102,12 +102,15 @@ final class AudioEngineM {
     }
 
     /// app backgrounded: stop pulling render callbacks
+    private var suspended = false
     func suspend() {
         guard inited else { return }
+        suspended = true
         engine.pause()
     }
     func resume() {
         guard inited else { return }
+        suspended = false
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setActive(true)
         #endif
@@ -127,13 +130,18 @@ final class AudioEngineM {
         let nc = NotificationCenter.default
         sessionObservers.append(nc.addObserver(forName: AVAudioSession.interruptionNotification,
                                                object: session, queue: .main) { [weak self] note in
-            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+            guard let self, let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
                   AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
-            self?.resume()
+            // only when the system says so, and never while we're backgrounded
+            // (foregrounding resumes us anyway)
+            let opts = AVAudioSession.InterruptionOptions(
+                rawValue: note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
+            if opts.contains(.shouldResume) && !self.suspended { self.resume() }
         })
         sessionObservers.append(nc.addObserver(forName: .AVAudioEngineConfigurationChange,
                                                object: engine, queue: .main) { [weak self] _ in
-            self?.rewireForCurrentRoute()
+            guard let self, !self.suspended else { return }
+            self.rewireForCurrentRoute()
         })
     }
 
