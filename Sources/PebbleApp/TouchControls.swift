@@ -4,8 +4,9 @@
 // In-world (crosshair-style, so the engine's aim ray is unchanged):
 //   left side    floating move stick; past the outer ring sprints
 //   right side   drag to look; tap = use/place (attack if a mob is under the
-//                crosshair); hold still ~¼ s = break/attack (or use, for
-//                food, bows, shields…), and keep dragging to aim while held
+//                crosshair); rest the finger ~¼ s — on touching down or after
+//                dragging to aim — = break/attack (or use, for food, bows,
+//                shields…), and keep dragging to aim while held
 //   buttons      jump (double-tap flies), sneak toggle, drop, offhand swap,
 //                inventory, chat, perspective, pause; tap a hotbar slot to
 //                select it, hold one to drop it
@@ -21,7 +22,10 @@ import PebbleCore
 public final class TouchControls {
     private unowned let rt: GameRuntime
     /// the shell has a touch screen (off on the Mac: nothing is drawn)
-    public var enabled = false
+    public var enabled = false {
+        // touch players see a block erode before it breaks in creative
+        didSet { rt.game?.creativeBreakDelayDefault = enabled ? 0.4 : 0 }
+    }
     /// shown until a keyboard, mouse or controller is used; the next touch
     /// brings it back
     private(set) var visible = true
@@ -97,13 +101,31 @@ public final class TouchControls {
 
     private enum Role {
         case stick(originX: Double, originY: Double)
-        case look(startT: Double, startX: Double, startY: Double, moved: Bool, holding: Int?)
+        case look(LookTouch)
         case button(WorldButton)
         case hotbar(slot: Int, startT: Double, dropped: Bool)
         case pointer(startT: Double, startX: Double, startY: Double, phase: PointerPhase)
         case screenButton(ScreenButton)
         case ignored
     }
+    /// a right-side finger: looks when dragged, digs/uses once it rests
+    private struct LookTouch {
+        var startT: Double
+        var startX: Double, startY: Double
+        /// dragged past the tap slop: turning the camera, no tap on release
+        var moved = false
+        /// where the finger last settled, and since when it has stayed there
+        var restX: Double, restY: Double, restT: Double
+        /// the mouse button held down while the finger rests (0 break, 2 use)
+        var holding: Int?
+    }
+    /// past this a touch is a drag, not a tap (UI units)
+    private static let tapSlop = 6.0
+    /// drift within this still counts as resting (a pressed finger rolls)
+    private static let restSlop = 9.0
+    /// rest this long to start breaking/using
+    private static let holdDelay = 0.25
+
     private enum PointerPhase { case pending, dragging, scrolling, rightHeld }
     /// the slot a drag picked its stack up from (drag-and-drop on release)
     private var dragFrom: SlotDef?
@@ -146,13 +168,16 @@ public final class TouchControls {
         switch t.role {
         case .stick(let ox, let oy):
             updateStick(gx - ox, gy - oy)
-        case .look(let st, let sx, let sy, var moved, let holding):
-            if !moved && hypot(gx - sx, gy - sy) > 4 { moved = true }
-            if moved || holding != nil {
+        case .look(var l):
+            if !l.moved && hypot(gx - l.startX, gy - l.startY) > Self.tapSlop { l.moved = true }
+            if l.moved || l.holding != nil {
                 let k = 1.5 + (game.settings.touchSensitivity ?? 0.5) * 4
                 rt.input.look(dx: dx * k, dy: dy * k)
             }
-            t.role = .look(startT: st, startX: sx, startY: sy, moved: moved, holding: holding)
+            if hypot(gx - l.restX, gy - l.restY) > Self.restSlop {
+                l.restX = gx; l.restY = gy; l.restT = now()
+            }
+            t.role = .look(l)
         case .pointer(let st, let sx, let sy, var phase):
             phase = movePointer(phase, gx, gy, dy, sx, sy)
             t.role = .pointer(startT: st, startX: sx, startY: sy, phase: phase)
@@ -199,7 +224,8 @@ public final class TouchControls {
                 return .stick(originX: gx, originY: gy)
             }
         }
-        return .look(startT: now(), startX: gx, startY: gy, moved: false, holding: nil)
+        let t = now()
+        return .look(LookTouch(startT: t, startX: gx, startY: gy, restX: gx, restY: gy, restT: t))
     }
 
     private var stickTouch: Int? {
@@ -267,10 +293,10 @@ public final class TouchControls {
             game.analogMove = nil
             lastStick = (0, 0)
             if sprinting { sprinting = false; rt.input.keyUp(key("sprint")) }
-        case .look(let st, _, _, let moved, let holding):
-            if let b = holding {
+        case .look(let l):
+            if let b = l.holding {
                 game.mouseUp(b)
-            } else if !moved && !cancelled && now() - st < 0.3 && !ui.hasScreen() {
+            } else if !l.moved && !cancelled && now() - l.startT < 0.3 && !ui.hasScreen() {
                 // tap: hit what's under the crosshair, else use/place
                 let b = game.crosshairOnEntity ? 0 : 2
                 game.mouseDown(b)
@@ -446,11 +472,14 @@ public final class TouchControls {
         }
         for (id, var e) in touches {
             switch e.role {
-            case .look(let st, let sx, let sy, let moved, nil) where !moved && t - st >= 0.25:
-                // held still: start breaking (or using a hold-to-use item)
+            case .look(var l) where l.holding == nil && t - l.restT >= Self.holdDelay:
+                // rested: start breaking (or using a hold-to-use item) until
+                // the finger lifts; dragging from here aims the dig
                 let b = game.heldItemUsesOnHold ? 2 : 0
                 game.mouseDown(b)
-                e.role = .look(startT: st, startX: sx, startY: sy, moved: moved, holding: b)
+                l.holding = b
+                l.moved = true
+                e.role = .look(l)
             case .hotbar(let slot, let st, false) where t - st >= 0.5:
                 tapKey(key("drop"))
                 e.role = .hotbar(slot: slot, startT: st, dropped: true)

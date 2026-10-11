@@ -255,6 +255,11 @@ public final class GameCore {
     private var rightDown = false
     private var useCooldown = 0
     private var breakCooldown = 0
+    /// creative dig time when settings.creativeBreakDelay is unset: instant
+    /// with a mouse, a visible erode on touch screens (the shell sets it)
+    public var creativeBreakDelayDefault = 0.0
+    /// seconds a creative-mode block takes to break (0 = instant)
+    public var creativeBreakDelay: Double { settings.creativeBreakDelay ?? creativeBreakDelayDefault }
 
     // infinity wipe (Systems/InfinityWipe.swift)
     /// every wipe fired in this world, saved with it
@@ -2086,10 +2091,36 @@ public final class GameCore {
             return
         }
         if p.gameMode == GameMode.creative {
-            if breakCooldown <= 0 {
+            let delayTicks = Int((creativeBreakDelay * 1000 / TICK_MS).rounded())
+            if delayTicks <= 0 {
+                if breakCooldown <= 0 {
+                    netClient?.sendBreak(hit.x, hit.y, hit.z)
+                    finishBreaking(interactCtx(), hit.x, hit.y, hit.z)
+                    breakCooldown = 5
+                }
+                return
+            }
+            // a short erode with the crack overlay, so the player sees what
+            // they're digging and can look away (resets) or let go to keep it
+            if breakCooldown > 0 {
+                p.breakingProgress = -1
+                return
+            }
+            if p.breakingProgress < 0 || p.breakingX != hit.x || p.breakingY != hit.y || p.breakingZ != hit.z {
+                p.breakingX = hit.x; p.breakingY = hit.y; p.breakingZ = hit.z
+                p.breakingProgress = 0
+            }
+            p.breakingProgress += 1 / Double(delayTicks)
+            p.attackAnim = 1
+            if w.time % 4 == 0 {
+                host?.playSound("block.\(def.sound).hit", Double(hit.x) + 0.5, Double(hit.y) + 0.5, Double(hit.z) + 0.5, 0.25, 0.6)
+                w.hooks.addParticles("block", hit.px, hit.py, hit.pz, 1, 0.12, hit.cell)
+            }
+            if p.breakingProgress >= 1 - 1e-9 {
                 netClient?.sendBreak(hit.x, hit.y, hit.z)
                 finishBreaking(interactCtx(), hit.x, hit.y, hit.z)
-                breakCooldown = 5
+                p.breakingProgress = -1
+                breakCooldown = 1
             }
             return
         }
@@ -2401,6 +2432,7 @@ public final class GameCore {
         guard inWorld, !(host?.hasScreen() ?? false) else { return }
         if button == 0 {
             leftDown = true
+            player?.breakingProgress = -1   // a fresh press starts a fresh crack
             doAttack()
         } else if button == 1 {
             pickBlock()

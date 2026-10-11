@@ -51,6 +51,9 @@ public struct Settings: Codable {
     /// 3D scene resolution as a fraction of the window, 0.5…1 (nil = auto:
     /// full size on the Mac, adaptive on iOS); the UI always renders native
     public var renderScale: Double? = nil
+    /// seconds a creative-mode block takes to break, 0…1 (0 = instant; nil =
+    /// the platform default: instant on the Mac, 0.4 s on touch screens)
+    public var creativeBreakDelay: Double? = nil
 
     public init() {}
 }

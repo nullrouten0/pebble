@@ -16,6 +16,14 @@ only lightly polished.
   buttons, long-press for right-click in inventories), hardware keyboard and
   mouse, and game controllers all work. Mac↔iPad LAN games work because
   both apps are always the same version.
+- **Hold to dig, then keep digging.** Rest a finger on the look area for a
+  quarter second — right away or after dragging to aim — and it digs for as
+  long as the finger stays down, aiming as you drag. A pressed finger that
+  rolls slightly no longer cancels the dig.
+- **Creative blocks erode before they break.** A crack grows over the block
+  you're digging, so you can see it and look away or let go to keep it.
+  **Options → Controls → Creative Dig** sets the time: 0.4 s by default on
+  touch screens, instant on the Mac (where it was before), up to 1 s.
 - **Game controllers on the Mac too.** Plug in an Xbox, PlayStation or MFi
   controller: sticks move and look, triggers break and place, and the left
   stick drives a cursor in menus.

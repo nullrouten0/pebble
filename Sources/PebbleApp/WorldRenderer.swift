@@ -1633,7 +1633,7 @@ final class WorldRenderer {
     // ---- breaking crack overlay ----------------------------------------------------
     private func drawCrack(_ enc: MTLRenderCommandEncoder, game: GameCore, camPos: SIMD3<Double>, uni: inout ChunkSharedU) {
         guard let p = game.player else { return }
-        if p.breakingProgress < 0 || p.gameMode == GameMode.creative {
+        if p.breakingProgress < 0 {
             overlayMesh = nil
             overlayStage = -1
             return

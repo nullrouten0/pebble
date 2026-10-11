@@ -2335,7 +2335,7 @@ do {
 }
 
 // ---------------------------------------------------------------------------
-section("analog movement (touch / controller input)")
+section("analog movement and creative dig (touch / controller input)")
 do {
     // a real GameCore on a scratch profile: the stick path must move the
     // player exactly like the keys, and stay inert when unset
@@ -2345,8 +2345,8 @@ do {
         try? FileManager.default.removeItem(atPath: home)
         unsetenv("PEBBLE_HOME")
     }
-    /// settle a fresh world's player on the ground, apply `input`, walk 30 ticks
-    func walk(_ input: (GameCore) -> Void) -> (dx: Double, dz: Double)? {
+    /// settle a fresh creative world's player on the ground
+    func settled() -> GameCore? {
         let g = GameCore()
         g.createWorld(name: "smoke", seedText: "12345", mode: GameMode.creative, difficulty: 0)
         var grounded = 0
@@ -2357,6 +2357,11 @@ do {
             RunLoop.main.run(until: Date().addingTimeInterval(0.005))
             grounded = g.player.onGround ? grounded + 1 : 0
         }
+        return g
+    }
+    /// settle, apply `input`, walk 30 ticks
+    func walk(_ input: (GameCore) -> Void) -> (dx: Double, dz: Double)? {
+        guard let g = settled() else { return nil }
         let x0 = g.player.x, z0 = g.player.z
         input(g)
         for _ in 0..<30 { _ = g.frame(dtMs: 50) }
@@ -2377,6 +2382,34 @@ do {
               hypot(idle.dx, idle.dz) < 1e-9 && hypot(none.dx, none.dz) < 1e-9, "idle \(idle) none \(none)")
     } else {
         check("analog movement world loads", false)
+    }
+
+    // creative dig delay: looking straight down, count ticks until the block
+    // underfoot is gone (nil = still there after `limit`)
+    func ticksToBreak(_ delay: Double?, interrupt: Int? = nil, limit: Int = 30) -> Int?? {
+        guard let g = settled() else { return .none }
+        defer { g.exitToTitle() }
+        g.settings.creativeBreakDelay = delay
+        let p = g.player!
+        p.pitch = .pi / 2 - 0.01
+        let bx = Int(floor(p.x)), by = Int(floor(p.y)) - 1, bz = Int(floor(p.z))
+        let id = g.world.getBlockId(bx, by, bz)
+        g.mouseDown(0)
+        for t in 1...limit {
+            if t == interrupt { g.mouseUp(0); g.mouseDown(0) }   // let go, press again
+            _ = g.frame(dtMs: 50)
+            if g.world.getBlockId(bx, by, bz) != id { return .some(t) }
+        }
+        return .some(nil)
+    }
+    if case .some(let instant) = ticksToBreak(0),
+       case .some(let erode) = ticksToBreak(0.4),
+       case .some(let regrip) = ticksToBreak(0.4, interrupt: 6) {
+        check("creative dig 0 breaks on the first tick", instant == 1, "\(String(describing: instant))")
+        check("creative dig 0.4 s takes 8 ticks", erode == 8, "\(String(describing: erode))")
+        check("letting go restarts the erode", regrip == 6 + 8 - 1, "\(String(describing: regrip))")
+    } else {
+        check("creative dig world loads", false)
     }
 }
 

@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/thebriangao
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `488 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `491 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 
@@ -85,7 +85,7 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 - `PEBBLE_PHOTOBOOTH=1` (+ `PEBBLE_BOOTH_MOBS=cow,sheep` / `PEBBLE_BOOTH_BLOCKS=-`) — renders every mob/block to PNGs for visual review.
 - `PEBBLE_PROF=1` — per-stage timings for load and tick.
 - `PEBBLE_HOME=/tmp/scratch` — saves and settings go there instead of your real profile.
-- `PEBBLE_TOUCH=1` — shows the touch controls on the Mac. `PEBBLE_CMD` can drive them with `#tdown ID X Y`, `#tmove ID X Y` and `#tup ID X Y` (UI units); `#pos` prints the player's position.
+- `PEBBLE_TOUCH=1` — shows the touch controls on the Mac. `PEBBLE_CMD` can drive them with `#tdown ID X Y`, `#tmove ID X Y` and `#tup ID X Y` (UI units); `#pos` prints the player's position and the block under the crosshair (with its break progress).
 - On iOS, pass any of these to the app as `SIMCTL_CHILD_<NAME>=…` in front of `xcrun simctl launch`.
 
 ## Scope & conduct

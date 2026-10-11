@@ -593,8 +593,9 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                 }))
             toggle("Invert Y", { game.settings.invertY }, { game.settings.invertY = $0 }, 1)
-            if gRuntime?.touch.enabled == true {
-                y += 22
+            y += 22
+            let touch = gRuntime?.touch.enabled == true
+            if touch {
                 sliders.append(Slider(cx - 160, y, W, 18,
                     { [weak game] in "Touch Look: \(Int(((game?.settings.touchSensitivity ?? 0.5) * 200).rounded()))%" },
                     { [weak game] in game?.settings.touchSensitivity ?? 0.5 },
@@ -603,6 +604,17 @@ final class SettingsScreen: Screen {
                         game?.applySettings()
                     }))
             }
+            // how long a block takes to break in creative (0 = instant)
+            sliders.append(Slider(cx - 160 + (touch ? GAP : 0), y, W, 18,
+                { [weak game] in
+                    let d = game?.creativeBreakDelay ?? 0
+                    return d <= 0 ? "Creative Dig: Instant" : String(format: "Creative Dig: %.2fs", d)
+                },
+                { [weak game] in game?.creativeBreakDelay ?? 0 },
+                { [weak game] v in
+                    game?.settings.creativeBreakDelay = (v * 20).rounded() / 20
+                    game?.applySettings()
+                }))
             y += 26
             let binds: [(String, String)] = [
                 ("forward", "Forward"), ("back", "Back"), ("left", "Left"), ("right", "Right"),

@@ -620,6 +620,9 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                     if c == "#pos" {
                         print(String(format: "[pos] %.3f %.3f %.3f yaw %.3f pitch %.3f slot %d%@", p.x, p.y, p.z, p.yaw, p.pitch,
                                      p.selectedSlot, ui.current().map { " screen \(type(of: $0))" } ?? ""))
+                        if let b = game.targetedBlock {
+                            print("[pos] target \(blockDefs[b.cell >> 4].name) at \(b.x) \(b.y) \(b.z), breaking \(p.breakingProgress)")
+                        }
                         continue
                     }
                     if c.hasPrefix("#key") {
