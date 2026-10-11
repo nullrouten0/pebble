@@ -6,6 +6,12 @@ import Foundation
 import simd
 import PebbleCore
 
+// PEBBLE_CWD=<repo> lets runners that can't set the working directory
+// (simctl spawn in the iOS Simulator) still find goldens/
+if let cwd = ProcessInfo.processInfo.environment["PEBBLE_CWD"] {
+    FileManager.default.changeCurrentDirectoryPath(cwd)
+}
+
 var passed = 0
 var failed = 0
 

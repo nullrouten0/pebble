@@ -3,6 +3,21 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## Unreleased — iPad and iPhone (in progress, `ios-port` branch)
+
+- **Pebble runs on iPad and iPhone.** The same game, built from the same
+  repo: `pebble ios run` launches it in the simulator. Touch controls (move
+  stick, drag to look, tap to place, hold to break, jump/sneak/inventory
+  buttons, long-press for right-click in inventories), hardware keyboard and
+  mouse, and game controllers all work. Mac↔iPad LAN games work because
+  both apps are always the same version.
+- **Game controllers on the Mac too.** Plug in an Xbox, PlayStation or MFi
+  controller: sticks move and look, triggers break and place, and the left
+  stick drives a cursor in menus.
+- **Chunk generation is about 4–5× faster on many-core Macs.** Noise lookups no
+  longer fight over a shared reference count, so chunk generation scales with
+  your cores instead of slowing down past six threads. Same seeds, same worlds.
+
 ## 1.2.0 — 2026-10-10 — LAN multiplayer
 
 ### Play together over LAN

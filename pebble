@@ -181,7 +181,24 @@ cmd_update() {
 }
 
 cmd_run()  { open "$APP" 2>/dev/null || die "Pebble isn't installed yet — run: pebble install"; }
-cmd_test() { need_swift; (cd "$REPO" && "$PEBBLE_SWIFT" run -c release pebsmoke); }
+cmd_test() {
+    if [ "${1:-}" = "ios" ]; then cmd_test_ios; return; fi
+    need_swift; (cd "$REPO" && "$PEBBLE_SWIFT" run -c release pebsmoke)
+}
+
+# the golden suite inside the iOS Simulator runtime (same seeds, same worlds)
+cmd_test_ios() {
+    xcodebuild -version >/dev/null 2>&1 || die "pebble test ios needs full Xcode"
+    local udid; udid="$(ios_sim_udid)" || true
+    [ -n "$udid" ] || die "no simulator named '$IOS_SIM' — set PEBBLE_SIM, or add one in Xcode"
+    say "Building pebsmoke for the iOS Simulator…"
+    (cd "$REPO" && xcodebuild -scheme pebsmoke -configuration Release -destination "id=$udid" \
+        -derivedDataPath "$IOS_BUILD/pebsmoke" -quiet build) || die "pebsmoke build failed"
+    xcrun simctl boot "$udid" 2>/dev/null || true
+    xcrun simctl bootstatus "$udid" -b >/dev/null
+    SIMCTL_CHILD_PEBBLE_CWD="$REPO" xcrun simctl spawn "$udid" \
+        "$IOS_BUILD/pebsmoke/Build/Products/Release-iphonesimulator/pebsmoke"
+}
 
 # ---------------------------------------------------------------------------
 # iOS — opt-in: needs full Xcode and XcodeGen; the Mac flow never touches it
@@ -247,7 +264,7 @@ case "${1:-}" in
     install) cmd_install ;;
     update)  cmd_update ;;
     run)     cmd_run ;;
-    test)    cmd_test ;;
+    test)    shift; cmd_test "$@" ;;
     ios)     shift; cmd_ios "$@" ;;
     *)
         echo "${BOLD}pebble${RESET} — one-command install for the Pebble app"
@@ -255,7 +272,7 @@ case "${1:-}" in
         echo "  ./pebble install    build from source and install ~/Applications/$APP_NAME.app"
         echo "  pebble update       pull the latest version and update the live app"
         echo "  pebble run          launch Pebble"
-        echo "  pebble test         run the golden test suite"
+        echo "  pebble test         run the golden test suite (pebble test ios: in the iOS Simulator)"
         echo "  pebble ios          generate + open the iOS Xcode project (ios build | ios run: simulator)"
         ;;
 esac
