@@ -15,7 +15,9 @@ public let ATTACK_REACH = 3.0
 
 let SAVE_INTERVAL_TICKS = 1200          // 60 s autosave
 let GEN_RADIUS_PAD = 1                  // generate one ring beyond render distance
-let MAX_GEN_INFLIGHT = 24
+// ~2 jobs per core keeps the gen queue fed across the main-thread hand-off
+// (capped at 32 on big Macs; 20 on a 10-core iPad, 12 on a 6-core iPhone)
+let MAX_GEN_INFLIGHT = max(8, min(32, ProcessInfo.processInfo.activeProcessorCount * 2))
 let MAX_MESH_INFLIGHT = 26
 let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 

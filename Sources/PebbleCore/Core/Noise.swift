@@ -4,11 +4,19 @@
 
 import Foundation
 
-private let GRAD3: [Double] = [
-    1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0,
-    1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, -1,
-    0, 1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1,
-]
+// Lookup tables live in raw buffers, not Swift arrays: gen threads share one
+// generator, and every array read retains/releases the buffer — an atomic on a
+// shared refcount that serialized chunk gen above ~4 threads.
+private let GRAD3_TABLE: UnsafeMutablePointer<Double> = {
+    let g: [Double] = [
+        1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1, 0,
+        1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, -1,
+        0, 1, 1, 0, -1, 1, 0, 1, -1, 0, -1, -1,
+    ]
+    let p = UnsafeMutablePointer<Double>.allocate(capacity: g.count)
+    p.initialize(from: g, count: g.count)
+    return p
+}()
 
 private let F2 = 0.5 * (3.0.squareRoot() - 1)
 private let G2 = (3 - 3.0.squareRoot()) / 6
@@ -16,8 +24,9 @@ private let F3 = 1.0 / 3.0
 private let G3 = 1.0 / 6.0
 
 public final class SimplexNoise {
-    private var perm = [Int](repeating: 0, count: 512)
-    private var permMod12 = [Int](repeating: 0, count: 512)
+    private let perm = UnsafeMutablePointer<Int>.allocate(capacity: 512)
+    private let permMod12 = UnsafeMutablePointer<Int>.allocate(capacity: 512)
+    private let GRAD3 = UnsafePointer(GRAD3_TABLE)
 
     public init(_ seed: UInt32) {
         var rng = RandomX(seed)
@@ -33,6 +42,11 @@ public final class SimplexNoise {
             perm[k] = p[k & 255]
             permMod12[k] = perm[k] % 12
         }
+    }
+
+    deinit {
+        perm.deallocate()
+        permMod12.deallocate()
     }
 
     public func noise2(_ xin: Double, _ yin: Double) -> Double {
@@ -118,8 +132,12 @@ public final class SimplexNoise {
 /// fractal brownian motion over simplex octaves
 public final class FBM {
     public let octaves: [SimplexNoise]
-    private let amps: [Double]
-    private let freqs: [Double]
+    // raw mirrors of octaves/amps/freqs for the hot loops (see GRAD3_TABLE);
+    // `octaves` keeps the noise objects alive, so the refs here are unretained
+    private let octRefs: UnsafeMutablePointer<Unmanaged<SimplexNoise>>
+    private let amps: UnsafeMutablePointer<Double>
+    private let freqs: UnsafeMutablePointer<Double>
+    private let count: Int
     private let norm: Double
 
     public init(_ seed: UInt32, _ numOctaves: Int, _ baseFreq: Double, lacunarity: Double = 2, persistence: Double = 0.5) {
@@ -136,24 +154,38 @@ public final class FBM {
             freq *= lacunarity
         }
         octaves = o
-        amps = a
-        freqs = f
+        count = numOctaves
+        octRefs = .allocate(capacity: max(1, numOctaves))
+        amps = .allocate(capacity: max(1, numOctaves))
+        freqs = .allocate(capacity: max(1, numOctaves))
+        for i in 0..<numOctaves {
+            octRefs[i] = Unmanaged.passUnretained(o[i])
+            amps[i] = a[i]
+            freqs[i] = f[i]
+        }
         norm = 1 / total
+    }
+
+    deinit {
+        octRefs.deallocate()
+        amps.deallocate()
+        freqs.deallocate()
     }
 
     public func sample2(_ x: Double, _ z: Double) -> Double {
         var v = 0.0
-        for i in 0..<octaves.count {
-            v += octaves[i].noise2(x * freqs[i], z * freqs[i]) * amps[i]
+        for i in 0..<count {
+            let f = freqs[i]
+            v += octRefs[i]._withUnsafeGuaranteedRef { $0.noise2(x * f, z * f) } * amps[i]
         }
         return v * norm
     }
 
     public func sample3(_ x: Double, _ y: Double, _ z: Double) -> Double {
         var v = 0.0
-        for i in 0..<octaves.count {
+        for i in 0..<count {
             let f = freqs[i]
-            v += octaves[i].noise3(x * f, y * f, z * f) * amps[i]
+            v += octRefs[i]._withUnsafeGuaranteedRef { $0.noise3(x * f, y * f, z * f) } * amps[i]
         }
         return v * norm
     }
@@ -161,8 +193,9 @@ public final class FBM {
     /// ridged variant: (1 - |n|)², summed
     public func ridge2(_ x: Double, _ z: Double) -> Double {
         var v = 0.0
-        for i in 0..<octaves.count {
-            let n = 1 - abs(octaves[i].noise2(x * freqs[i], z * freqs[i]))
+        for i in 0..<count {
+            let f = freqs[i]
+            let n = 1 - abs(octRefs[i]._withUnsafeGuaranteedRef { $0.noise2(x * f, z * f) })
             v += n * n * amps[i]
         }
         return v * norm

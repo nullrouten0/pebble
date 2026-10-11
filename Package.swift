@@ -6,7 +6,10 @@ import PackageDescription
 
 let package = Package(
     name: "Pebble",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
+    products: [
+        .library(name: "PebbleCore", targets: ["PebbleCore"]),
+    ],
     targets: [
         // the engine: headless-testable, no AppKit dependencies
         .target(

@@ -5,12 +5,16 @@ import Foundation
 
 private let AIR = 0
 
+// written from the concurrent gen threads, so every access holds the lock
 private var strongholdCache: (seed: UInt32, positions: [(Int, Int)])?
+private let strongholdLock = NSLock()
 private func strongholdChunks(_ seed: UInt32) -> [(Int, Int)] {
-    if strongholdCache == nil || strongholdCache!.seed != seed {
-        strongholdCache = (seed, strongholdPositions(seed))
-    }
-    return strongholdCache!.positions
+    strongholdLock.lock()
+    defer { strongholdLock.unlock() }
+    if let c = strongholdCache, c.seed == seed { return c.positions }
+    let positions = strongholdPositions(seed)
+    strongholdCache = (seed, positions)
+    return positions
 }
 
 func registerUndergroundStructures() {
