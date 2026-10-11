@@ -33,7 +33,12 @@ final class TitleScreen: Screen {
             ui.open(WorldSelectScreen(), game)
         }))
         y += 24
-        buttons.append(Button(cx - 100, y, 200, 20, "Multiplayer (LAN)", { [weak ui, weak game] in
+        buttons.append(Button(cx - 100, y, 200, 20, "Host LAN Game", { [weak ui, weak game] in
+            guard let ui, let game else { return }
+            ui.open(WorldSelectScreen(hosting: true), game)
+        }))
+        y += 24
+        buttons.append(Button(cx - 100, y, 200, 20, "Join LAN Game", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.open(MultiplayerScreen(), game)
         }))
@@ -42,7 +47,8 @@ final class TitleScreen: Screen {
             guard let ui, let game else { return }
             ui.open(CreditsScreen(), game)
         }))
-        y += 36
+        // keep the bottom row clear of the corner credits on short windows
+        y = max(y + 28, min(y + 36, ui.height - 46))
         buttons.append(Button(cx - 100, y, 98, 20, "Options...", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.open(SettingsScreen(), game)
@@ -100,18 +106,36 @@ final class WorldSelectScreen: Screen {
     var loaded = false
     var playBtn: Button!
     var deleteBtn: Button!
+    /// "Host LAN Game": the chosen world opens to LAN as soon as it loads
+    let hosting: Bool
+    let nameField = TextField(0, 0, 200, 16, "Your name")
+
+    init(hosting: Bool = false) {
+        self.hosting = hosting
+        super.init()
+    }
+
+    private func play(_ ui: UIManager, _ game: GameCore, _ i: Int) {
+        if hosting { savePlayerName(game, nameField) }
+        game.loadWorld(worlds[i].id)
+        if hosting { openToLANNow(game) }
+        ui.open(LoadingScreen(), game)
+    }
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         worlds = game.listWorlds().sorted { $0.lastPlayed > $1.lastPlayed }
         loaded = true
         let cx = (ui.width / 2).rounded(.down)
         let by = ui.height - 50
-        playBtn = Button(cx - 154, by, 100, 20, "Play Selected", { [weak self, weak ui, weak game] in
+        if hosting {
+            if nameField.text.isEmpty { nameField.text = game.playerName; nameField.caret = nameField.text.count }
+            nameField.maxLength = 16
+            nameField.x = cx - 100; nameField.y = 34
+            fields.append(nameField)
+        }
+        playBtn = Button(cx - 154, by, 100, 20, hosting ? "Host Selected" : "Play Selected", { [weak self, weak ui, weak game] in
             guard let self, let ui, let game else { return }
-            if self.selected >= 0 {
-                game.loadWorld(self.worlds[self.selected].id)
-                ui.open(LoadingScreen(), game)
-            }
+            if self.selected >= 0 { self.play(ui, game, self.selected) }
         })
         deleteBtn = Button(cx - 50, by, 100, 20, "Delete", { [weak self, weak game] in
             guard let self, let game else { return }
@@ -123,9 +147,10 @@ final class WorldSelectScreen: Screen {
         })
         buttons.append(playBtn)
         buttons.append(deleteBtn)
-        buttons.append(Button(cx + 54, by, 100, 20, "Create New", { [weak ui, weak game] in
-            guard let ui, let game else { return }
-            ui.open(WorldCreateScreen(), game)
+        buttons.append(Button(cx + 54, by, 100, 20, "Create New", { [weak self, weak ui, weak game] in
+            guard let self, let ui, let game else { return }
+            if self.hosting { savePlayerName(game, self.nameField) }
+            ui.open(WorldCreateScreen(hosting: self.hosting), game)
         }))
         buttons.append(Button(cx - 100, by + 24, 200, 20, "Back", { [weak ui, weak game] in
             guard let ui, let game else { return }
@@ -133,7 +158,7 @@ final class WorldSelectScreen: Screen {
         }))
     }
     private var scroll = 0.0
-    private var listTop: Double { 30 }
+    private var listTop: Double { hosting ? 70 : 30 }
     private func listBottom(_ ui: UIManager) -> Double { ui.height - 78 }
     private func maxScroll(_ ui: UIManager) -> Double {
         max(0, Double(worlds.count) * 30 - (listBottom(ui) - listTop))
@@ -141,14 +166,18 @@ final class WorldSelectScreen: Screen {
 
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDirtBg()
-        ui.cv.drawTextCentered("Select World", ui.width / 2, 10, 1)
+        ui.cv.drawTextCentered(hosting ? "Host a LAN Game - pick a world" : "Select World", ui.width / 2, 10, 1)
+        if hosting {
+            ui.cv.drawText("Your name", nameField.x, nameField.y - 10, 1, "#a0a0a0")
+            ui.cv.drawTextCentered("§7Friends on your network join with Join LAN Game", ui.width / 2, nameField.y + 22, 1)
+        }
         playBtn.enabled = selected >= 0
         deleteBtn.enabled = selected >= 0
         let listX = (ui.width / 2).rounded(.down) - 130
         if !loaded {
-            ui.cv.drawTextCentered("Loading...", ui.width / 2, 60, 1, "#a0a0a0")
+            ui.cv.drawTextCentered("Loading...", ui.width / 2, listTop + 30, 1, "#a0a0a0")
         } else if worlds.isEmpty {
-            ui.cv.drawTextCentered("No worlds yet - create one!", ui.width / 2, 60, 1, "#a0a0a0")
+            ui.cv.drawTextCentered("No worlds yet - create one!", ui.width / 2, listTop + 30, 1, "#a0a0a0")
         }
         let fmt = DateFormatter()
         fmt.dateStyle = .short
@@ -162,7 +191,9 @@ final class WorldSelectScreen: Screen {
             ui.cv.setFill(i == selected ? "rgba(255,255,255,0.25)" : hover ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.3)")
             ui.cv.fillRect(listX, y, 260, 28)
             ui.cv.drawText(w.name, listX + 4, y + 4, 1)
+            // the system formatter puts a narrow no-break space before AM/PM (no glyph)
             let when = fmt.string(from: Date(timeIntervalSince1970: w.lastPlayed / 1000))
+                .replacingOccurrences(of: "\u{202F}", with: " ")
             ui.cv.drawText("§7\(when) • \(w.gameMode == GameMode.creative ? "Creative" : "Survival") • seed \(w.seed)", listX + 4, y + 15, 1)
         }
         // scrollbar
@@ -191,10 +222,7 @@ final class WorldSelectScreen: Screen {
             let y = top + Double(i) * 30 - scroll
             if y + 28 <= top || y >= bottom { continue }
             if my >= y && my < y + 28 {
-                if selected == i {
-                    game.loadWorld(worlds[i].id)
-                    ui.open(LoadingScreen(), game)
-                }
+                if selected == i { play(ui, game, i) }
                 selected = i
                 return true
             }
@@ -210,6 +238,13 @@ final class WorldCreateScreen: Screen {
     var mode = GameMode.survival
     var difficulty = 2
     var creating = false
+    /// came from "Host LAN Game": open the new world to LAN right away
+    let hosting: Bool
+
+    init(hosting: Bool = false) {
+        self.hosting = hosting
+        super.init()
+    }
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         let cx = (ui.width / 2).rounded(.down)
@@ -233,11 +268,12 @@ final class WorldCreateScreen: Screen {
         }
         buttons.append(modeBtn)
         buttons.append(diffBtn)
-        buttons.append(Button(cx - 100, 158, 98, 20, "Create World", { [weak self, weak ui, weak game] in
+        buttons.append(Button(cx - 100, 158, 98, 20, hosting ? "Create & Host" : "Create World", { [weak self, weak ui, weak game] in
             guard let self, let ui, let game, !self.creating else { return }
             self.creating = true
             game.createWorld(name: self.nameField.text.isEmpty ? "New World" : self.nameField.text,
                              seedText: self.seedField.text, mode: self.mode, difficulty: self.difficulty)
+            if self.hosting { openToLANNow(game) }
             ui.open(LoadingScreen(), game)
         }))
         buttons.append(Button(cx + 2, 158, 98, 20, "Cancel", { [weak ui, weak game] in
@@ -247,7 +283,7 @@ final class WorldCreateScreen: Screen {
     }
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDirtBg()
-        ui.cv.drawTextCentered("Create New World", ui.width / 2, 10, 1)
+        ui.cv.drawTextCentered(hosting ? "Create a World to Host" : "Create New World", ui.width / 2, 10, 1)
         ui.cv.drawText("World Name", nameField.x, nameField.y - 10, 1, "#a0a0a0")
         ui.cv.drawText("Seed", seedField.x, seedField.y - 10, 1, "#a0a0a0")
         if creating {
@@ -258,6 +294,19 @@ final class WorldCreateScreen: Screen {
 }
 
 let DIFFICULTY_NAMES = ["Peaceful", "Easy", "Normal", "Hard"]
+
+/// "Host LAN Game": the world just loaded, so open it to LAN (same as /host)
+func openToLANNow(_ game: GameCore) {
+    if game.hasWorld() { runCommand(game, "/host") }
+}
+
+/// save the name typed on a LAN screen (name tags, the LAN game list)
+func savePlayerName(_ game: GameCore, _ field: TextField) {
+    let n = field.text.trimmingCharacters(in: .whitespaces)
+    if n.isEmpty || n == game.playerName { return }
+    game.settings.playerName = n
+    game.applySettings()
+}
 
 // =============================================================================
 /// shown right after world entry while nearby chunks mesh — sim keeps running
@@ -770,12 +819,7 @@ final class MultiplayerScreen: Screen {
             ui.closeTop(game)
         }))
     }
-    private func saveName(_ game: GameCore) {
-        let n = nameField.text.trimmingCharacters(in: .whitespaces)
-        if n.isEmpty || n == game.playerName { return }
-        game.settings.playerName = n
-        game.applySettings()
-    }
+    private func saveName(_ game: GameCore) { savePlayerName(game, nameField) }
     override func onClose(_ ui: UIManager, _ game: GameCore) {
         browser?.stop()
         browser = nil
@@ -786,7 +830,7 @@ final class MultiplayerScreen: Screen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDirtBg()
         let cv = ui.cv
-        cv.drawTextCentered("Multiplayer (LAN)", ui.width / 2, 10, 1)
+        cv.drawTextCentered("Join a LAN Game", ui.width / 2, 10, 1)
         cv.drawText("Your name", nameField.x, nameField.y - 10, 1, "#a0a0a0")
         cv.drawText("Games on your network", nameField.x, listTop - 12, 1, "#a0a0a0")
         let games = browser?.games ?? []
@@ -794,7 +838,7 @@ final class MultiplayerScreen: Screen {
         joinBtn.enabled = selected >= 0
         let listX = (ui.width / 2).rounded(.down) - 130
         if games.isEmpty {
-            cv.drawTextCentered("§7Looking for games... (the host clicks Open to LAN)", ui.width / 2, listTop + 14, 1)
+            cv.drawTextCentered("§7Looking for games on your network...", ui.width / 2, listTop + 14, 1)
         }
         for (i, g) in games.enumerated() {
             let y = listTop + Double(i) * 24

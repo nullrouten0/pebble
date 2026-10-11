@@ -17,7 +17,7 @@
 ---
 
 > ### New in Pebble 1.2: build together
-> **LAN multiplayer** — open your world to the local network from the pause menu, and friends on the same Wi-Fi join from **Multiplayer (LAN)** on the title screen. Pebble finds the game for you. Everyone shares one world: blocks, mobs, items, chests, chat, day and night.
+> **LAN multiplayer** — click **Host LAN Game** on the title screen, pick a world, and you're in and open to the local network. Friends on the same Wi-Fi click **Join LAN Game**. Pebble finds the game for you. Everyone shares one world: blocks, mobs, items, chests, chat, day and night.
 >
 > **A creative toolkit to build with** — drop whole structures (up to a 101-block Giza pyramid) with `/place`, raise 16×16 walls and 16×16×16 boxes in one click, carve terrain with a bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. In a LAN game, everyone's undo is their own.
 >
@@ -51,7 +51,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 ## Features
 
 - **Full survival loop** — mining with tool tiers, hunger/saturation, XP, sleeping, fall damage, drowning, fire, status effects, death messages, respawn/keep-inventory game rules.
-- **LAN multiplayer** — host from the pause menu, join from the title screen; shared blocks, mobs, items, containers, chat, time and weather, with name tags over other players and everyone's progress saved in the host's world. See [Multiplayer (LAN)](#multiplayer-lan).
+- **LAN multiplayer** — host or join straight from the title screen; shared blocks, mobs, items, containers, chat, time and weather, with name tags over other players and everyone's progress saved in the host's world. See [Multiplayer (LAN)](#multiplayer-lan).
 - **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. See [Creative tools](#creative-tools).
 - **Worldgen** — multi-noise climate sampling (temperature/humidity/continentalness/erosion/weirdness) through spline-driven terrain, 3D density caves (cheese/spaghetti/noodle), ravines, aquifers, ore distribution per vanilla 1.20 tables, snow lines, and 63 biomes including lush caves, dripstone caves, and the deep dark.
 - **Three dimensions** — overworld, nether (fortresses, bastions, all five nether biomes), and the end (dragon fight, end cities, gateways), connected by working portals.
@@ -94,9 +94,11 @@ WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shif
 
 Play in the same world with people on your local network. One player hosts; everyone else joins.
 
-**To host:** load any world, press Esc, and click **Open to LAN** (or type `/host`). The pause menu shows the address to share. Click **Close LAN Game** to stop.
+**To host:** on the title screen, click **Host LAN Game**. Set the name others will see, then pick a world and click **Host Selected** (or double-click it), or click **Create New** and then **Create & Host**. The world loads already open to LAN, and chat shows the address to share. Press Esc any time to see the address again; click **Close LAN Game** there to stop.
 
-**To join:** on the title screen, click **Multiplayer (LAN)**. Games on your network appear in the list; double-click one, or type the host's address (e.g. `192.168.1.20`) and click **Direct Connect**. Set the name others will see at the top of that screen.
+Already playing? Press Esc and click **Open to LAN** (or type `/host`) to share the world you're in.
+
+**To join:** on the title screen, click **Join LAN Game**. Games on your network appear in the list; double-click one, or type the host's address (e.g. `192.168.1.20`) and click **Direct Connect**. Set the name others will see at the top of that screen.
 
 | Command | What it does |
 |---|---|
@@ -212,7 +214,8 @@ Useful environment variables for testing and automation:
 | `PEBBLE_SHOT="/tmp/x.png@300"` | capture a frame N frames after load |
 | `PEBBLE_SHOT_UI=1` | include the UI (HUD, chat, menus) in `PEBBLE_SHOT` captures, and allow captures on menu screens |
 | `PEBBLE_WORLDS=1` | jump straight to the world-select screen |
-| `PEBBLE_MULTIPLAYER=1` | jump straight to the LAN games screen |
+| `PEBBLE_MULTIPLAYER=1` | jump straight to the Join LAN Game screen |
+| `PEBBLE_MENU="Host LAN Game>Create New>Create & Host"` | click menu buttons by label, one every half second (menu-flow testing) |
 | `PEBBLE_JOIN=127.0.0.1[:port]` | join a LAN game at launch |
 | `PEBBLE_NAME=Bob` | play as Bob in LAN games (not saved to settings) |
 | `PEBBLE_WINDOWED=1` | start in a window instead of fullscreen, and don't auto-pause in the background; `PEBBLE_WINSIZE=900x506` and `PEBBLE_WINPOS=0,0` place it (side-by-side LAN testing) |

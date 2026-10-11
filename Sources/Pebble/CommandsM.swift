@@ -349,8 +349,8 @@ func runCommand(_ game: GameCore, _ raw: String) {
             let port = try game.hostLAN(port: want)
             let ips = localIPv4Addresses()
             ok("§aOpen to LAN on port \(port).")
-            ok(ips.isEmpty ? "Friends can find it under Multiplayer." :
-                "Friends: Multiplayer, or join \(ips.map { port == NET_DEFAULT_PORT ? $0 : "\($0):\(port)" }.joined(separator: " / "))")
+            ok(ips.isEmpty ? "Friends can find it under Join LAN Game." :
+                "Friends: Join LAN Game, or connect to \(ips.map { port == NET_DEFAULT_PORT ? $0 : "\($0):\(port)" }.joined(separator: " / "))")
         } catch {
             fail("Couldn't open to LAN: \(error.localizedDescription)")
         }

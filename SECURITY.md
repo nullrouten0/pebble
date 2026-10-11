@@ -5,7 +5,7 @@
 Pebble is a local macOS game with optional LAN multiplayer:
 
 - **No internet, no telemetry.** The app never contacts an internet server: no telemetry, no analytics, no update checks, no accounts. The `pebble update` shell command is just `git pull` on your own checkout.
-- **Network only for LAN play, and only when you ask.** Pebble opens a TCP port (25575 by default) and advertises it over Bonjour only after you click **Open to LAN** or run `/host`. It connects out only when you join a game. The Multiplayer screen browses Bonjour for `_pebble._tcp` while it's open.
+- **Network only for LAN play, and only when you ask.** Pebble opens a TCP port (25575 by default) and advertises it over Bonjour only after you click **Host LAN Game** or **Open to LAN**, or run `/host`. It connects out only when you join a game. The Join LAN Game screen browses Bonjour for `_pebble._tcp` while it's open.
 - **No accounts, no credentials, no personal data.** Pebble stores worlds, settings, and keybinds under `~/Library/Application Support/Pebble/`.
 - **No elevated privileges.** It's an ad-hoc-signed app running in a normal user session.
 

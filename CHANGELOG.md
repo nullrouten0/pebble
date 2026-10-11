@@ -6,11 +6,14 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 ## 1.2.0 — 2026-10-10 — LAN multiplayer
 
 ### Play together over LAN
-- **Host from the pause menu.** **Open to LAN** (or `/host [port]`) shares the
-  world you're in. The pause menu shows the address, and **Close LAN Game**
+- **Host from the title screen.** **Host LAN Game** lets you set your name,
+  pick a world (**Host Selected**) or make one (**Create & Host**), and drops
+  you in already open to LAN.
+- **Or share the world you're in.** **Open to LAN** in the pause menu (or
+  `/host [port]`). The pause menu shows the address, and **Close LAN Game**
   stops it. A LAN game never pauses, and the host keeps running with its
   window in the background.
-- **Join from the title screen.** **Multiplayer (LAN)** finds games on the
+- **Join from the title screen.** **Join LAN Game** finds games on the
   local network automatically (Bonjour). You can also type an address, or use
   `/join <address[:port]>`. Set your name there or with `/name`.
 - **One shared world.** Shared between all players:
@@ -43,10 +46,16 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 - **Messages no longer show "?" for dashes and ellipses.** The in-game font is
   ASCII-only, so "—", "…" and "·" in chat lines, the loading screens and the
   Credits rendered as "?". They're now plain ASCII.
+- **World list dates no longer show "?" before AM/PM.** The system date
+  format uses a narrow no-break space, which the font doesn't have.
+- **Title screen fits short windows.** The Options / Quit row no longer
+  covers the texture credit in the bottom-left corner.
 
 ### Development
 - **New test hooks** for LAN and UI testing:
   - `PEBBLE_JOIN`, `PEBBLE_NAME`, `PEBBLE_MULTIPLAYER`
+  - `PEBBLE_MENU` clicks menu buttons by label (e.g.
+    `"Host LAN Game>Create New>Create & Host"`)
   - `PEBBLE_WINDOWED` / `PEBBLE_WINSIZE` / `PEBBLE_WINPOS`
   - `PEBBLE_NETLOG` and `PEBBLE_SHOT_UI`
   - `PEBBLE_CMD` steps: `#waitguests`, `#down`/`#up`, `#key`, `#slot`, `#type`
