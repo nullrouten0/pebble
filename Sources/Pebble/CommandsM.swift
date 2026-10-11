@@ -282,15 +282,34 @@ func runCommand(_ game: GameCore, _ raw: String) {
     case "place":
         let ids = placeableStructureIds()
         guard let name = arg(0), name != "list" else {
-            return ok("Structures: \(ids.joined(separator: ", "))")
+            return ok("Structures: mountain, \(ids.joined(separator: ", "))")
         }
-        guard ids.contains(name) else { return fail("Unknown structure: \(name). Try /place list") }
+        guard ids.contains(name) || name == "mountain" else { return fail("Unknown structure: \(name). Try /place list") }
         let usage = "Usage: /place <structure> [<x> <y|ground> <z>] [variant]"
         let hasPos = args.count >= 4
         if args.count == 3 || args.count > 5 { return fail(usage) }
         let variant = (hasPos ? arg(4) : arg(1)).map { Int($0) } ?? 0
         guard let variant else { return fail(usage) }
         let t0 = Date()
+        if name == "mountain" {
+            // sits on the ground wherever it lands, so a given y is ignored
+            var tx = Int(p.x.rounded(.down)), tz = Int(p.z.rounded(.down))
+            if hasPos {
+                tx = Int(parseCoord(args[1], p.x).rounded(.down))
+                tz = Int(parseCoord(args[3], p.z).rounded(.down))
+            } else {
+                // far enough ahead that you're at its foot, not inside it
+                let reach = MOUNTAIN_RADIUS * 1.25 + 8
+                tx = Int((p.x - sin(p.yaw) * reach).rounded(.down))
+                tz = Int((p.z + cos(p.yaw) * reach).rounded(.down))
+            }
+            let plan = game.placeMountain(tx, tz, variant: variant)
+            if plan.keys.isEmpty { return fail("No room for a mountain at \(tx) \(tz) - the ground there is already higher") }
+            let ms = Int(Date().timeIntervalSince(t0) * 1000)
+            ok("A mountain is rising at \(tx) \(tz): \(plan.x1 - plan.x0 + 1)x\(plan.z1 - plan.z0 + 1) wide, peak at y=\(plan.peakY), \(plan.keys.count) blocks (planned in \(ms) ms)")
+            if plan.skipped > 0 { fail("\(plan.skipped) columns fell in unloaded chunks and were skipped") }
+            return
+        }
         guard let pf = capturePrefab(name, dim: world.dim.rawValue, minY: world.info.minY,
                                      maxY: world.info.minY + world.info.height,
                                      biome: world.biomeAt(Int(p.x.rounded(.down)), Int(p.y), Int(p.z.rounded(.down))),

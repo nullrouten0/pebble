@@ -102,7 +102,7 @@ func withEditOwner(_ e: Entity?, _ body: () -> Void) {
     editOwner = prev
 }
 
-private func addJob(_ j: DestroyJob, _ b: EditBatch) {
+func addJob(_ j: DestroyJob, _ b: EditBatch) {
     carveJobs.append(j)
     b.jobs.append(j)
 }

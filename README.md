@@ -52,7 +52,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 - **Full survival loop** — mining with tool tiers, hunger/saturation, XP, sleeping, fall damage, drowning, fire, status effects, death messages, respawn/keep-inventory game rules.
 - **LAN multiplayer** — host or join straight from the title screen; shared blocks, mobs, items, containers, chat, time and weather, with name tags over other players and everyone's progress saved in the host's world. See [Multiplayer (LAN)](#multiplayer-lan).
-- **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, and undo any of it with Cmd+Z. See [Creative tools](#creative-tools).
+- **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, erase whole landscapes with the Infinity Wipe, and undo almost any of it with Cmd+Z. See [Creative tools](#creative-tools).
 - **Worldgen** — multi-noise climate sampling (temperature/humidity/continentalness/erosion/weirdness) through spline-driven terrain, 3D density caves (cheese/spaghetti/noodle), ravines, aquifers, ore distribution per vanilla 1.20 tables, snow lines, and 63 biomes including lush caves, dripstone caves, and the deep dark.
 - **Three dimensions** — overworld, nether (fortresses, bastions, all five nether biomes), and the end (dragon fight, end cities, gateways), connected by working portals.
 - **Structures** — villages with professioned villagers and working trades, strongholds with the portal room, mineshafts, desert/jungle temples, igloos with basements, witch huts, ocean monuments and ruins, shipwrecks, buried treasure, ruined portals, woodland mansions, amethyst geodes, ancient cities with sculk and shriekers.
@@ -142,11 +142,13 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
 | `mining_laser` | Hold use to bore a tunnel 5 blocks wide, reaching up to 64 blocks | 9 wide |
 | `void_bomb` | A thrown orb that wipes out a sphere of radius 12 | radius 24 |
 | `quarry_charge` | Digs a 9×9 shaft straight down to bedrock | 17×17 |
+| `infinity_wipe` | Erases the land for 320 blocks around you, following its contour. Use once to arm it and again within 3 seconds to fire. **Can't be undone.** | 1000 blocks |
 | `/undo [n]`, `/redo [n]` | Undo or redo your last *n* edits (also Cmd+Z / Cmd+Shift+Z) | — |
 
 - **Structures you can place:**
   - Starters: `cabin`, `watchtower`, `bunker`, `farm`, `portal`
   - Landmarks: `giza_pyramid` (101 wide, with internal tunnels and chambers), `castle`, `lighthouse`, `windmill`, `treehouse`, `sky_island`
+  - Terrain: `mountain` pours a natural-looking peak about 160 blocks across and 80 tall (1.5× the pyramid) onto the land. Each column fills down through air, water and trees until it meets solid ground, so it buries whatever is under it (handy for covering up old builds) and blends into higher hills around it. It rises over a few seconds, lifting anyone standing there. A different `variant` gives a different mountain.
   - Every worldgen structure, such as villages, strongholds and end cities. A different `variant` number gives a different layout.
 - **Underground structures get a marked entrance.** A lit ladder shaft leads down from a flag pole that stands above the trees, and `/place` prints a `/tp` to it.
 - **Walls and boxes snap to a 16-block grid,** so they line up edge to edge. Click the top of a build to stack on it; click a side to build alongside at the same height.
@@ -154,7 +156,10 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
   - the block in your off hand
   - otherwise, the block in the hotbar slot just right of the builder
   - otherwise, stone bricks
-- **Undo covers** every tool above plus `/fill`, and restores chest contents too.
+- **Infinity Wipe:** a shockwave rolls out from where you stand. Every column loses whatever stands on the natural ground (trees, buildings, overhangs) plus the top 12 blocks of the ground itself, so hills stay hills, just bare stone and lower. It never cuts below sea level, so oceans, rivers and shores stay put, and the cut eases off toward the edge.
+  - Chunks too far away to be loaded are wiped the moment they load, so the full radius is covered even beyond your view distance. The blast zone is saved with the world.
+  - Overworld only.
+- **Undo covers** every tool above except the Infinity Wipe, plus `/fill`, and restores chest contents too.
   - It keeps the last 64 edits, and the history is cleared when you quit.
   - In a LAN game, each player undoes only their own edits.
   - Blocks you mine or place by hand aren't tracked.

@@ -1012,6 +1012,14 @@ public final class NetHost {
         for c in clients where c.joined { c.queue(.wake, ByteWriter()) }
     }
 
+    /// a chunk changed wholesale on the host (Infinity Wipe): guests get a fresh copy
+    func resendChunk(_ cx: Int, _ cz: Int) {
+        let key = chunkKey(cx, cz)
+        for c in clients where c.joined && c.sent.remove(key) != nil {
+            if !c.resend.contains(key) { c.resend.append(key) }
+        }
+    }
+
     /// this tick's blasts, for guests' screen shake
     func broadcastBlasts(_ list: [(Double, Double, Double, Double)]) {
         if list.isEmpty || clients.isEmpty { return }

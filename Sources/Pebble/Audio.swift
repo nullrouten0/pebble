@@ -955,6 +955,21 @@ private func buildRecipes() {
         s.tone(freq: 1800, endFreq: 40, dur: 0.9, type: .sine, vol: 0.3, delay: 0.5)
         s.noiseBurst(dur: 1.0, freq: 400, q: 0.7, vol: 0.35, attack: 0.5)
     }
+    R("pebble.wipe.arm", "players", "Infinity Wipe arms") { s, _, _ in
+        s.tone(freq: 440, endFreq: 1760, dur: 0.5, type: .sawtooth, vol: 0.15)
+        for i in 0..<4 { s.tone(freq: 1760, dur: 0.05, type: .square, vol: 0.12, delay: 0.5 + Double(i) * 0.1) }
+    }
+    R("pebble.wipe.blast", "players", "Infinity Wipe detonates") { s, _, _ in
+        s.noiseBurst(dur: 0.3, freq: 250, q: 0.4, lowpass: true, vol: 1.2)                 // crack
+        s.noiseBurst(dur: 4.5, freq: 70, q: 0.3, lowpass: true, vol: 1.2, attack: 0.2)     // rolling rumble
+        s.tone(freq: 90, endFreq: 22, dur: 3.5, type: .sine, vol: 0.5)
+        s.noiseBurst(dur: 2.5, freq: 900, q: 0.5, vol: 0.25, attack: 0.4, delay: 0.3)      // debris
+    }
+    R("pebble.mountain.rise", "blocks", "A mountain rises") { s, _, _ in
+        s.noiseBurst(dur: 4.0, freq: 55, q: 0.3, lowpass: true, vol: 1.1, attack: 0.8)     // deep groan
+        s.noiseBurst(dur: 3.5, freq: 400, q: 0.6, vol: 0.3, attack: 1.0, delay: 0.3)       // grinding rock
+        s.tone(freq: 40, endFreq: 70, dur: 4.0, type: .sine, vol: 0.4)
+    }
     R("pebble.quarry.arm", "players", "Quarry charge arms") { s, _, _ in
         for i in 0..<3 { s.tone(freq: 1200, dur: 0.06, type: .square, vol: 0.15, delay: Double(i) * 0.12) }
     }

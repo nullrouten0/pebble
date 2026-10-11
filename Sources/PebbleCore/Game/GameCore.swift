@@ -21,9 +21,9 @@ let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 
 /// item-billboard projectiles (the app renders these as sprites)
 /// tools that act once per click, never on held-use repeat
-let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge"]
+let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge", "infinity_wipe"]
 /// heavy world tools a LAN guest doesn't predict locally — the host runs them
-let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder"]
+let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder", "infinity_wipe"]
 
 public let SPRITE_TYPES: Set<String> = [
     "snowball", "egg", "ender_pearl", "xp_bottle", "thrown_potion", "firework",
@@ -253,6 +253,16 @@ public final class GameCore {
     private var rightDown = false
     private var useCooldown = 0
     private var breakCooldown = 0
+
+    // infinity wipe (Systems/InfinityWipe.swift)
+    /// every wipe fired in this world, saved with it
+    private var wipes: [WipeZone] = []
+    /// shockwaves still rolling out: index into `wipes`, front radius
+    private var wipeFronts: [(zone: Int, r: Double)] = []
+    /// player entity id → world time the wipe was armed
+    private var wipeArmedAt: [Int: Int] = [:]
+    /// chunks a rising mountain still needs, kept loaded until it's done
+    private var mountainPins: [(job: MountainJob, keys: Set<Int64>)] = []
     private var lastLightHealTick = -1
     private var lastSlot = 0
     public var heldNameTime = 0
@@ -507,6 +517,9 @@ public final class GameCore {
     // ===========================================================================
     private func enterWorld(_ rec: WorldRecord, _ playerData: [String: Any]?, _ adv: [String]?) {
         worldRec = rec
+        wipes = rec.wipes ?? []
+        wipeFronts = []
+        wipeArmedAt = [:]
         advancements = AdvancementTracker()
         if let adv { advancements.load(adv) }
         dragonSpawned = false
@@ -614,6 +627,7 @@ public final class GameCore {
         guard inWorld, var rec = worldRec else { return }
         rec.lastPlayed = Date().timeIntervalSince1970 * 1000
         rec.gameMode = player.gameMode
+        rec.wipes = wipes.isEmpty ? nil : wipes
         rec.nextEntityId = peekNextEntityId()
         for (d, w) in worlds {
             rec.dims["\(d.rawValue)"] = DimState(
@@ -730,6 +744,9 @@ public final class GameCore {
         let saved = savedChunkKeys.contains(db.chunkKey(worldId, d.rawValue, cx, cz))
         let db = self.db
         let minY = w.info.minY
+        // wipe zones this chunk still owes a cut (applied before it's lit)
+        let wipeIdx = wipesOwed(w, cx, cz)
+        let zones = wipeIdx.map { wipes[$0] }
         genQueue.async { [weak self] in
             var savedRec: ChunkRecord? = nil
             if saved { savedRec = db.getChunk(worldId, d.rawValue, cx, cz) }
@@ -737,26 +754,36 @@ public final class GameCore {
             var beSpecs: [BESpec]? = nil
             var entitySpecs: [EntitySpec]? = nil
             var loadedFull = false
+            var wiped = false
+            func cut(_ blocks: inout [UInt16]) {
+                for z in zones where wipeChunkBlocks(&blocks, cx, cz, minY: minY, height: height, seed: seed, zone: z) { wiped = true }
+            }
             if let savedRec, Self.recordUsable(savedRec, height: height) {
                 // saved chunk: relight the stored blocks
                 loadedFull = true
-                let light = LoadProf.shared.time("light") { computeLocalLight(blocks: savedRec.blocks!, height: height, hasSky: hasSky) }
-                c = LoadProf.shared.time("mkchunk") { Self.makeChunk(cx, cz, minY, height, savedRec.blocks!, savedRec.biomes!, light.sky, light.blk) }
+                var blocks = savedRec.blocks!
+                cut(&blocks)
+                let light = LoadProf.shared.time("light") { computeLocalLight(blocks: blocks, height: height, hasSky: hasSky) }
+                c = LoadProf.shared.time("mkchunk") { Self.makeChunk(cx, cz, minY, height, blocks, savedRec.biomes!, light.sky, light.blk) }
             } else {
                 // fresh generation; a corrupt/entity-only record still re-attaches its entities
                 let out = LoadProf.shared.time("gen") { generateChunk(d, seed, cx, cz) }
-                let light = LoadProf.shared.time("light") { computeLocalLight(blocks: out.blocks, height: height, hasSky: hasSky) }
-                c = LoadProf.shared.time("mkchunk") { Self.makeChunk(cx, cz, minY, height, out.blocks, out.biomes, light.sky, light.blk) }
+                var blocks = out.blocks
+                cut(&blocks)
+                let light = LoadProf.shared.time("light") { computeLocalLight(blocks: blocks, height: height, hasSky: hasSky) }
+                c = LoadProf.shared.time("mkchunk") { Self.makeChunk(cx, cz, minY, height, blocks, out.biomes, light.sky, light.blk) }
                 beSpecs = out.blockEntities
                 entitySpecs = savedRec != nil ? nil : out.entities
             }
             let savedFinal = savedRec
+            let wipedFinal = wiped
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.genInFlight.remove(flight)
                 guard self.inWorld, self.worlds[d] === w, w.chunks[key] == nil else { return }
                 if loadedFull { self.savedFullKeys.insert(db.chunkKey(worldId, d.rawValue, cx, cz)) }
                 self.adoptChunk(w, c, beSpecs, entitySpecs, savedFinal)
+                self.wipeOnLoad(w, c, cutBy: wipeIdx, changed: wipedFinal)
                 self.enqueueLightAround(w, cx, cz)
             }
         }
@@ -1219,6 +1246,7 @@ public final class GameCore {
                         let light = computeLocalLight(blocks: s.blocks!, height: w.info.height, hasSky: w.info.hasSky)
                         adoptChunk(w, Self.makeChunk(cx, cz, w.info.minY, w.info.height, s.blocks!, s.biomes!, light.sky, light.blk),
                                    nil, nil, s)
+                        if let c = w.getChunk(cx, cz) { wipeOnLoad(w, c, cutBy: [], changed: false) }
                         continue
                     }
                 }
@@ -1226,6 +1254,7 @@ public final class GameCore {
                 let light = computeLocalLight(blocks: out.blocks, height: w.info.height, hasSky: w.info.hasSky)
                 adoptChunk(w, Self.makeChunk(cx, cz, w.info.minY, w.info.height, out.blocks, out.biomes, light.sky, light.blk),
                            out.blockEntities, saved != nil ? nil : out.entities, saved)
+                if let c = w.getChunk(cx, cz) { wipeOnLoad(w, c, cutBy: [], changed: false) }
             }
         }
         // teleport targets need light immediately — stitch the area now
@@ -1261,10 +1290,13 @@ public final class GameCore {
                 }
             }
         }
-        // unload far chunks (tight radius — chunk arrays are ~400KB each)
+        // unload far chunks (tight radius — chunk arrays are ~400KB each),
+        // except under a mountain that's still rising
+        mountainPins.removeAll { $0.job.done }
+        let pinned = mountainPins.reduce(into: Set<Int64>()) { $0.formUnion($1.keys) }
         for c in Array(w.chunks.values) {
             let far = centers.allSatisfy { abs(c.cx - $0.0) > $0.2 + 2 || abs(c.cz - $0.1) > $0.2 + 2 }
-            if far { unloadChunk(w, c) }
+            if far && !pinned.contains(chunkKey(c.cx, c.cz)) { unloadChunk(w, c) }
         }
         // inactive dimensions don't stream — drop everything they hold
         if w.time % 100 == 0 {
@@ -1737,6 +1769,7 @@ public final class GameCore {
             netHost?.tickProxies()
             w.tick()
             tickCarveJobs()
+            tickWipes()
             tickShake()
             let simR = Double(w.simDistance * 16) * Double(w.simDistance * 16)
             let players: [Player] = [p] + (netHost?.proxies ?? [])
@@ -2277,6 +2310,11 @@ public final class GameCore {
     @discardableResult
     func performUse(_ p: Player, _ ctx: InteractCtx, target: Entity?, hit: RaycastHit?) -> Bool {
         p.useItemHand = "main"
+        if p.mainHand.map({ itemDef($0.id).name }) == "infinity_wipe" {
+            useInfinityWipe(p)
+            p.attackAnim = 0.6
+            return true
+        }
         // entities first
         if let target, !p.sneaking {
             if target.interact(p, p.mainHand) {
@@ -2473,6 +2511,157 @@ public final class GameCore {
         return paused ? 1 : clampD(accumulator / TICK_MS, 0, 1)
     }
 
+    // ===========================================================================
+    // Infinity wipe (the cut itself is in Systems/InfinityWipe.swift)
+    // ===========================================================================
+    /// first use arms it; a second use within 3 s fires it
+    private func useInfinityWipe(_ p: Player) {
+        let w = p.world
+        if w.dim != .overworld { return tell(p, "§cThe Infinity Wipe only works in the Overworld") }
+        if let t = wipeArmedAt[p.id], w.time - t <= 60 {
+            wipeArmedAt[p.id] = nil
+            fireWipe(w, p, p.sneaking ? WIPE_BIG_RADIUS : WIPE_RADIUS)
+            return
+        }
+        wipeArmedAt[p.id] = w.time
+        tell(p, "§c§lInfinity Wipe armed§r§c - use again within 3s to erase the land \(Int(WIPE_RADIUS)) blocks around you (sneak: \(Int(WIPE_BIG_RADIUS))). It can't be undone.")
+        w.hooks.playSound("pebble.wipe.arm", p.x, p.y, p.z, 1, 1)
+    }
+
+    private func fireWipe(_ w: World, _ p: Player, _ radius: Double) {
+        wipes.append(WipeZone(dim: w.dim.rawValue, x: p.x, z: p.z, radius: radius))
+        wipeFronts.append((wipes.count - 1, 0))
+        pendingBlasts.append((p.x, p.y, p.z, 60))
+        w.hooks.playSound("pebble.wipe.blast", p.x, p.y, p.z, 12, 1)
+        w.hooks.addParticles("explosion", p.x, p.y + 1, p.z, 60, 6, 0)
+        let line = "§c\(p === player ? playerName : p.name) fired an Infinity Wipe (\(Int(radius)) blocks)"
+        if let nh = netHost { nh.broadcastChat(line) } else { host?.pushChat(line) }
+    }
+
+    /// a note for one player: the local one's action bar, or a guest's chat
+    private func tell(_ p: Player, _ msg: String) {
+        if p === player { host?.showActionBar(msg, 100) }
+        else if let c = p.netLink as? RemoteClient { netHost?.sendChat(c, msg) }
+    }
+
+    /// zones (indices into `wipes`) that still owe chunk (cx, cz) a cut
+    private func wipesOwed(_ w: World, _ cx: Int, _ cz: Int) -> [Int] {
+        if w.isRemote || wipes.isEmpty { return [] }
+        let key = chunkKey(cx, cz)
+        return wipes.indices.filter {
+            wipes[$0].dim == w.dim.rawValue && wipes[$0].touches(cx, cz) && !wipes[$0].done.contains(key)
+        }
+    }
+
+    /// a chunk just joined the world. `cutBy`: zones already applied to its
+    /// blocks off the main thread; any other zone it owes (one fired while it
+    /// was generating, or a synchronous load) is cut here
+    private func wipeOnLoad(_ w: World, _ c: Chunk, cutBy: [Int], changed: Bool) {
+        let key = chunkKey(c.cx, c.cz)
+        for i in cutBy { wipes[i].done.insert(key) }
+        if changed { dropWipedBlockEntities(w, c) }
+        for i in wipesOwed(w, c.cx, c.cz) { wipeLoadedChunk(w, c, i) }
+    }
+
+    /// roll each shockwave outward, cutting loaded chunks as it reaches them.
+    /// Chunks out of view are cut when they load (wipeOnLoad)
+    private func tickWipes() {
+        if wipeFronts.isEmpty { return }
+        let started = CFAbsoluteTimeGetCurrent()
+        for f in wipeFronts.indices {
+            let zi = wipeFronts[f].zone
+            let zone = wipes[zi]
+            guard zone.dim == dim.rawValue else { continue }
+            let w = world
+            let target = min(zone.radius, wipeFronts[f].r + WIPE_SPEED)
+            var due: [(Double, Chunk)] = []
+            for c in w.chunks.values where c.status != .empty && !zone.done.contains(chunkKey(c.cx, c.cz)) {
+                let d = zone.chunkDistance(c.cx, c.cz)
+                if d <= target { due.append((d, c)) }
+            }
+            due.sort { $0.0 < $1.0 }
+            var reached = target
+            for (d, c) in due {
+                // ~8 ms of cutting per tick; the front waits for the backlog
+                if CFAbsoluteTimeGetCurrent() - started > 0.008 { reached = d; break }
+                wipeLoadedChunk(w, c, zi)
+            }
+            wipeFronts[f].r = reached
+            wipeFrontEffects(w, zone, reached)
+        }
+        wipeFronts.removeAll { $0.r >= wipes[$0.zone].radius }
+    }
+
+    /// dust and smoke along the front where anyone could see it, and a rumble
+    private func wipeFrontEffects(_ w: World, _ zone: WipeZone, _ r: Double) {
+        if r > 200 { return }
+        let gen = overworldGen(w.seed)
+        let n = max(12, Int(r / 3))
+        for i in 0..<n {
+            let a = Double(i) / Double(n) * 2 * .pi + Double(w.time % 7) * 0.1
+            let x = zone.x + detCos(a) * r, z = zone.z + detSin(a) * r
+            let y = Double(max(gen.refinedHeightEstimate(x, z) - WIPE_DEPTH, w.info.seaLevel) + 2)
+            w.hooks.addParticles("explosion", x, y, z, 1, 2, 0)
+            w.hooks.addParticles("smoke", x, y + 2, z, 3, 3, 0)
+        }
+        if w.time % 4 == 0 { pendingBlasts.append((zone.x, player.y, zone.z, 2)) }
+    }
+
+    /// cut a chunk that's already in the world, then relight, remesh, save
+    /// and resend it — straight on the block array, not millions of setBlocks
+    private func wipeLoadedChunk(_ w: World, _ c: Chunk, _ zi: Int) {
+        wipes[zi].done.insert(chunkKey(c.cx, c.cz))
+        var blocks = c.blocks
+        guard wipeChunkBlocks(&blocks, c.cx, c.cz, minY: c.minY, height: c.height, seed: w.seed, zone: wipes[zi]) else { return }
+        c.blocks = blocks
+        dropWipedBlockEntities(w, c)
+        let light = computeLocalLight(blocks: c.blocks, height: c.height, hasSky: w.info.hasSky)
+        c.skyLight = light.sky
+        c.blockLight = light.blk
+        c.buildHeightmap()
+        c.scanSpecials()
+        if c.status == .lit && w.neighborsReady(c.cx, c.cz) {
+            lightChunk(w, c)   // seams + remesh (this chunk and its neighbors)
+        } else {
+            c.status = .generated
+            enqueueLightAround(w, c.cx, c.cz)
+        }
+        netHost?.resendChunk(c.cx, c.cz)
+    }
+
+    /// block entities whose block was cut go with it; the chunk saves
+    private func dropWipedBlockEntities(_ w: World, _ c: Chunk) {
+        for (i, be) in c.blockEntities where c.blocks[i] == 0 {
+            w.untrackTickingBE(be)
+            c.blockEntities.removeValue(forKey: i)
+        }
+        c.modified = true
+    }
+
+    // ===========================================================================
+    // Mountains (Systems/Mountain.swift)
+    // ===========================================================================
+    /// pour a mountain centered on (x, z); the plan says how big it came out
+    public func placeMountain(_ x: Int, _ z: Int, variant: Int) -> MountainPlan {
+        let w = world
+        // the whole footprint has to exist, and stay loaded while it rises
+        let ccx = floorDiv(x, 16), ccz = floorDiv(z, 16), cr = MountainShape.reach / 16 + 1
+        ensureChunksLoaded(w, ccx, ccz, cr)
+        let baseY = groundLevel(w, x, z) - 1
+        let plan = planMountain(w, cx: x, cz: z, baseY: baseY, variant: variant)
+        if plan.keys.isEmpty { return plan }
+        let job = startMountain(w, plan, players: { [weak self] in
+            guard let self else { return [] }
+            return [self.player] + (self.netHost?.proxies ?? [])
+        })
+        var keys = Set<Int64>()
+        for dz in -cr...cr { for dx in -cr...cr { keys.insert(chunkKey(ccx + dx, ccz + dz)) } }
+        mountainPins.append((job, keys))
+        w.hooks.playSound("pebble.mountain.rise", Double(x) + 0.5, Double(baseY), Double(z) + 0.5, 10, 1)
+        pendingBlasts.append((Double(x), Double(baseY), Double(z), 20))
+        return plan
+    }
+
     /// change our own game mode; a LAN host's guests follow it
     public func applyGameMode(_ mode: Int) {
         player.setGameMode(mode)
@@ -2557,6 +2746,8 @@ public final class GameCore {
         var rec = WorldRecord(id: "lan-guest", name: name, seed: seed, gameMode: mode, difficulty: 2)
         rec.spawnX = spawn.0; rec.spawnY = spawn.1; rec.spawnZ = spawn.2
         worldRec = rec
+        wipes = []
+        wipeFronts = []
         advancements = AdvancementTracker()
         dragonSpawned = false
         worlds.removeAll()

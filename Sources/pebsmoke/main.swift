@@ -152,7 +152,7 @@ registerAllItems()
 // fns referenced items that never existed; appended at the END so every
 // baseline id is unchanged)
 let BASE_ITEM_COUNT = 1186
-check("item count", itemDefs.count == 1194, "got \(itemDefs.count) want 1194") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder
+check("item count", itemDefs.count == 1195, "got \(itemDefs.count) want 1195") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder, infinity_wipe
 check("item ids stable after append", iid("weeping_vines") == 1186 && iid("twisting_vines") == 1187,
       "vines ids \(iid("weeping_vines"))/\(iid("twisting_vines")) want 1186/1187")
 let itemGoldens: [(String, Int)] = [
@@ -2165,6 +2165,118 @@ do {
         check("ice glide = \(String(format: "%.3f", perTick * 20)) b/s",
               abs(perTick - expect) < 1e-6)
     }
+}
+
+section("infinity wipe")
+do {
+    let seed: UInt32 = 12345
+    let gen = overworldGen(seed)
+    let info = DIMS[Dim.overworld.rawValue]
+    // a land chunk (same walk createWorld uses to pick a spawn)
+    var lcx = 0, lcz = 0
+    for r in 0..<40 {
+        let tx = 8 + r * 40, tz = 8 + ((r * 13) % 7 - 3) * 40
+        let bname = (BIOMES[Int(gen.surfaceBiomeAt(Double(tx), Double(tz)).rawValue)]?.name ?? "").lowercased()
+        if gen.heightEstimate(Double(tx), Double(tz)) > info.seaLevel + 4 && !bname.contains("ocean") && !bname.contains("river") {
+            lcx = floorDiv(tx, 16); lcz = floorDiv(tz, 16)
+            break
+        }
+    }
+    let orig = generateChunk(.overworld, seed, lcx, lcz).blocks
+    var blocks = orig
+    let zone = WipeZone(dim: 0, x: Double(lcx * 16 + 8), z: Double(lcz * 16 + 8), radius: WIPE_RADIUS)
+    let changed = wipeChunkBlocks(&blocks, lcx, lcz, minY: info.minY, height: info.height, seed: seed, zone: zone)
+    check("wipe changes a land chunk at the center", changed)
+    var aboveClear = true, belowKept = true, cut = 0, estErr = 0, cols = 0
+    for lz in 0..<16 {
+        for lx in 0..<16 {
+            let wx = lcx * 16 + lx, wz = lcz * 16 + lz
+            let est = gen.refinedHeightEstimate(Double(wx), Double(wz))
+            // natural top: highest solid block that isn't a tree, plant, snow or fluid
+            var top = info.minY
+            for y in stride(from: info.minY + info.height - 1, through: info.minY, by: -1) {
+                let id = Int(orig[(y - info.minY) * 256 + lz * 16 + lx] >> 4)
+                if id == 0 || isTreeOrPlant(id) || id == Int(B.water) || id == Int(B.lava) || id == Int(B.snow) { continue }
+                top = y
+                break
+            }
+            estErr += abs(top - est)
+            // the cut uses the lower of the estimate and the real ground (fluids count as ground)
+            var real = info.minY - 1
+            for y in stride(from: info.minY + info.height - 1, through: info.minY, by: -1)
+                where !isTreeOrPlant(Int(orig[(y - info.minY) * 256 + lz * 16 + lx] >> 4)) {
+                real = y
+                break
+            }
+            let keep = max(min(est, real) - WIPE_DEPTH, info.seaLevel)
+            cols += 1
+            for y in info.minY..<(info.minY + info.height) {
+                let i = (y - info.minY) * 256 + lz * 16 + lx
+                if y > keep && blocks[i] != 0 { aboveClear = false }
+                if y <= keep && blocks[i] != orig[i] { belowKept = false }
+                if blocks[i] != orig[i] { cut += 1 }
+            }
+        }
+    }
+    check("everything above the cut is air", aboveClear)
+    check("nothing at or below the cut changes", belowKept)
+    let meanErr = Double(estErr) / Double(cols)
+    check("ground estimate tracks the real surface (mean off by \(String(format: "%.1f", meanErr)) blocks)", meanErr < 4)
+    check("about \(WIPE_DEPTH)+ blocks per column cut (\(cut / 256) avg)", cut / 256 >= WIPE_DEPTH - 4)
+
+    // a 30-tall stone tower someone built on the ground goes entirely
+    do {
+        var built = orig
+        let est = gen.refinedHeightEstimate(Double(lcx * 16 + 8), Double(lcz * 16 + 8))
+        let stone = UInt16(B.stone) << 4
+        for y in (est + 1)...(est + 30) { built[(y - info.minY) * 256 + 8 * 16 + 8] = stone }
+        _ = wipeChunkBlocks(&built, lcx, lcz, minY: info.minY, height: info.height, seed: seed, zone: zone)
+        let towerLeft = ((est - WIPE_DEPTH + 1)...(est + 30)).contains { y in
+            y > info.seaLevel && built[(y - info.minY) * 256 + 8 * 16 + 8] != 0
+        }
+        check("a tower built on the ground is erased with the land under it", !towerLeft)
+    }
+
+    // outside the radius: untouched
+    var far = orig
+    let farZone = WipeZone(dim: 0, x: Double(lcx * 16 + 8) + WIPE_RADIUS + 64, z: Double(lcz * 16 + 8), radius: WIPE_RADIUS)
+    check("chunks past the radius are untouched",
+          !wipeChunkBlocks(&far, lcx, lcz, minY: info.minY, height: info.height, seed: seed, zone: farZone) && far == orig)
+
+    // the rim tapers: a column just inside the edge loses less ground than one at the center
+    let rimZone = WipeZone(dim: 0, x: Double(lcx * 16 + 8) - (WIPE_RADIUS - 12), z: Double(lcz * 16 + 8), radius: WIPE_RADIUS)
+    var rim = orig
+    _ = wipeChunkBlocks(&rim, lcx, lcz, minY: info.minY, height: info.height, seed: seed, zone: rimZone)
+    let rimCut = zip(rim, orig).filter { $0 != $1 }.count
+    check("the rim cuts shallower than the center (\(rimCut / 256) vs \(cut / 256) per column)", rimCut < cut)
+
+    // an ocean chunk: nothing at or below sea level moves
+    var ocx = 0, ocz = 0, foundOcean = false
+    outer: for r in 0..<200 {
+        for (tx, tz) in [(r * 64, 0), (0, r * 64), (-r * 64, 0), (0, -r * 64)] {
+            let bname = (BIOMES[Int(gen.surfaceBiomeAt(Double(tx), Double(tz)).rawValue)]?.name ?? "").lowercased()
+            if bname.contains("ocean") && gen.heightEstimate(Double(tx), Double(tz)) < info.seaLevel - 8 {
+                ocx = floorDiv(tx, 16); ocz = floorDiv(tz, 16); foundOcean = true
+                break outer
+            }
+        }
+    }
+    if foundOcean {
+        let oOrig = generateChunk(.overworld, seed, ocx, ocz).blocks
+        var ocean = oOrig
+        let oz = WipeZone(dim: 0, x: Double(ocx * 16 + 8), z: Double(ocz * 16 + 8), radius: WIPE_RADIUS)
+        _ = wipeChunkBlocks(&ocean, ocx, ocz, minY: info.minY, height: info.height, seed: seed, zone: oz)
+        let seaIdx = (info.seaLevel - info.minY + 1) * 256
+        check("oceans keep their water and seabed", Array(ocean[0..<seaIdx]) == Array(oOrig[0..<seaIdx]))
+    } else {
+        check("found an ocean chunk to test", false)
+    }
+
+    // zones survive a save
+    var z2 = zone
+    z2.done = [chunkKey(1, 2), chunkKey(-3, 4)]
+    let back = try? JSONDecoder().decode(WipeZone.self, from: JSONEncoder().encode(z2))
+    check("wipe zones round-trip through JSON", back?.done == z2.done && back?.radius == z2.radius)
 }
 
 print("\n\(passed) passed, \(failed) failed")

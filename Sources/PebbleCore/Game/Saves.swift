@@ -53,6 +53,8 @@ public struct WorldRecord: Codable {
     public var dragonKilled: Bool
     public var gatewaysSpawned: Int
     public var nextEntityId: Int
+    /// Infinity Wipe blast zones (Systems/InfinityWipe.swift); nil when none
+    public var wipes: [WipeZone]?
 
     public init(id: String, name: String, seed: Int32, gameMode: Int, difficulty: Int) {
         self.id = id

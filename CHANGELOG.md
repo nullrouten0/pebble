@@ -49,6 +49,31 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   - Villager trade limits and anvil wear aren't shared.
   - Everyone needs the same version.
 
+### Infinity Wipe
+- **A new creative tool, `infinity_wipe`, erases the land like a nuke.** Use it
+  once to arm it, then again within 3 seconds to fire.
+  - It erases everything within 320 blocks of you (1000 if you sneak).
+  - It follows the land's contour: whatever stands on the natural ground
+    (trees, buildings, overhangs) goes, along with the top 12 blocks of the
+    ground itself.
+  - It never cuts below sea level, so oceans, rivers and shores stay put. The
+    cut eases off over the last 24 blocks.
+  - A shockwave rolls through the loaded area. Chunks beyond your view are
+    wiped as they load, and the blast zone is saved with the world.
+  - It can't be undone. It's Overworld only, and LAN guests can fire it too.
+
+### `/place mountain`
+- **Pours a natural-looking mountain onto the land.** It's about 160 blocks
+  across and peaks 80 blocks above its base, about 1.5× the Giza pyramid.
+  - Ridges, gullies, scree, grassy lower slopes and a snowcap. A different
+    `variant` gives a different mountain.
+  - Every column fills from the surface down through air, water, trees and
+    plants until it meets solid ground. So it settles over valleys and lakes
+    and buries anything built there. Ground that already stands higher is left
+    alone, so the edges melt into the hills.
+  - It rises over a few seconds, lifting anyone standing where it grows. Like
+    any `/place`, Cmd+Z undoes it.
+
 ### Fixes
 - **Messages no longer show "?" for dashes and ellipses.** The in-game font is
   ASCII-only, so "—", "…" and "·" in chat lines, the loading screens and the

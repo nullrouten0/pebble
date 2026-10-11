@@ -112,7 +112,7 @@ public func capturePrefab(_ id: String, dim: Int, minY: Int, maxY: Int, biome: I
 }
 
 /// tree parts and loose plants — cleared out of a footprint, never treated as ground
-func isTreeOrPlant(_ id: Int) -> Bool {
+public func isTreeOrPlant(_ id: Int) -> Bool {
     if id == 0 { return true }
     let d = blockDefs[id]
     if !d.solid { return UInt16(id) != B.water && UInt16(id) != B.lava }
