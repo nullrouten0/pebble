@@ -671,7 +671,8 @@ public final class ElderGuardian: Guardian {
         // mining fatigue aura
         if age % 1200 == 0 {
             for p in world.getEntitiesNear(x, y, z, 50, filter: { ($0 as? Entity)?.isPlayer ?? false }) {
-                guard let pl = p as? LivingEntity else { continue }
+                // creative players are spared, as in vanilla
+                guard let pl = p as? LivingEntity, pl.gameMode != GameMode.creative else { continue }
                 pl.addEffect("mining_fatigue", 6000, 2)
                 world.hooks.playSound("entity.elder_guardian.curse", pl.x, pl.y, pl.z, 1, 1)
             }

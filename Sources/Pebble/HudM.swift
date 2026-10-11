@@ -26,6 +26,9 @@ final class HUD {
     private var lastTimerTime = CACurrentMediaTime()
     private var timerAccum = 0.0
     private var tickSteps = 0
+    /// effect id → level last drawn, and ticks left to show its name
+    private var effectLevels: [String: Int] = [:]
+    private var effectNameTicks: [String: Int] = [:]
 
     func showActionBar(_ text: String) {
         actionBarText = text
@@ -255,7 +258,27 @@ final class HUD {
             bbY += 22
         }
 
-        // status effect icons (top right)
+        // status effect icons (top right); a new effect (or level) shows its
+        // name under the icons for 5 s
+        var labels: [String] = []
+        for e in player.effects {
+            if effectLevels[e.id] != e.amplifier { effectNameTicks[e.id] = 100 }
+            effectLevels[e.id] = e.amplifier
+            if let t = effectNameTicks[e.id], t > 0 {
+                let numerals = ["", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X"]
+                labels.append(effectDef(e.id).displayName + (e.amplifier < numerals.count ? numerals[e.amplifier] : " \(e.amplifier + 1)"))
+                effectNameTicks[e.id] = t - tickSteps
+            }
+        }
+        let active = Set(player.effects.map { $0.id })
+        effectLevels = effectLevels.filter { active.contains($0.key) }
+        effectNameTicks = effectNameTicks.filter { active.contains($0.key) && $0.value > 0 }
+        for (i, text) in labels.enumerated() {
+            let w = Double(textWidth(text)) + 6
+            cv.setFill("rgba(0,0,0,0.6)")
+            cv.fillRect(W - w - 4, 29 + Double(i) * 11, w, 11)
+            cv.drawText(text, W - w - 1, 31 + Double(i) * 11, 1)
+        }
         var efX = W - 26
         for e in player.effects {
             let def = effectDef(e.id)

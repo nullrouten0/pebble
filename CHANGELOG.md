@@ -98,6 +98,11 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
   format uses a narrow no-break space, which the font doesn't have.
 - **Title screen fits short windows.** The Options / Quit row no longer
   covers the texture credit in the bottom-left corner.
+- **Elder Guardians no longer curse creative players** with Mining Fatigue,
+  as in vanilla.
+- **Status effects say what they are.** When an effect starts or changes
+  level, its name (with the level, e.g. "Mining Fatigue III") shows under the
+  icons in the top right for 5 seconds.
 - **Rockets no longer freeze in mid-air.** A rocket (or void bomb) that flew
   past simulation distance stopped moving and never went off. Now it keeps
   flying and detonates at the end of its range.
