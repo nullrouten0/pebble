@@ -2456,6 +2456,37 @@ do {
     }
 }
 
+section("world spawn on dry land")
+do {
+    // the spawn search reads a terrain estimate, so a new world could start
+    // its player on a lake or ocean floor (surfaceY looks through water)
+    let home = NSTemporaryDirectory() + "pebsmoke-spawn-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    var wet: [Int] = []
+    // 16 of 300 random seeds started underwater before; a few dry ones too
+    let seeds = [-957389223, -570112306, -1675440399, 2140826113, -365683123, 1662125329,
+                 -696457382, 78096452, 761226419, -879305116, -583452066, -822802458,
+                 782807868, 930734393, -1963051760, -1279921793, 1, 2, 3, 12345]
+    for seed in seeds {
+        g.createWorld(name: "spawn", seedText: "\(seed)", mode: GameMode.survival, difficulty: 0)
+        let p = g.player!
+        let x = Int(p.x.rounded(.down)), y = Int(p.y.rounded(.down)), z = Int(p.z.rounded(.down))
+        let feet = UInt16(truncatingIfNeeded: g.world.getBlock(x, y, z))
+        let ground = g.world.getBlock(x, y - 1, z) >> 4
+        if isWaterlogged(feet) || !blockDefs[ground].solid { wet.append(seed) }
+        let id = g.worldRec!.id
+        g.exitToTitle()
+        g.deleteWorld(id)
+    }
+    check("\(seeds.count) new worlds start on dry ground", wet.isEmpty, "wet: seeds \(wet)")
+}
+
+// ---------------------------------------------------------------------------
 section("chunk saves (VCK1 plain, VCK2 compressed)")
 do {
     let home = NSTemporaryDirectory() + "pebsmoke-db-\(getpid())"

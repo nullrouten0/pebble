@@ -32,8 +32,19 @@ public struct DimState: Codable {
 
 /// single source of truth for the app version — the title screen, the F3
 /// overlay and save records all read this (Info.plist is bumped separately
-/// at packaging time)
-public let PEBBLE_VERSION = "1.2.0"
+/// at packaging time). major.minor.revision: a new minor adds features, a
+/// new revision is a small feature or a fix.
+public let PEBBLE_VERSION = "1.3.0"
+
+/// the commit this build came from: 8 hex digits, "+" when built with
+/// uncommitted changes. Stamped into the app's Info.plist at build time
+/// (`bundle` in ./pebble; a build phase in ios/project.yml); nil for bare
+/// `swift run` builds.
+public let PEBBLE_COMMIT = Bundle.main.object(forInfoDictionaryKey: "PebbleCommit") as? String
+
+/// what players see, e.g. "1.3.0.2d559e0a" — tells apart builds that share a
+/// version
+public let PEBBLE_BUILD = PEBBLE_COMMIT.map { "\(PEBBLE_VERSION).\($0)" } ?? PEBBLE_VERSION
 
 /// WorldMeta + the global-state extension (baseline WorldRecord extends WorldMeta)
 public struct WorldRecord: Codable {

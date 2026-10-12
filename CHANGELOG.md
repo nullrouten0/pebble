@@ -5,10 +5,26 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
 ## iPad Beta — `ios-port` branch
 
-Not a main release yet: build it yourself from the branch (see the README
-banner). Known rough edges: frame rate dips while new terrain streams in,
-the touch buttons are plain text labels for now, and iPhone layouts are
-only lightly polished.
+Version 1.3.0. Not a main release yet: build it yourself from the branch
+(see the README banner). Known rough edges: frame rate dips while new
+terrain streams in, and iPhone layouts are only lightly polished.
+
+- **Exact build on the title screen.** The version now reads
+  major.minor.revision.commit, e.g. `Pebble 1.3.0.2d559e0a` (bottom-left of
+  the title screen and in F3), so you can tell which build each device is
+  on. A `+` at the end means it was built with uncommitted changes. The
+  revision goes up for a small feature or a fix, the minor version for a
+  release that adds features.
+- **No more starting on the ocean floor.** About 1 in 20 new worlds put
+  spawn in water (the spawn search reads a terrain estimate, and the real
+  terrain had a lake or ocean there), so you started and respawned on the
+  bottom. Spawn now moves to the nearest dry land; older worlds fix
+  themselves the next time you respawn there.
+- **Icons on the touch buttons** in place of text labels: jump (up arrow),
+  sneak (down arrow onto the floor), drop (your held item with an arrow),
+  swap hands, inventory (chest), chat (speech bubble), camera view (eye),
+  pause, and an × to close screens. Jump, sneak, swap, drop and inventory
+  form an L in the bottom-right corner.
 
 - **Pebble runs on iPad and iPhone.** The same game, built from the same
   repo: `pebble ios run` launches it in the simulator. Touch controls (move

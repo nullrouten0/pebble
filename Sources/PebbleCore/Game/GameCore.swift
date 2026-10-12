@@ -388,6 +388,51 @@ public final class GameCore {
         saveKeybinds(keybinds)
     }
 
+    /// the top of a column, past air and plants, is solid ground (not water,
+    /// lava or a waterlogged block)
+    private func isDryColumn(_ w: World, _ x: Int, _ z: Int) -> Bool {
+        var y = w.info.minY + w.info.height - 1
+        while y > w.info.minY {
+            let c = UInt16(truncatingIfNeeded: w.getBlock(x, y, z))
+            if isWaterlogged(c) || isLavaCell(c) { return false }
+            let id = Int(c >> 4)
+            if id != 0 && blockDefs[id].solid { return true }
+            y -= 1
+        }
+        return false
+    }
+
+    /// The world spawn was picked from a terrain estimate, which can put it
+    /// in a lake or ocean the real terrain has there — and surfaceY looks
+    /// through water, so players landed on the sea floor. Move it to the
+    /// nearest dry land (rings every 4 blocks out to 64) and keep it.
+    func settleSpawn(_ w: World) {
+        guard !w.isRemote, var rec = worldRec else { return }
+        let sx = Int(w.spawnX.rounded(.down)), sz = Int(w.spawnZ.rounded(.down))
+        if isDryColumn(w, sx, sz) { return }
+        for r in stride(from: 4, through: 64, by: 4) {
+            var ring: [(Int, Int)] = []
+            for d in stride(from: -r, through: r, by: 4) {
+                ring += [(d, -r), (d, r)]
+                if abs(d) != r { ring += [(-r, d), (r, d)] }
+            }
+            for (dx, dz) in ring {
+                let x = sx + dx, z = sz + dz
+                ensureChunksLoaded(w, floorDiv(x, 16), floorDiv(z, 16), 0)
+                guard isDryColumn(w, x, z) else { continue }
+                let y = w.surfaceY(x, z)   // the first air, as createWorld sets it
+                for ww in worlds.values {
+                    ww.spawnX = Double(x); ww.spawnY = Double(y); ww.spawnZ = Double(z)
+                }
+                rec.spawnX = x; rec.spawnY = y; rec.spawnZ = z
+                worldRec = rec
+                db.putWorld(rec)
+                ensureChunksLoaded(w, floorDiv(x, 16), floorDiv(z, 16), 1)
+                return
+            }
+        }
+    }
+
     public func respawnPlayer() {
         if traveling { return }
         traveling = true
@@ -419,6 +464,7 @@ public final class GameCore {
             destDim = .overworld
             let w = worlds[.overworld]!
             ensureChunksLoaded(w, floorDiv(Int(w.spawnX), 16), floorDiv(Int(w.spawnZ), 16), 1)
+            settleSpawn(w)
             dest = (w.spawnX + 0.5, Double(w.surfaceY(Int(w.spawnX), Int(w.spawnZ))), w.spawnZ + 0.5)
         }
         if isGuest {
@@ -578,6 +624,8 @@ public final class GameCore {
         let pcx = floorDiv(ifloor(player.x), 16), pcz = floorDiv(ifloor(player.z), 16)
         ensureChunksLoaded(w, pcx, pcz, 1)
         if playerData == nil {
+            if dim == .overworld { settleSpawn(w) }
+            let rec = worldRec ?? rec
             let sy = w.surfaceY(rec.spawnX, rec.spawnZ)
             player.setPos(Double(rec.spawnX) + 0.5, Double(sy), Double(rec.spawnZ) + 0.5)
         }

@@ -126,6 +126,16 @@ build() {
     fi
 }
 
+# PebbleCommit in an app's Info.plist: the 8-digit commit, "+" when the tree
+# has uncommitted changes (PEBBLE_BUILD in Saves.swift shows it as
+# major.minor.revision.commit). ios/project.yml stamps the iOS app the same way.
+stamp_commit() {
+    local c
+    c="$(git -C "$REPO" rev-parse --short=8 HEAD 2>/dev/null)" || return 0
+    [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ] && c="$c+"
+    /usr/libexec/PlistBuddy -c "Add :PebbleCommit string $c" "$1" >/dev/null
+}
+
 bundle() {
     say "Assembling $APP_NAME.app…"
     local stage="$REPO/dist/$APP_NAME.app"
@@ -140,6 +150,7 @@ bundle() {
     # the Faithful license must travel with the pack (their requirement #6)
     cp "$REPO/packaging/FAITHFUL-LICENSE.txt" "$stage/Contents/Resources/" 2>/dev/null || true
     cp "$REPO/.build/release/Pebble"    "$stage/Contents/MacOS/Pebble"
+    stamp_commit "$stage/Contents/Info.plist"
     codesign --force --sign - "$stage" >/dev/null 2>&1 || warn "codesign failed — the app may trip Gatekeeper"
 }
 

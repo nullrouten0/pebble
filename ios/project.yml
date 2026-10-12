@@ -32,6 +32,19 @@ targets:
     dependencies:
       - package: Pebble
         product: PebbleApp
+    # PebbleCommit: the 8-digit commit ("+" with uncommitted changes), which
+    # the title screen shows as major.minor.revision.commit (PEBBLE_BUILD).
+    # Runs every build so the stamp never goes stale.
+    postBuildScripts:
+      - name: Stamp commit
+        basedOnDependencyAnalysis: false
+        script: |
+          repo="$SRCROOT/.."
+          c="$(git -C "$repo" rev-parse --short=8 HEAD 2>/dev/null)" || exit 0
+          [ -n "$(git -C "$repo" status --porcelain --untracked-files=no 2>/dev/null)" ] && c="$c+"
+          plist="$TARGET_BUILD_DIR/$INFOPLIST_PATH"
+          /usr/libexec/PlistBuddy -c "Set :PebbleCommit $c" "$plist" 2>/dev/null ||
+            /usr/libexec/PlistBuddy -c "Add :PebbleCommit string $c" "$plist"
 schemes:
   PebbleiOS:
     build:

@@ -441,7 +441,7 @@ public final class NetHost {
         c.viewDistance = max(2, min(16, try r.u8()))
         pending.removeValue(forKey: c.conn.id)
         guard proto == NET_PROTOCOL else {
-            kick(c, "Version mismatch: host runs Pebble \(PEBBLE_VERSION), you have \(version)")
+            kick(c, "Version mismatch: host runs Pebble \(PEBBLE_BUILD), you have \(version)")
             return
         }
         guard game.inWorld, let rec = game.worldRec else { kick(c, "The host isn't in a world"); return }

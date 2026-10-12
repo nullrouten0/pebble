@@ -75,7 +75,7 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 - **Structure-piece RNG: draw, then check.** Builder RNG must be a pure function of (structure, piece). Draw every random value *before* any chunk-relative `b.get()` test — short-circuiting a draw on local chunk contents desyncs the stream across the chunks that rebuild the same piece. Also: `b.get()` returns **−1 outside the building chunk**; guard before casting.
 - **Threading contract.** Chunks are built on the gen queue and published only via `adoptChunk` on main. UI/renderer state is main-thread-only. Saves go through the serial save queue. The audio render thread owns the voice list; talk to it through the inbox. One-time registration uses `let`-initialized globals (dispatch_once), not boolean guards.
 - **GPU buffers the CPU rewrites per frame must be ring-buffered** (3 deep — see UICanvas, particles) or staged through blit encoders (see atlas animations). The renderer has no semaphore; it relies on the 3-drawable limit.
-- **Version string** lives in one place: `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift). Bump it there plus `packaging/Info.plist`.
+- **Version string** lives in one place: `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift). Bump it there plus `packaging/Info.plist`. It's major.minor.revision: bump the **minor** for a release that adds features, the **revision** for a small feature or a fix. Builds show it with the commit appended (`1.3.0.2d559e0a`, `+` when built with uncommitted changes), so testers can tell exactly which build they're on; `./pebble` and the iOS project stamp the commit into Info.plist.
 
 ## Testing tips
 

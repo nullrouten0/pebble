@@ -91,7 +91,7 @@ final class TitleScreen: Screen {
         cv.scale(pulse, pulse)
         cv.drawTextCentered(splash, 0, 0, 1, "#ffff55")
         cv.restore()
-        cv.drawText("Pebble \(PEBBLE_VERSION)", 2, ui.height - 10, 1, "#c8c8c8")
+        cv.drawText("Pebble \(PEBBLE_BUILD)", 2, ui.height - 10, 1, "#c8c8c8")
         cv.drawText("Textures: Faithful 32x (faithfulpack.net)", 2, ui.height - 20, 1, "#909090")
         let credit = "Singleplayer & LAN"
         cv.drawText(credit, ui.width - Double(textWidth(credit)) - 2, ui.height - 10, 1, "#c8c8c8")

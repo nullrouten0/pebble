@@ -48,7 +48,7 @@ public final class NetClient {
             var w = ByteWriter()
             w.u16(NET_PROTOCOL)
             w.str(name)
-            w.str(PEBBLE_VERSION)
+            w.str(PEBBLE_BUILD)
             w.u8(viewDistance)
             conn.send(w.frame(.hello))
             DispatchQueue.main.async { self?.status = "Joining..." }

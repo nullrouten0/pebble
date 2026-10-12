@@ -64,30 +64,131 @@ public final class TouchControls {
 
     private func rect(_ b: WorldButton) -> Rect {
         let R = right, B = bottom, T = top
+        // an L in the bottom-right corner: jump above sneak, then along the
+        // bottom leftward swap, drop, inventory. The gaps take what room the
+        // hotbar leaves (4 on iPads), so inventory never covers the hotbar.
+        let colW = 30.0, sneakH = 26.0, rowH = 22.0, swapW = 20.0, dropW = 22.0, invW = 16.0
+        let hotbarEnd = (ui.width / 2).rounded(.down) + 91 + 3
+        let spare = R - 3 - hotbarEnd - (colW + swapW + dropW + invW)
+        let gap = min(4, max(1, (spare / 3).rounded(.down)))
+        let sneakX = R - 3 - colW, swapX = sneakX - gap - swapW, dropX = swapX - gap - dropW
+        let rowY = B - 1 - rowH, sneakY = B - 1 - sneakH
         switch b {
-        case .jump: return Rect(x: R - 36, y: B - 40, w: 30, h: 30)
-        case .sneak: return Rect(x: R - 64, y: B - 32, w: 24, h: 24)
-        case .drop: return Rect(x: R - 36, y: B - 60, w: 30, h: 16)
-        case .swap: return Rect(x: R - 64, y: B - 52, w: 24, h: 16)
-        case .inventory: return Rect(x: (ui.width / 2).rounded(.down) + 91 + 3, y: B - 21, w: 16, h: 20)
+        case .jump: return Rect(x: sneakX, y: sneakY - gap - 32, w: colW, h: 32)
+        case .sneak: return Rect(x: sneakX, y: sneakY, w: colW, h: sneakH)
+        case .swap: return Rect(x: swapX, y: rowY, w: swapW, h: rowH)
+        case .drop: return Rect(x: dropX, y: rowY, w: dropW, h: rowH)
+        case .inventory: return Rect(x: max(dropX - gap - invW, hotbarEnd), y: rowY, w: invW, h: rowH)
         case .pause: return Rect(x: R - 22, y: T + 4, w: 18, h: 16)
         case .chat: return Rect(x: R - 44, y: T + 4, w: 18, h: 16)
         case .perspective: return Rect(x: R - 66, y: T + 4, w: 18, h: 16)
         }
     }
 
-    private func label(_ b: WorldButton) -> String {
+    /// pixel-art glyphs ('#' lit), drawn in white with the font's drop shadow
+    private func icon(_ b: WorldButton) -> [String] {
         switch b {
-        case .jump: return "Jump"
-        case .sneak: return "Snk"
-        case .drop: return "Drop"
-        case .swap: return "Swap"
-        case .inventory: return "..."
-        case .pause: return "II"
-        case .chat: return "T"
-        case .perspective: return "F5"
+        case .jump: return [        // up arrow
+            "....#....",
+            "...###...",
+            "..#####..",
+            ".#######.",
+            "#########",
+            "...###...",
+            "...###...",
+            "...###...",
+            "...###...",
+        ]
+        case .sneak: return [       // down arrow onto the floor
+            "....###....",
+            "....###....",
+            "....###....",
+            "....###....",
+            "###########",
+            ".#########.",
+            "..#######..",
+            "...#####...",
+            "....###....",
+            ".....#.....",
+            "...........",
+            "###########",
+        ]
+        case .drop: return [        // (beside the held item) down arrow
+            "...#...",
+            "...#...",
+            "...#...",
+            "#######",
+            ".#####.",
+            "..###..",
+            "...#...",
+        ]
+        case .swap: return [        // trade hands
+            "...#.......",
+            "..##.......",
+            ".#########.",
+            "..##.......",
+            "...#.......",
+            "...........",
+            ".......#...",
+            ".......##..",
+            ".#########.",
+            ".......##..",
+            ".......#...",
+        ]
+        case .inventory: return [   // chest
+            "##########",
+            "#........#",
+            "#........#",
+            "##########",
+            "#...##...#",
+            "#...##...#",
+            "#........#",
+            "#........#",
+            "##########",
+        ]
+        case .chat: return [        // speech bubble
+            "###########",
+            "#.........#",
+            "#.#######.#",
+            "#.........#",
+            "#.####....#",
+            "#.........#",
+            "###########",
+            ".##........",
+            ".#.........",
+        ]
+        case .perspective: return [ // eye: change view
+            "...#####...",
+            ".##.....##.",
+            "#...###...#",
+            "#..#####..#",
+            "#...###...#",
+            ".##.....##.",
+            "...#####...",
+        ]
+        case .pause: return [
+            "##..##",
+            "##..##",
+            "##..##",
+            "##..##",
+            "##..##",
+            "##..##",
+            "##..##",
+            "##..##",
+        ]
         }
     }
+
+    private static let closeIcon = [
+        "##....##",
+        "###..###",
+        ".######.",
+        "..####..",
+        "..####..",
+        ".######.",
+        "###..###",
+        "##....##",
+    ]
 
     /// hotbar slot under a point (matches HUD's layout)
     private func hotbarSlot(_ x: Double, _ y: Double) -> Int? {
@@ -502,12 +603,47 @@ public final class TouchControls {
 
     // MARK: - drawing
 
-    private func button(_ cv: UICanvas, _ r: Rect, _ text: String, active: Bool = false) {
+    private func buttonFrame(_ cv: UICanvas, _ r: Rect, active: Bool) {
         cv.setFill(active ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.35)")
         cv.fillRect(r.x, r.y, r.w, r.h)
         cv.setStroke("rgba(255,255,255,0.55)")
         cv.strokeRect(r.x, r.y, r.w, r.h)
+    }
+
+    private func button(_ cv: UICanvas, _ r: Rect, _ text: String, active: Bool = false) {
+        buttonFrame(cv, r, active: active)
         cv.drawTextCentered(text, r.x + r.w / 2, r.y + (r.h - 8) / 2, 1)
+    }
+
+    /// a glyph centered in `r` at the largest whole scale that leaves a margin
+    private func drawIcon(_ cv: UICanvas, _ rows: [String], in r: Rect) {
+        let w = Double(rows.map(\.count).max() ?? 0), h = Double(rows.count)
+        let s = max(1, ((min(r.w, r.h) - 6) / max(w, h)).rounded(.down))
+        let x0 = (r.x + (r.w - w * s) / 2).rounded(.down)
+        let y0 = (r.y + (r.h - h * s) / 2).rounded(.down)
+        for (color, off) in [("#3f3f3f", 1.0), ("#ffffff", 0.0)] {
+            cv.setFill(color)
+            for (j, row) in rows.enumerated() {
+                for (i, ch) in row.enumerated() where ch == "#" {
+                    cv.fillRect(x0 + Double(i) * s + off, y0 + Double(j) * s + off, s, s)
+                }
+            }
+        }
+    }
+
+    private func drawButton(_ cv: UICanvas, _ b: WorldButton, active: Bool) {
+        let r = rect(b)
+        buttonFrame(cv, r, active: active)
+        guard b == .drop else { drawIcon(cv, icon(b), in: r); return }
+        // drop: the held item (or an empty slot) and an arrow out of the hand
+        let item = Rect(x: r.x + 4, y: r.y + (r.h - 10) / 2, w: 10, h: 10)
+        if let st = game.player?.mainHandStack {
+            cv.drawItemIcon(st.id, st.data, item.x, item.y, item.w, item.h)
+        } else {
+            cv.setStroke("rgba(255,255,255,0.55)")
+            cv.strokeRect(item.x + 1, item.y + 1, item.w - 2, item.h - 2)
+        }
+        drawIcon(cv, icon(.drop), in: Rect(x: item.x + item.w, y: r.y, w: r.x + r.w - item.x - item.w, h: r.h))
     }
 
     /// on-screen controls over the HUD (no screen open)
@@ -519,7 +655,7 @@ public final class TouchControls {
         })
         for b in WorldButton.allCases {
             let active = pressed.contains(b) || (b == .sneak && sneakToggled)
-            button(cv, rect(b), label(b), active: active)
+            drawButton(cv, b, active: active)
         }
         // the stick, where the thumb went down
         if let id = stickTouch, case .stick(let ox, let oy) = touches[id]!.role {
@@ -542,7 +678,10 @@ public final class TouchControls {
     func drawScreen(_ ui: UIManager) {
         guard enabled, visible, ui.hasScreen() else { return }
         let cv = ui.cv
-        if let r = screenButtonRect(.close) { button(cv, r, "x") }
+        if let r = screenButtonRect(.close) {
+            buttonFrame(cv, r, active: false)
+            drawIcon(cv, Self.closeIcon, in: r)
+        }
         if let r = screenButtonRect(.quickMove) { button(cv, r, "Quick Move", active: quickMove) }
     }
 }

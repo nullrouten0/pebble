@@ -407,7 +407,7 @@ final class HUD {
         let bx = Int(p.x.rounded(.down)), by = Int(p.y.rounded(.down)), bz = Int(p.z.rounded(.down))
         let biome = BIOMES[world.biomeAt(bx, by, bz)]
         var lines = [
-            "Pebble \(PEBBLE_VERSION) (\(debugInfo["fps"] ?? "?") fps, \(debugInfo["chunkUpdates"] ?? "0") chunk updates)",
+            "Pebble \(PEBBLE_BUILD) (\(debugInfo["fps"] ?? "?") fps, \(debugInfo["chunkUpdates"] ?? "0") chunk updates)",
             "XYZ: \(String(format: "%.3f", p.x)) / \(String(format: "%.4f", p.y)) / \(String(format: "%.3f", p.z))",
             "Block: \(bx) \(by) \(bz)  Chunk: \(bx >> 4) \(bz >> 4)",
             "Facing: \(facingName(p.yaw)) (\(String(format: "%.1f", (p.yaw * 180 / .pi).truncatingRemainder(dividingBy: 360))) / \(String(format: "%.1f", p.pitch * 180 / .pi)))",
