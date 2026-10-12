@@ -214,7 +214,7 @@ pebble/
 - `TouchOverlay` in `PebbleApp`, drawn with `UICanvas` after the HUD, with its own multi-touch tracking by `UITouch` identity:
   - **Left side:** a floating virtual stick feeding analog movement. Pushing past the outer ring sprints.
   - **Right side:** drag to look, using a separate touch-sensitivity setting.
-  - **Tapping the look area** uses/places through the existing `mouseDown(2)/mouseUp(2)` path. **Resting a finger** (~250 ms within a few UI units, on touch-down or after a drag) breaks or attacks through `mouseDown(0)` and its existing per-tick hold logic; creative breaks erode over `creativeBreakDelay` (0.4 s on touch).
+  - **Tapping the look area** uses/places through the existing `mouseDown(2)/mouseUp(2)` path. **Pressing and holding still** (~250 ms within a few UI units of the press) breaks or attacks through `mouseDown(0)` and its existing per-tick hold logic. As in Minecraft, only a fresh press digs: steering past that slop releases the break until the finger lifts (a held use stays down so bows can aim); creative breaks erode over `creativeBreakDelay` (0.4 s on touch).
   - **Buttons:** jump (double-tap toggles flight, as today), sneak toggle, inventory, pause, chat, drop, perspective, offhand swap.
   - **Hotbar:** tap a slot to select it; long-press drops it. Slot layout comes from `HudM.swift:95-96`.
 - Engine: add an optional analog override for `moveForward`/`moveStrafe` (`GameCore.swift:1402-1406`). The keyboard path stays untouched, so the goldens are unaffected. A pebsmoke check confirms the override is inert when unset.

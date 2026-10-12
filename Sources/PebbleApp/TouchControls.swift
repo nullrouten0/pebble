@@ -4,9 +4,10 @@
 // In-world (crosshair-style, so the engine's aim ray is unchanged):
 //   left side    floating move stick; past the outer ring sprints
 //   right side   drag to look; tap = use/place (attack if a mob is under the
-//                crosshair); rest the finger ~¼ s — on touching down or after
-//                dragging to aim — = break/attack (or use, for food, bows,
-//                shields…), and keep dragging to aim while held
+//                crosshair); press and hold still ~¼ s = break/attack (or
+//                use, for food, bows, shields…). Like Minecraft, only a fresh
+//                press digs: steering away stops the dig, and the finger must
+//                lift and press again (a held use keeps going, so bows aim)
 //   buttons      jump (double-tap flies), sneak toggle, drop, offhand swap,
 //                inventory, chat, perspective, pause; tap a hotbar slot to
 //                select it, hold one to drop it
@@ -108,22 +109,25 @@ public final class TouchControls {
         case screenButton(ScreenButton)
         case ignored
     }
-    /// a right-side finger: looks when dragged, digs/uses once it rests
+    /// a right-side finger: looks when dragged, digs/uses if it's held still
+    /// from the press
     private struct LookTouch {
         var startT: Double
         var startX: Double, startY: Double
         /// dragged past the tap slop: turning the camera, no tap on release
         var moved = false
-        /// where the finger last settled, and since when it has stayed there
-        var restX: Double, restY: Double, restT: Double
-        /// the mouse button held down while the finger rests (0 break, 2 use)
+        /// steered away from the press: this touch can't start (or resume) a
+        /// dig until the finger lifts
+        var steered = false
+        /// the mouse button held down since the finger settled (0 break, 2 use)
         var holding: Int?
     }
     /// past this a touch is a drag, not a tap (UI units)
     private static let tapSlop = 6.0
-    /// drift within this still counts as resting (a pressed finger rolls)
-    private static let restSlop = 9.0
-    /// rest this long to start breaking/using
+    /// drift within this of the press still counts as holding still (a
+    /// pressed finger rolls)
+    private static let holdSlop = 9.0
+    /// hold this long to start breaking/using
     private static let holdDelay = 0.25
 
     private enum PointerPhase { case pending, dragging, scrolling, rightHeld }
@@ -174,8 +178,11 @@ public final class TouchControls {
                 let k = 1.5 + (game.settings.touchSensitivity ?? 0.5) * 4
                 rt.input.look(dx: dx * k, dy: dy * k)
             }
-            if hypot(gx - l.restX, gy - l.restY) > Self.restSlop {
-                l.restX = gx; l.restY = gy; l.restT = now()
+            if !l.steered && hypot(gx - l.startX, gy - l.startY) > Self.holdSlop {
+                // steering: stop digging (a held use, like a drawn bow, keeps
+                // going so it can be aimed)
+                l.steered = true
+                if l.holding == 0 { game.mouseUp(0); l.holding = nil }
             }
             t.role = .look(l)
         case .pointer(let st, let sx, let sy, var phase):
@@ -224,8 +231,7 @@ public final class TouchControls {
                 return .stick(originX: gx, originY: gy)
             }
         }
-        let t = now()
-        return .look(LookTouch(startT: t, startX: gx, startY: gy, restX: gx, restY: gy, restT: t))
+        return .look(LookTouch(startT: now(), startX: gx, startY: gy))
     }
 
     private var stickTouch: Int? {
@@ -472,9 +478,9 @@ public final class TouchControls {
         }
         for (id, var e) in touches {
             switch e.role {
-            case .look(var l) where l.holding == nil && t - l.restT >= Self.holdDelay:
-                // rested: start breaking (or using a hold-to-use item) until
-                // the finger lifts; dragging from here aims the dig
+            case .look(var l) where l.holding == nil && !l.steered && t - l.startT >= Self.holdDelay:
+                // held still from the press: start breaking (or using a
+                // hold-to-use item) until the finger lifts or steers away
                 let b = game.heldItemUsesOnHold ? 2 : 0
                 game.mouseDown(b)
                 l.holding = b
