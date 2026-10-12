@@ -565,6 +565,9 @@ final class SettingsScreen: Screen {
                 game.applySettings()
             }
             buttons.append(shaderB)
+            // 30 fps and no shadows: about half the GPU work (power bench)
+            toggle("Battery Saver", { game.settings.batterySaver == true },
+                   { game.settings.batterySaver = $0 ? true : nil }, 1)
         } else if tab == "audio" {
             let cats: [(String, String)] = [
                 ("master", "Master Volume"), ("music", "Music"), ("blocks", "Blocks"),

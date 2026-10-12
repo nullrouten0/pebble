@@ -54,6 +54,9 @@ public struct Settings: Codable {
     /// seconds a creative-mode block takes to break, 0…1 (0 = instant; nil =
     /// the platform default: instant on the Mac, 0.4 s on touch screens)
     public var creativeBreakDelay: Double? = nil
+    /// Battery Saver: 30 fps and no shadows while on, without touching the
+    /// Max FPS and Soft Shadows choices underneath (nil = off)
+    public var batterySaver: Bool? = nil
 
     public init() {}
 }
@@ -78,9 +81,14 @@ public func defaultSettings() -> Settings { Settings() }
 
 /// ~/Library/Application Support/Pebble — created on first touch.
 /// Test hook: PEBBLE_HOME=<dir> keeps saves/settings out of the real profile.
+/// On iOS a relative dir lands in the app's tmp (a launch from the Mac can't
+/// know the sandbox path).
 public func vcSupportDir() -> URL {
     let dir: URL
-    if let home = ProcessInfo.processInfo.environment["PEBBLE_HOME"], !home.isEmpty {
+    if var home = ProcessInfo.processInfo.environment["PEBBLE_HOME"], !home.isEmpty {
+        #if os(iOS)
+        if !home.hasPrefix("/") { home = NSTemporaryDirectory() + home }
+        #endif
         dir = URL(fileURLWithPath: home, isDirectory: true)
     } else {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

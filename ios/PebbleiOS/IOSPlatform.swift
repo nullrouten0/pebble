@@ -24,6 +24,17 @@ final class IOSPlatform: PlatformHooks {
 
     func pasteboardString() -> String? { UIPasteboard.general.string }
 
+    func setKeepAwake(_ on: Bool) {
+        if UIApplication.shared.isIdleTimerDisabled != on { UIApplication.shared.isIdleTimerDisabled = on }
+    }
+
+    var battery: (level: Double, charging: Bool)? {
+        let d = UIDevice.current
+        guard d.isBatteryMonitoringEnabled, d.batteryLevel >= 0 else { return nil }
+        return (Double(d.batteryLevel), d.batteryState == .charging || d.batteryState == .full)
+    }
+    func setBatteryMonitoring(_ on: Bool) { UIDevice.current.isBatteryMonitoringEnabled = on }
+
     func setTextInputActive(_ active: Bool) { controller?.setTextInput(active) }
 
     var safeAreaInsets: (top: Double, left: Double, bottom: Double, right: Double) {

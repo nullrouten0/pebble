@@ -82,6 +82,8 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 - `PEBBLE_AUTOLOAD=1 PEBBLE_NEWWORLD=12345 swift run -c release Pebble` — straight into a fresh world.
 - `PEBBLE_CMD="/tp 0 120 0;/time set 1000" PEBBLE_SHOT="/tmp/shot.png@600"` — scripted screenshots.
 - `PEBBLE_BOT=1` — runs the physics bot through the real input path and asserts walk/sprint/jump/fall-damage numbers.
+- `PEBBLE_POWERBENCH=1` (with `PEBBLE_AUTOLOAD=1 PEBBLE_NEWWORLD=12345`) — a hands-free 10-minute power benchmark: explore, revisit, dig, pause menu, idle. Every 10 s it logs fps, CPU %, GPU %, thermal state, battery and memory (`[power]` lines, plus `pebble-power.csv` in the debug output dir), then exits. `=0.2` scales the phases for a quick run. On a device, launch it from the Mac with `xcrun devicectl device process launch --console --environment-variables '{"PEBBLE_POWERBENCH":"1","PEBBLE_AUTOLOAD":"1","PEBBLE_NEWWORLD":"12345","PEBBLE_HOME":"powerbench"}' --device <id> net.stonekitty.pebble`; a relative `PEBBLE_HOME` lands in the app's tmp on iOS, away from real saves.
+- `PEBBLE_SETTINGS='{"maxFps":30,"shadows":false}'` — overrides settings at launch (after the first-launch device preset), for benching variants. The result is saved to that profile, so pair it with a scratch `PEBBLE_HOME`.
 - `PEBBLE_PHOTOBOOTH=1` (+ `PEBBLE_BOOTH_MOBS=cow,sheep` / `PEBBLE_BOOTH_BLOCKS=-`) — renders every mob/block to PNGs for visual review.
 - `PEBBLE_PROF=1` — per-stage timings for load and tick.
 - `PEBBLE_HOME=/tmp/scratch` — saves and settings go there instead of your real profile.

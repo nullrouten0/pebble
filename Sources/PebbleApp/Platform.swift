@@ -41,6 +41,14 @@ public protocol PlatformHooks: AnyObject {
     /// a text field / chat / sign wants typing: raise the on-screen keyboard
     /// (true) or dismiss it (false). Typed text comes back via InputRouter.
     func setTextInputActive(_ active: Bool)
+
+    /// keep the screen from dimming and locking (true while in a world)
+    func setKeepAwake(_ on: Bool)
+
+    /// battery charge 0…1 and whether it's charging; nil without a battery
+    /// or while monitoring is off (the power bench turns it on)
+    var battery: (level: Double, charging: Bool)? { get }
+    func setBatteryMonitoring(_ on: Bool)
 }
 
 public extension PlatformHooks {
@@ -55,6 +63,9 @@ public extension PlatformHooks {
     var maxFrameRate: Int? { nil }
     func setTextInputActive(_ active: Bool) {}
     var adaptiveRenderScale: Bool { false }
+    func setKeepAwake(_ on: Bool) {}
+    var battery: (level: Double, charging: Bool)? { nil }
+    func setBatteryMonitoring(_ on: Bool) {}
 }
 
 /// where debug hooks (bot logs, photo booth, scripted shots) drop files: /tmp

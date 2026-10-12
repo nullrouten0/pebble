@@ -940,7 +940,7 @@ final class WorldRenderer {
 
         let angle = world.sunAngle()
         let sunDir = SIMD3<Float>(Float(-Foundation.sin(angle * .pi * 2 + .pi)), Float(Foundation.cos(angle * .pi * 2)), 0.18)
-        let shadowOK = settings.shadows && world.dim == .overworld && sky.dayLight > 0.1 && sunDir.y > 0.05
+        let shadowOK = settings.shadows && settings.batterySaver != true && world.dim == .overworld && sky.dayLight > 0.1 && sunDir.y > 0.05
 
         var shadowMat = matrix_identity_float4x4
         var lightViewM = matrix_identity_float4x4

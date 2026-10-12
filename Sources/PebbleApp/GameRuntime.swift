@@ -179,10 +179,18 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     private var autoScale = 1.0
     private let gpuLock = NSLock()
     private var gpuMsSum = 0.0, gpuFrames = 0
+    /// GPU time since launch (the power bench diffs it)
+    private var gpuMsAll = 0.0
+    var gpuMsTotal: Double { gpuLock.lock(); defer { gpuLock.unlock() }; return gpuMsAll }
     private var fpsCounter = 0
+    /// the frame-rate cap last handed to the shell (frameCap())
+    private var appliedFpsCap = 0
+    /// Low Power Mode or a hot device, sampled once a second
+    private var powerSaving = false
     private var fpsTimer = 0.0
     private var fps = 0
     var bot: PhysicsBot?
+    var powerBench: PowerBench?
     var booth: PhotoBooth?
     // test hook: PEBBLE_CMD="/tp 0 120 0;/time set 1000" runs once the world is up
     private var pendingCmds = ProcessInfo.processInfo.environment["PEBBLE_CMD"]
@@ -239,6 +247,22 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     /// once the view exists: audio, layout, resource packs, the title screen
     /// and the launch-time test hooks
     public func start(drawableSize size: CGSize) {
+        // test hook: PEBBLE_SETTINGS='{"maxFps":30,"shadows":false}' overrides
+        // settings at launch, after any first-launch preset (power-bench variants)
+        if let json = ProcessInfo.processInfo.environment["PEBBLE_SETTINGS"],
+           let over = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+           let cur = try? JSONEncoder().encode(game.settings),
+           var merged = try? JSONSerialization.jsonObject(with: cur) as? [String: Any] {
+            merged.merge(over) { $1 }
+            if let data = try? JSONSerialization.data(withJSONObject: merged),
+               let s = try? JSONDecoder().decode(Settings.self, from: data) {
+                game.settings = s
+                game.applySettings()
+                print("[settings] overridden: \(json)")
+            } else {
+                print("[settings] couldn't apply \(json)")
+            }
+        }
         audio.initEngine()
         audio.applyVolumes(game.settings.volumes)
         audio.onSubtitle = { [weak self] text in
@@ -288,6 +312,9 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
             input.captureMouse()
             if ProcessInfo.processInfo.environment["PEBBLE_BOT"] != nil {
                 bot = PhysicsBot(game: game)
+            }
+            if let s = ProcessInfo.processInfo.environment["PEBBLE_POWERBENCH"] {
+                powerBench = PowerBench(self, scale: Double(s) ?? 1)
             }
             if ProcessInfo.processInfo.environment["PEBBLE_PHOTOBOOTH"] != nil {
                 booth = PhotoBooth(game: game, renderer: renderer)
@@ -449,7 +476,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         if let fixed = game.settings.renderScale {
             want = min(1, max(0.5, fixed))
         } else if platform.adaptiveRenderScale && game.hasWorld() {
-            let budget = 1000 / Double(max(30, min(game.settings.maxFps, platform.maxFrameRate ?? 120)))
+            let budget = 1000 / Double(max(30, min(frameCap(), platform.maxFrameRate ?? 120)))
             if gpuMs > budget * 0.85 { autoScale -= 0.1 }
             else if gpuMs > 0 && gpuMs < budget * 0.55 { autoScale += 0.05 }
             switch ProcessInfo.processInfo.thermalState {
@@ -488,7 +515,11 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
             hud.debugInfo["drawCalls"] = String(renderer.drawCalls)
             hud.debugInfo["mem"] = "\(processFootprintMB()) MB (meshes \(renderer.arena.residentBytes >> 20) MB)"
             audio.applyVolumes(game.settings.volumes)
-            platform.applyMaxFps(game.settings.maxFps)
+            // a controller or a still look finger sends no touches: don't let
+            // the screen lock mid-game
+            platform.setKeepAwake(game.hasWorld())
+            let heat = ProcessInfo.processInfo.thermalState
+            powerSaving = ProcessInfo.processInfo.isLowPowerModeEnabled || heat == .serious || heat == .critical
             updateRenderScale()
             if game.hasWorld(), let p = game.player {
                 platform.showStatus(String(format: "Pebble — %d fps · %d sections · (%.0f, %.0f, %.0f)",
@@ -512,6 +543,12 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         renderer.flushAtlasUploads(cmd)         // staged slice blits, GPU-ordered
 
         runTestHooks()
+        powerBench?.frame()
+        let cap = frameCap()
+        if cap != appliedFpsCap {
+            appliedFpsCap = cap
+            platform.applyMaxFps(cap)
+        }
         controller.poll(dtMs: dt)
         touch.frame()
         updateTextInput()
@@ -550,10 +587,21 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
             guard let self, ms > 0 else { return }
             self.gpuLock.lock()
             self.gpuMsSum += ms; self.gpuFrames += 1
+            self.gpuMsAll += ms
             self.gpuLock.unlock()
         }
         cmd.present(drawable)
         cmd.commit()
+    }
+
+    /// Max FPS, lowered to 30 where full rate only burns battery: Battery
+    /// Saver, the title and the pause menu (the world behind it is frozen,
+    /// but was still drawn 60 times a second), Low Power Mode, and a device
+    /// running hot
+    private func frameCap() -> Int {
+        let menu = !game.hasWorld() || (ui.current()?.pausesGame ?? false)
+        let saver = game.settings.batterySaver == true
+        return menu || powerSaving || saver ? min(game.settings.maxFps, 30) : game.settings.maxFps
     }
 
     /// PEBBLE_MENU / PEBBLE_CMD / PEBBLE_SHOT, advanced once per frame

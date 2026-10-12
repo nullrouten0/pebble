@@ -5,10 +5,25 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
 ## iPad Beta — `ios-port` branch
 
-Version 1.3.0. Not a main release yet: build it yourself from the branch
+Version 1.3.1. Not a main release yet: build it yourself from the branch
 (see the README banner). Known rough edges: frame rate dips while new
 terrain streams in, and iPhone layouts are only lightly polished.
 
+- **Easier on the battery (1.3.1).** The title screen and the pause menu
+  now draw at 30 fps instead of 60. The world behind the pause menu is
+  frozen, but it was still being redrawn 60 times a second, costing as
+  much as playing. The game also drops to 30 fps in Low Power Mode and
+  when the device reports it's running hot (on top of the lower
+  resolution it already used when hot).
+- **Battery Saver** (Options → Video): 30 fps and no shadows, leaving your
+  Max FPS and Soft Shadows choices untouched for when you switch it off.
+  On an iPad Pro the graphics chip's work fell from about 40% to 21% at 30
+  fps; turning shadows off saves a further ~7 points over open landscape
+  and almost nothing looking down. Measured with the new power benchmark
+  (`PEBBLE_POWERBENCH`, see CONTRIBUTING).
+- **The screen no longer locks mid-game.** Playing with a game controller,
+  or holding the look finger still, sent no touches, so iOS auto-lock
+  could dim and lock the screen. It now stays on while you're in a world.
 - **Exact build on the title screen.** The version now reads
   major.minor.revision.commit, e.g. `Pebble 1.3.0.2d559e0a` (bottom-left of
   the title screen and in F3), so you can tell which build each device is
