@@ -11,7 +11,9 @@
 //   pause    the pause menu over the world
 //   idle     back in the world, no input
 //
-// PEBBLE_POWERBENCH=0.2 scales every phase (a 2-minute smoke run). Rows go
+// PEBBLE_POWERBENCH=0.2 scales every phase (a 2-minute smoke run);
+// PEBBLE_BENCH_PHASES="idle:300" runs just those phases (name:seconds,…),
+// e.g. a LAN host standing still while guests explore. Rows go
 // to stdout ("[power] …") and <debugOutputDir>/pebble-power.csv; the app
 // exits when done.
 
@@ -43,8 +45,14 @@ final class PowerBench {
     init(_ rt: GameRuntime, scale: Double) {
         self.rt = rt
         let s = max(0.05, scale)
-        phases = [("explore", 180), ("revisit", 90), ("dig", 90), ("pause", 120), ("idle", 120)]
-            .map { ($0.0, $0.1 * s) }
+        var list: [(String, Double)] = [("explore", 180), ("revisit", 90), ("dig", 90), ("pause", 120), ("idle", 120)]
+        if let spec = ProcessInfo.processInfo.environment["PEBBLE_BENCH_PHASES"] {
+            list = spec.split(separator: ",").compactMap {
+                let kv = $0.split(separator: ":")
+                return kv.count == 2 ? (String(kv[0]), Double(kv[1]) ?? 60) : nil
+            }
+        }
+        phases = list.map { ($0.0, $0.1 * s) }
         rt.platform.setBatteryMonitoring(true)
     }
 
@@ -107,7 +115,7 @@ final class PowerBench {
             game.mouseUp(0)
             rt.host.openPauseScreen()
         case "idle":
-            rt.ui.closeTop(game)
+            if rt.ui.current() is PauseScreen { rt.ui.closeTop(game) }
         default: break
         }
         print(String(format: "[power] phase %@ at %.0f %.0f %.0f", phases[i].name, p.x, p.y, p.z))

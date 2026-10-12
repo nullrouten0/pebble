@@ -885,6 +885,7 @@ final class WorldRenderer {
         arena.tick()
         let world = game.world
         let settings = game.settings
+        let drawDistance = game.drawDistance
         let ultraOn = settings.shader == "ultra"
         let wantShadowSize = ultraOn ? 4096 : 2048
         if shadowSizeNow != wantShadowSize { buildShadow(size: wantShadowSize) }
@@ -896,7 +897,7 @@ final class WorldRenderer {
         #endif
 
         let aspect = Float(fbWidth) / Float(max(1, fbHeight))
-        let far = max(256, Float(settings.renderDistance) * 16 * 1.6)
+        let far = max(256, Float(drawDistance) * 16 * 1.6)
         let proj = mat4Perspective(fovYRad: Float(cam.fov * .pi / 180), aspect: aspect, near: 0.05, far: far)
         let dir = SIMD3<Float>(
             Float(Foundation.cos(cam.pitch) * -Foundation.sin(cam.yaw)),
@@ -912,8 +913,8 @@ final class WorldRenderer {
 
         let sky = skyColors(world, cam)
         var fogColor = sky.fog
-        var fogStart = Float(settings.renderDistance) * 16 * 0.55
-        var fogEnd = Float(settings.renderDistance) * 16 * 0.95
+        var fogStart = Float(drawDistance) * 16 * 0.55
+        var fogEnd = Float(drawDistance) * 16 * 0.95
         if cam.underwater {
             let wc = BIOMES[world.biomeAt(ifloorD(cam.x), ifloorD(cam.y), ifloorD(cam.z))]?.waterColor ?? 0x3f76e4
             fogColor = SIMD3<Float>(Float((wc >> 16) & 255) / 255 * 0.4, Float((wc >> 8) & 255) / 255 * 0.45, Float(wc & 255) / 255 * 0.6)
@@ -1082,7 +1083,7 @@ final class WorldRenderer {
         enc.setFragmentSamplerState(atlasSampler, index: 0)
         enc.setFragmentSamplerState(shadowSampler, index: 1)
 
-        let rd = Float(settings.renderDistance) * 16
+        let rd = Float(drawDistance) * 16
         var visible: [(gpu: SectionGPU, rel: SIMD3<Float>, dist: Float)] = []
         visible.reserveCapacity(sections.count)
         for gpu in sections.values {
@@ -1211,7 +1212,7 @@ final class WorldRenderer {
                 params: SIMD4<Float>(Float(timeSec), far,
                                      (shadowOK && !cam.underwater) ? 1 : 0,
                                      cam.underwater ? 1 : 0),
-                fogColor: SIMD4<Float>(fogColor, Float(settings.renderDistance * 16)),
+                fogColor: SIMD4<Float>(fogColor, Float(drawDistance * 16)),
                 texel: SIMD4<Float>(1 / Float(ultraA.width), 1 / Float(ultraA.height), 0, 0))
             ue.setFragmentBytes(&uu, length: MemoryLayout<UltraUniforms>.stride, index: 1)
             ue.setFragmentTexture(sceneDepthStored, index: 0)

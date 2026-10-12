@@ -5,10 +5,19 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
 ## iPad Beta — `ios-port` branch
 
-Version 1.3.1. Not a main release yet: build it yourself from the branch
+Version 1.3.2. Not a main release yet: build it yourself from the branch
 (see the README banner). Known rough edges: frame rate dips while new
 terrain streams in, and iPhone layouts are only lightly polished.
 
+- **Hosting a LAN game is much lighter (1.3.2).** The host has to load and
+  run every guest's surroundings (it owns the world), but it was also
+  building 3D meshes for them, which it never draws. It now meshes only
+  what's within its own render distance. On an iPad Pro hosting two
+  exploring guests: processor 91% → 49%, meshes held 8,500 → 3,000, and
+  about 300 MB less memory. Guests are also held to the host's render
+  distance (a Mac guest at 16 made the host load ~1,500 chunks for it
+  alone); the host tells guests its distance, so they draw fog there
+  instead of a hard terrain edge.
 - **Easier on the battery (1.3.1).** The title screen and the pause menu
   now draw at 30 fps instead of 60. The world behind the pause menu is
   frozen, but it was still being redrawn 60 times a second, costing as

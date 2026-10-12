@@ -195,6 +195,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     // test hook: PEBBLE_CMD="/tp 0 120 0;/time set 1000" runs once the world is up
     private var pendingCmds = ProcessInfo.processInfo.environment["PEBBLE_CMD"]
     private var pendingCmdDelay = 0
+    private var hostLANPending = ProcessInfo.processInfo.environment["PEBBLE_HOSTLAN"] != nil
     // test hook: PEBBLE_MENU="Host LAN Game>Create New>Create & Host" clicks
     // menu buttons by label, one every half second (menu-flow testing)
     private var pendingMenu = ProcessInfo.processInfo.environment["PEBBLE_MENU"]?
@@ -617,6 +618,15 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                 } else {
                     print("[menu] no button \(label) on \(ui.current().map { String(describing: type(of: $0)) } ?? "nil")")
                 }
+                fflush(stdout)
+            }
+        }
+
+        // test hook: PEBBLE_HOSTLAN=1 opens the world to LAN once it's up
+        if hostLANPending, game.hasWorld(), !ui.hasScreen() {
+            hostLANPending = false
+            if let port = try? game.hostLAN() {
+                print("[lan] hosting on \(localIPv4Addresses().joined(separator: ", ")) port \(port)")
                 fflush(stdout)
             }
         }

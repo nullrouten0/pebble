@@ -197,6 +197,7 @@ public final class NetClient {
                 for (k, v) in rules { if let n = v as? NSNumber { w.gameRules[k] = n.doubleValue } }
                 w.spawnX = Double(sx); w.spawnY = Double(sy); w.spawnZ = Double(sz)
             }
+            if r.remaining > 0 { game.netHostView = try r.u8() }
         case .sounds:
             let n = try r.u16()
             for _ in 0..<n {

@@ -239,6 +239,11 @@ public final class GameCore {
     /// sections whose neighborhood isn't ready — parked so the per-frame dirty
     /// scan doesn't rescan the streaming frontier forever; retried once per second
     private var stalledSections: [Dim: Set<SectionPos>] = [:]
+    /// chunks loaded (for a LAN guest) beyond our own sight: not meshed, or
+    /// their meshes freed, until we come within range again
+    private var unmeshedChunks: [Dim: Set<Int64>] = [:]
+    /// the chunk we stood in at the last mesh-range sweep
+    private var meshCenter: (dim: Dim, cx: Int, cz: Int)?
     private var meshJobs: [DimSection: MeshJobState] = [:]
     public private(set) var meshedThisSecond = 0
     public var lastChunkUpdates = 0
@@ -500,6 +505,8 @@ public final class GameCore {
         worlds.removeAll()
         for d in dirtySections.keys { dirtySections[d]!.removeAll() }
         stalledSections.removeAll()
+        unmeshedChunks.removeAll()
+        meshCenter = nil
         for d in lightQueue.keys { lightQueue[d]!.removeAll() }
         meshJobs.removeAll()
         genInFlight.removeAll()
@@ -573,6 +580,7 @@ public final class GameCore {
     // ===========================================================================
     private func enterWorld(_ rec: WorldRecord, _ playerData: [String: Any]?, _ adv: [String]?) {
         worldRec = rec
+        netHostView = nil
         wipes = rec.wipes ?? []
         wipeFronts = []
         wipeArmedAt = [:]
@@ -1409,6 +1417,7 @@ public final class GameCore {
         w.removeChunk(c.cx, c.cz)
         if w.dim == dim { host?.removeChunkMeshes(c.cx, c.cz, c.sections) }
         lightQueue[w.dim]!.remove(chunkKey(c.cx, c.cz))
+        unmeshedChunks[w.dim]?.remove(chunkKey(c.cx, c.cz))
         for s in 0..<c.sections {
             dirtySections[w.dim]!.remove(SectionPos(cx: c.cx, sy: s, cz: c.cz))
         }
@@ -1418,15 +1427,25 @@ public final class GameCore {
     private func streamMeshes() {
         guard inWorld else { return }
         let w = world
+        let pcx = floorDiv(ifloor(player.x), 16)
+        let pcz = floorDiv(ifloor(player.z), 16)
+        // the renderer draws out to about renderDistance + 1 chunks; a host
+        // also holds every LAN guest's surroundings, which it never sees
+        let meshRange = settings.renderDistance + 2
+        sweepMeshRange(w, pcx, pcz, meshRange)
         var dirty = dirtySections[dim]!
         if dirty.isEmpty { return }
         // skip the scan entirely while the queue is already full
         if meshJobs.count >= MAX_MESH_INFLIGHT { return }
-        let pcx = floorDiv(ifloor(player.x), 16)
-        let pcz = floorDiv(ifloor(player.z), 16)
         // sort a bounded batch by distance
         var candidates: [(pos: SectionPos, d: Int)] = []
         for pos in dirty {
+            if max(abs(pos.cx - pcx), abs(pos.cz - pcz)) > meshRange {
+                // loaded for a guest, out of our sight: meshed if we come closer
+                unmeshedChunks[dim, default: []].insert(chunkKey(pos.cx, pos.cz))
+                dirty.remove(pos)
+                continue
+            }
             guard let c = w.getChunk(pos.cx, pos.cz), c.status == .lit, w.neighborsReady(pos.cx, pos.cz) else { continue }
             // neighbors must be lit too or the seam light is garbage
             var ok = true
@@ -1480,6 +1499,29 @@ public final class GameCore {
         }
     }
 
+    /// when we cross into another chunk: re-mesh parked chunks now in range,
+    /// and free the meshes of chunks well out of it (two rings of slack, so
+    /// walking back and forth over a border doesn't churn)
+    private func sweepMeshRange(_ w: World, _ pcx: Int, _ pcz: Int, _ range: Int) {
+        if let m = meshCenter, m.dim == dim, m.cx == pcx, m.cz == pcz { return }
+        meshCenter = (dim, pcx, pcz)
+        var parked = unmeshedChunks[dim] ?? []
+        for key in parked {
+            let (cx, cz) = chunkCoords(key)
+            guard max(abs(cx - pcx), abs(cz - pcz)) <= range else { continue }
+            parked.remove(key)
+            if let c = w.getChunk(cx, cz), c.status == .lit {
+                for s in 0..<c.sections { dirtySections[dim]!.insert(SectionPos(cx: cx, sy: s, cz: cz)) }
+            }
+        }
+        for c in w.chunks.values where max(abs(c.cx - pcx), abs(c.cz - pcz)) > range + 2 {
+            if parked.insert(chunkKey(c.cx, c.cz)).inserted {
+                host?.removeChunkMeshes(c.cx, c.cz, c.sections)
+            }
+        }
+        unmeshedChunks[dim] = parked
+    }
+
     private func dispatchMesh(_ w: World, _ pos: SectionPos, _ jobKey: DimSection) {
         let snapOpt = LoadProf.shared.time("snapshot") { buildSnapshot(w, pos.cx, pos.sy, pos.cz) }
         guard var snap = snapOpt else {
@@ -1500,7 +1542,8 @@ public final class GameCore {
                 guard let self else { return }
                 self.meshJobs.removeValue(forKey: jobKey)
                 guard self.inWorld, self.worlds[d] === w else { return }
-                if d == self.dim {
+                // (a chunk parked out of range while this job ran stays unmeshed)
+                if d == self.dim, self.unmeshedChunks[d]?.contains(chunkKey(pos.cx, pos.cz)) != true {
                     self.host?.uploadMesh(pos.cx, pos.sy, pos.cz, minY, mesh)
                     self.meshedThisSecond += 1
                 }
@@ -1560,6 +1603,8 @@ public final class GameCore {
         host?.clearAllSections()
         meshJobs.removeAll()
         stalledSections.removeAll()
+        unmeshedChunks.removeAll()
+        meshCenter = nil
         for c in world.chunks.values where c.status == .lit {
             for s in 0..<c.sections {
                 dirtySections[dim]!.insert(SectionPos(cx: c.cx, sy: s, cz: c.cz))
@@ -2823,6 +2868,11 @@ public final class GameCore {
     }
 
     public var lanPort: UInt16? { netHost?.port }
+    /// a LAN host's render distance: it loads no farther around us than that
+    public internal(set) var netHostView: Int?
+    /// how far to draw: our render distance, or a LAN host's if that's shorter
+    /// (beyond it no chunks arrive, so the fog belongs there)
+    public var drawDistance: Int { min(settings.renderDistance, netHostView ?? settings.renderDistance) }
     public var lanGuests: [String] { netHost?.guestNames ?? [] }
     /// everyone in the LAN game, host first
     public var lanPlayers: [String] {
@@ -2848,6 +2898,7 @@ public final class GameCore {
         if inWorld { exitToTitle() }
         netClient?.disconnect()
         netEndMessage = nil
+        netHostView = nil
         let nc = NetClient(game: self, conn: conn, name: playerName)
         netClient = nc
         return nc
@@ -2955,6 +3006,8 @@ public final class GameCore {
             worlds.removeAll()
             for d in dirtySections.keys { dirtySections[d]!.removeAll() }
             stalledSections.removeAll()
+        unmeshedChunks.removeAll()
+        meshCenter = nil
             for d in lightQueue.keys { lightQueue[d]!.removeAll() }
             meshJobs.removeAll()
             host?.clearAllSections()
