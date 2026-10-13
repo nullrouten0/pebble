@@ -39,7 +39,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft** in any way, and contains no Mojang code or assets. Full statement in [Disclaimer](#disclaimer) below.
 
-> **Pebble 1.2.0 is a beta.** The engine is pinned by 503 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
+> **Pebble 1.2.0 is a beta.** The engine is pinned by 508 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
 
 ## By the numbers
 
@@ -211,7 +211,7 @@ Sources/PebbleApp/    the shared app: Metal renderer, UI, audio, input routing,
                       touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, NSEvent input
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
-Sources/pebsmoke/     golden test harness (503 checks against goldens/*.json)
+Sources/pebsmoke/     golden test harness (508 checks against goldens/*.json)
 goldens/              golden baseline files pinning engine behavior
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
 pebble                the build/install/test CLI
@@ -221,7 +221,7 @@ A deeper tour lives in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## The determinism contract
 
-Pebble's engine is **fully deterministic**: a portable fdlibm implementation of `sin/cos/atan2` (pure IEEE-754 operations, no platform math library), 32-bit-wrapping integer hashes, and seeded RNG everywhere mean the same seed produces the identical world — bit for bit, on any machine, across releases. That contract is enforced by golden baseline files: `pebble test` runs 503 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps and compared at checkpoints, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. The goldens are the contract that keeps the engine honest — a change that moves a single block in an existing world fails the suite.
+Pebble's engine is **fully deterministic**: a portable fdlibm implementation of `sin/cos/atan2` (pure IEEE-754 operations, no platform math library), 32-bit-wrapping integer hashes, and seeded RNG everywhere mean the same seed produces the identical world — bit for bit, on any machine, across releases. That contract is enforced by golden baseline files: `pebble test` runs 508 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps and compared at checkpoints, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. The goldens are the contract that keeps the engine honest — a change that moves a single block in an existing world fails the suite.
 
 Multiplayer doesn't rely on that contract: the LAN host runs the one real simulation and sends guests what happened, so a guest never has to reproduce the host's world on its own.
 
@@ -275,7 +275,7 @@ Found a bug? [Open an issue](https://github.com/thebriangao/pebble/issues). To h
 - **Settings that matter**: render distance and whether ultra graphics are on.
 - **Screenshots or video** for anything visual.
 - For crashes: the crash report from `~/Library/Logs/DiagnosticReports`, and terminal output if you launched with `pebble run` from a terminal.
-- If the engine itself seems wrong (worldgen, physics, redstone): the tail of `pebble test` — it should print `503 passed, 0 failed`.
+- If the engine itself seems wrong (worldgen, physics, redstone): the tail of `pebble test` — it should print `508 passed, 0 failed`.
 
 Even better than a bug report is a **pull request with a fix** — see [CONTRIBUTING.md](CONTRIBUTING.md) for the build/test workflow and the conventions that are load-bearing (registration order, RNG discipline, determinism rules). PRs of all sizes are wanted, from typo fixes to subsystem work.
 

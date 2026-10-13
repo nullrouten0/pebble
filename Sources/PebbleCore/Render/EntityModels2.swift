@@ -107,6 +107,23 @@ func registerAllModels() {
         },
         packTex: ["entity/elytra.png"]))
 
+    // Headlamp worn on the player's head: a strap around the head and a lamp
+    // on the forehead, turning with the head (anim "biped" drives "head")
+    M2("headlamp", MobModel(
+        texW: 64, texH: 32,
+        parts: [
+            part("head", (0, 24, 0),
+                 box(-4.5, 4.5, -4.5, 9, 1, 9, 0, 0),
+                 box(-1.5, 3.5, -5.6, 3, 3, 1, 0, 12)),
+        ],
+        anim: "biped", scale: 1,
+        paint: { s in
+            s.box(0, 0, 9, 1, 9, 0x3c3230, 0.06)       // strap
+            s.box(0, 12, 3, 3, 1, 0x8c8c8c, 0.04)      // housing
+            s.fill(1, 13, 3, 3, 0xfff0a8, 0)           // lens (front face)
+            s.fill(2, 13, 1, 1, 0xffffff, 0)
+        }))
+
     // VILLAGER-LIKE
     M2("villager", villagerModelPacked(["entity/villager/villager.png"]) { s in
         s.box(0, 0, 8, 10, 8, 0xb88a68)

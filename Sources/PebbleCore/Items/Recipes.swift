@@ -543,4 +543,6 @@ public func registerAllRecipes() {
         shaped("DTD/DMD/DDD", ["D": "diamond", "T": "\(t)_armor_trim", "M": "cobblestone"], "\(t)_armor_trim", 2)
     }
     shaped("DTD/DMD/DDD", ["D": "diamond", "T": "netherite_upgrade", "M": "netherrack"], "netherite_upgrade", 2)
+    // appended: glowstone lamp on an iron mount, leather strap
+    shaped(" G /LIL", ["G": "glowstone_dust", "L": "leather", "I": "iron_ingot"], "headlamp")
 }

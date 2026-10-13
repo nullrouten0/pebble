@@ -148,6 +148,8 @@ struct ChunkSharedU {
     var fog: SIMD4<Float>
     var fogColor: SIMD4<Float>
     var misc: SIMD4<Float>      // time, packFluidDamp, ultraOn, shadowTexel
+    var lampPos: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>) = (.zero, .zero, .zero, .zero)
+    var lampDir: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>) = (.zero, .zero, .zero, .zero)
 }
 struct UltraUniforms {
     var invViewProj: simd_float4x4
@@ -1078,6 +1080,14 @@ final class WorldRenderer {
             fog: SIMD4<Float>(fogStart, fogEnd, 0, 1),
             fogColor: SIMD4<Float>(fogColor, 1),
             misc: SIMD4<Float>(Float(timeSec), packFluidDamp, ultraOn ? 1 : 0, 1 / Float(shadowSizeNow)))
+        lamps = gatherHeadlamps(world, partial, (cam.x, cam.y, cam.z))
+        func lamp(_ i: Int) -> (SIMD4<Float>, SIMD4<Float>) {
+            i < lamps.count ? (SIMD4<Float>(lamps[i].pos, 1), SIMD4<Float>(lamps[i].dir, 0)) : (.zero, .zero)
+        }
+        (uni.lampPos.0, uni.lampDir.0) = lamp(0)
+        (uni.lampPos.1, uni.lampDir.1) = lamp(1)
+        (uni.lampPos.2, uni.lampDir.2) = lamp(2)
+        (uni.lampPos.3, uni.lampDir.3) = lamp(3)
         enc.setFragmentTexture(atlasTexture, index: 0)
         enc.setFragmentTexture(shadowTexture, index: 1)
         enc.setFragmentSamplerState(atlasSampler, index: 0)
@@ -1376,6 +1386,10 @@ final class WorldRenderer {
             pose.baby = ent.data.baby ?? false
             pose.sky = w.getSkyLight(bx, by, bz)
             pose.block = w.getBlockLight(bx, by, bz)
+            if !lamps.isEmpty {
+                let rel = SIMD3<Float>(Float(ix - camPos.x), Float(iy + ent.height * 0.5 - camPos.y), Float(iz - camPos.z))
+                pose.block = max(pose.block, Int((headlampLevel(rel) * 15).rounded()))
+            }
             pose.ageTicks = ent.age
             pose.airborne = !ent.onGround
             pose.aiming = (ent as? Mob)?.target != nil
@@ -1399,6 +1413,15 @@ final class WorldRenderer {
                                 time: timeSec, dayLight: dayLight,
                                 fog: (fog.0, fog.1, fog.2),
                                 gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            if let player = ent as? Player, player.headlampOn {
+                var lit = pose
+                lit.block = 15   // a lit lamp glows, day or night
+                entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
+                                    viewProj: viewProj, camPos: camPos, name: "headlamp", p: lit,
+                                    time: timeSec, dayLight: dayLight,
+                                    fog: (fog.0, fog.1, fog.2),
+                                    gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            }
             if let player = ent as? Player, let chest = player.armor[1],
                itemDef(chest.id).name == "elytra" {
                 entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
@@ -1425,6 +1448,48 @@ final class WorldRenderer {
                 }
             }
         }
+    }
+
+    /// worn headlamps this frame (camera-relative eye, look direction), nearest first
+    private var lamps: [(pos: SIMD3<Float>, dir: SIMD3<Float>)] = []
+
+    /// every player wearing a headlamp (other LAN players too: their armor is
+    /// synced), the 4 nearest to the camera
+    private func gatherHeadlamps(_ w: World, _ partial: Double,
+                                 _ cam: (x: Double, y: Double, z: Double)) -> [(pos: SIMD3<Float>, dir: SIMD3<Float>)] {
+        var out: [(pos: SIMD3<Float>, dir: SIMD3<Float>, d: Float)] = []
+        for e in w.entities {
+            guard let p = e as? Player, p.headlampOn, !p.dead else { continue }
+            let x = p.prevX + (p.x - p.prevX) * partial
+            let y = p.prevY + (p.y - p.prevY) * partial + (p.eyeY() - p.y)
+            let z = p.prevZ + (p.z - p.prevZ) * partial
+            let rel = SIMD3<Float>(Float(x - cam.x), Float(y - cam.y), Float(z - cam.z))
+            let dist = simd_length(rel)
+            if dist > 160 { continue }
+            let dir = SIMD3<Float>(Float(-Foundation.sin(p.yaw) * Foundation.cos(p.pitch)),
+                                   Float(-Foundation.sin(p.pitch)),
+                                   Float(Foundation.cos(p.yaw) * Foundation.cos(p.pitch)))
+            out.append((rel, dir, dist))
+        }
+        out.sort { $0.d < $1.d }
+        return out.prefix(4).map { ($0.pos, $0.dir) }
+    }
+
+    /// the beam's light level (0…1) at a camera-relative point — the shader's
+    /// cone without the face term, for entities
+    private func headlampLevel(_ at: SIMD3<Float>) -> Float {
+        var best: Float = 0
+        for l in lamps {
+            let d = at - l.pos
+            let dist = simd_length(d)
+            if dist > 22 || dist < 0.3 { continue }
+            let c = simd_dot(d / dist, l.dir)
+            func smooth(_ a: Float, _ b: Float, _ x: Float) -> Float {
+                let t = min(1, max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t)
+            }
+            best = max(best, smooth(0.87, 0.965, c) * (1 - smooth(5, 22, dist)))
+        }
+        return best
     }
 
     /// Flat ground-projected disc, flat black with `alpha`. Double-sided so the

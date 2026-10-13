@@ -158,7 +158,7 @@ registerAllItems()
 // fns referenced items that never existed; appended at the END so every
 // baseline id is unchanged)
 let BASE_ITEM_COUNT = 1186
-check("item count", itemDefs.count == 1195, "got \(itemDefs.count) want 1195") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder, infinity_wipe
+check("item count", itemDefs.count == 1196, "got \(itemDefs.count) want 1196") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder, infinity_wipe, headlamp
 check("item ids stable after append", iid("weeping_vines") == 1186 && iid("twisting_vines") == 1187,
       "vines ids \(iid("weeping_vines"))/\(iid("twisting_vines")) want 1186/1187")
 let itemGoldens: [(String, Int)] = [
@@ -1046,8 +1046,8 @@ if let g = loadJSON("items-goldens.json") {
     func num(_ k: String) -> Int { (g[k] as! NSNumber).intValue }
     func hash32(_ k: String) -> UInt32 { UInt32(truncating: g[k] as! NSNumber) }
 
-    // recipes
-    let craftSer = craftingRecipes.map { r -> String in
+    // recipes: the baseline prefix (new recipes are appended after it, like items)
+    let craftSer = craftingRecipes.prefix(num("craftCount")).map { r -> String in
         switch r {
         case .shaped(let w, let h, let grid, let out, let count):
             return "S|\(w)|\(h)|\(grid.map { $0 ?? "." }.joined(separator: ","))|\(out)|\(count)"
@@ -1055,8 +1055,8 @@ if let g = loadJSON("items-goldens.json") {
             return "L|\(inputs.joined(separator: ","))|\(out)|\(count)"
         }
     }.joined(separator: ";")
-    check("crafting recipe count", craftingRecipes.count == num("craftCount"),
-          "got \(craftingRecipes.count) want \(num("craftCount"))")
+    check("crafting recipe count", craftingRecipes.count >= num("craftCount"),
+          "got \(craftingRecipes.count) want at least \(num("craftCount"))")
     check("crafting recipes hash", hashString(craftSer) == hash32("craftH"),
           "got \(hashString(craftSer)) want \(hash32("craftH"))")
 
@@ -2553,6 +2553,31 @@ do {
     w.setBlock(gx + 1, gy - 1, gz, 0)                    // open the pocket: water runs in under it
     for _ in 0..<100 { _ = g.frame(dtMs: 50) }
     check("water flowing in under gravel still drops it", (w.getBlock(gx, gy, gz) >> 4) != Int(B.gravel))
+    g.exitToTitle()
+}
+
+// ---------------------------------------------------------------------------
+section("headlamp")
+do {
+    func st(_ n: String) -> ItemStack? { n.isEmpty ? nil : ItemStack(iid(n), 1) }
+    let grid = ["", "glowstone_dust", "", "leather", "iron_ingot", "leather", "", "", ""].map(st)
+    let out = matchCrafting(grid, 3, 3)?.out
+    check("glowstone over iron, leather either side crafts a headlamp", out.map { itemDefs[$0.id].name } == "headlamp")
+    check("it's worn on the head", itemDefs[iid("headlamp")].armor?.slot == 0)
+    let home = NSTemporaryDirectory() + "pebsmoke-lamp-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    g.createWorld(name: "lamp", seedText: "12345", mode: GameMode.survival, difficulty: 2)
+    let p = g.player!
+    check("no headlamp, no light", !p.headlampOn)
+    p.armor[0] = ItemStack(iid("headlamp"), 1)
+    check("wearing one turns it on", p.headlampOn)
+    for _ in 0..<200 { p.damageArmor(20) }
+    check("it never wears out", p.armor[0]?.id == iid("headlamp"))
     g.exitToTitle()
 }
 

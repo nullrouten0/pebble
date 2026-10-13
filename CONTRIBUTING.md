@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/thebriangao
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `503 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `508 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 

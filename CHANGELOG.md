@@ -5,10 +5,17 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
 ## iPad Beta — `ios-port` branch
 
-Version 1.3.4. Not a main release yet: build it yourself from the branch
+Version 1.4.0. Not a main release yet: build it yourself from the branch
 (see the README banner). Known rough edges: frame rate dips while new
 terrain streams in, and iPhone layouts are only lightly polished.
 
+- **Headlamp (1.4.0).** Wear it in the helmet slot and a warm beam lights
+  whatever you look at, about 22 blocks out, like a real headlamp. It lights
+  terrain and mobs, shows as a lamp on your forehead to other players, and
+  in LAN games you see everyone's beams (up to four at once). It's light
+  only: mobs still spawn in the dark. Never wears out. Craft it from
+  glowstone dust over an iron ingot with leather either side, or take one
+  from the creative Tools tab.
 - **Bigger touch targets on iPhone (1.3.4).** Menus need the full screen
   height, which pins an iPhone's GUI scale low (inventory slots about 5 mm
   on a Pro Max). In-world and on inventory screens nothing needs that
