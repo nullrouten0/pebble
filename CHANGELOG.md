@@ -3,6 +3,18 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.1 — 2026-10-12 — Mac: smaller saves, creative dig erode
+
+- **Mac worlds save compressed**, as iOS has since the beta: chunk records
+  are about 50× smaller, so world folders shrink and saving writes far less.
+  Existing worlds keep loading (every build since 1.3 reads both formats);
+  chunks convert as they're saved again. Builds older than 1.3 can't read
+  compressed chunks, so don't open a 1.4.1 world in one.
+- **Creative blocks erode on the Mac too**: holding left-click shows the
+  crack growing for 0.4 s before the block breaks, so you can see where
+  you're digging and stop in time. Options → Controls → Creative Dig sets
+  it, down to Instant (the old behavior).
+
 ## 1.4.0 — 2026-10-12 — iPad & iPhone, headlamp, world wonders
 
 Pebble now runs on iPad and iPhone (beta): build it with `./pebble ios`

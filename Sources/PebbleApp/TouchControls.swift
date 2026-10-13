@@ -23,10 +23,7 @@ import PebbleCore
 public final class TouchControls {
     private unowned let rt: GameRuntime
     /// the shell has a touch screen (off on the Mac: nothing is drawn)
-    public var enabled = false {
-        // touch players see a block erode before it breaks in creative
-        didSet { rt.game?.creativeBreakDelayDefault = enabled ? 0.4 : 0 }
-    }
+    public var enabled = false
     /// shown until a keyboard, mouse or controller is used; the next touch
     /// brings it back
     private(set) var visible = true

@@ -34,7 +34,7 @@ public struct DimState: Codable {
 /// overlay and save records all read this (Info.plist is bumped separately
 /// at packaging time). major.minor.revision: a new minor adds features, a
 /// new revision is a small feature or a fix.
-public let PEBBLE_VERSION = "1.4.0"
+public let PEBBLE_VERSION = "1.4.1"
 
 /// the commit this build came from: 8 hex digits, "+" when built with
 /// uncommitted changes. Stamped into the app's Info.plist at build time
@@ -133,13 +133,10 @@ public final class SaveDB {
     public private(set) var fullChunkWrites = 0
     public private(set) var stubChunkWrites = 0
     /// write chunks as zlib-compressed VCK2 (~50× smaller full records).
-    /// Every build reads both; only iOS writes VCK2 for now, so a Mac world
-    /// still opens in builds from before VCK2 existed
-    #if os(iOS)
+    /// Every build since 1.3 reads both formats (iOS wrote VCK2 from the
+    /// start; the Mac since 1.4.1). Builds before 1.3 can't read VCK2: they'd
+    /// regenerate those chunks, so don't open a newer world in one.
     public var compressChunks = true
-    #else
-    public var compressChunks = false
-    #endif
 
     public init() {
         let url = vcSupportDir().appendingPathComponent("pebble.db")

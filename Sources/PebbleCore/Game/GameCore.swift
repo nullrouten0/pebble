@@ -260,9 +260,10 @@ public final class GameCore {
     private var rightDown = false
     private var useCooldown = 0
     private var breakCooldown = 0
-    /// creative dig time when settings.creativeBreakDelay is unset: instant
-    /// with a mouse, a visible erode on touch screens (the shell sets it)
-    public var creativeBreakDelayDefault = 0.0
+    /// creative dig time when settings.creativeBreakDelay is unset: a short
+    /// visible erode, so you see the block you're on before it breaks
+    /// (Options → Controls → Creative Dig sets it, down to instant)
+    public var creativeBreakDelayDefault = 0.4
     /// seconds a creative-mode block takes to break (0 = instant)
     public var creativeBreakDelay: Double { settings.creativeBreakDelay ?? creativeBreakDelayDefault }
 
