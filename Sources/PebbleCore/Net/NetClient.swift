@@ -398,7 +398,7 @@ public final class NetClient {
             if let m = e as? Mob { m.sitting = s.flags & NetSnap.SITTING != 0 }
             if let p = e as? Player {
                 p.sneaking = s.flags & NetSnap.SNEAKING != 0
-                p.elytraFlying = s.flags & NetSnap.ELYTRA != 0
+                p.wingsuitFlying = s.flags & NetSnap.WINGSUIT != 0
             }
             // a jump of more than a few blocks is a teleport — don't streak
             if abs(e.x - e.prevX) + abs(e.y - e.prevY) + abs(e.z - e.prevZ) > 8 {
@@ -461,7 +461,7 @@ public final class NetClient {
         if p.sneaking { flags |= GuestState.SNEAKING }
         if p.sprinting { flags |= GuestState.SPRINTING }
         if p.flying { flags |= GuestState.FLYING }
-        if p.elytraFlying { flags |= GuestState.ELYTRA }
+        if p.wingsuitFlying { flags |= GuestState.WINGSUIT }
         if p.usingItem { flags |= GuestState.USING }
         if p.jumping { flags |= GuestState.JUMPING }
         if p.dead || p.deathTime > 0 { flags |= GuestState.DEAD }

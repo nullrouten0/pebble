@@ -103,7 +103,7 @@ public struct StackData: Equatable, Codable {
     public var charged: Bool?
     public var priorWork: Int?
     public var repairUnits: Int?
-    /// shulker-box carried inventory
+    /// lurker-box carried inventory
     public var contents: [ItemStack?]?
     /// lodestone compass target [x, y, z, dim]
     public var lodestone: [Int]?
@@ -154,7 +154,7 @@ public func copyStack(_ s: ItemStack?) -> ItemStack? { s?.copy() }
 extension ItemStack {
     /// false for anything this build can't look up: an item id from a newer
     /// build's save or a bad LAN peer (itemDefs[id] would trap), an unknown
-    /// enchantment (enchDef traps), or such a stack inside a shulker box
+    /// enchantment (enchDef traps), or such a stack inside a lurker box
     public var isKnown: Bool {
         id >= 0 && id < itemDefs.count && ench.allSatisfy { ENCH_BY_ID[$0.id] != nil }
             && (data.contents?.allSatisfy { $0?.isKnown ?? true } ?? true)

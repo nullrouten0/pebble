@@ -265,7 +265,7 @@ public final class Minecart: Entity {
         if abs(vx) > 0.001 || abs(vz) > 0.001 {
             yaw = detAtan2(-vx, vz) + .pi / 2
         }
-        // detector rail trigger handled by redstone system scanning carts
+        // detector rail trigger handled by sparkstone system scanning carts
         // activator rail: eject / tnt ignite
         let below = world.getBlock(bx, by, bz)
         if (below >> 4) == Int(B.activator_rail) && (below & 8) != 0 {

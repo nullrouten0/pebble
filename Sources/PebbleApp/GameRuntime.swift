@@ -32,10 +32,10 @@ final class HostBridge: GameHost {
             if let be = data?.be {
                 ui.open(ChestScreen(be, data?.title ?? "Chest", data?.other), game)
             }
-        case "ender_chest":
+        case "rift_chest":
             let p = game.player!
-            ui.open(ChestScreen(items: { p.enderChest }, set: { p.enderChest[$0] = $1 },
-                                count: p.enderChest.count, "Ender Chest"), game)
+            ui.open(ChestScreen(items: { p.riftChest }, set: { p.riftChest[$0] = $1 },
+                                count: p.riftChest.count, "Rift Chest"), game)
         case "furnace":
             if let be = data?.be { ui.open(FurnaceScreen(be), game) }
         case "brewing":

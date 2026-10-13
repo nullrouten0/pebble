@@ -18,7 +18,7 @@ func registerBigStructures() {
         plan: { _, ocx, ocz, _ in
             let x0 = ocx * 16 - 21, z0 = ocz * 16 - 21
             let y0 = 39
-            let PR = Int(cell(B.prismarine)), PB = Int(cell(B.prismarine_bricks)), SL = Int(cell(B.sea_lantern))
+            let PR = Int(cell(B.seaglass)), PB = Int(cell(B.seaglass_bricks)), SL = Int(cell(B.sea_lantern))
             return StructurePlan(id: "ocean_monument", pieces: [
                 piece(x0, y0 - 2, z0, x0 + 57, y0 + 22, z0 + 57) { b in
                     // platform
@@ -194,10 +194,10 @@ func registerBigStructures() {
                             default:
                                 break
                             }
-                            // illager population
+                            // marauder population
                             let r = b.rng.nextFloat()
                             if r < 0.3 { b.mob("vindicator", midX + 1, fy, midZ + 1, ["persistent": .bool(true)]) }
-                            else if r < 0.42 { b.mob("evoker", midX - 1, fy, midZ - 1, ["persistent": .bool(true)]) }
+                            else if r < 0.42 { b.mob("conjurer", midX - 1, fy, midZ - 1, ["persistent": .bool(true)]) }
                             // torch
                             b.set(roomX + 1, fy + 3, roomZ + 1, Int(cell(B.torch, 0)))
                         })
@@ -282,14 +282,14 @@ func registerNetherEndStructures() {
                 })
                 return (ex, ez)
             }
-            func blazePlatform(_ x: Int, _ z: Int) {
+            func cinderPlatform(_ x: Int, _ z: Int) {
                 pieces.append(piece(x - 3, y, z - 3, x + 3, y + 9, z + 3) { b in
                     b.fill(x - 3, y + 1, z - 3, x + 3, y + 1, z + 3, NB)
                     b.fill(x - 2, y + 2, z - 2, x + 2, y + 7, z + 2, AIR)
                     // stairs up
                     for i in 0..<3 { b.set(x - 3 + i, y + 1 + i, z, Int(cell(B.nether_brick_stairs, 3))) }
                     b.fill(x - 1, y + 2, z - 1, x + 1, y + 2, z + 1, NB)
-                    b.spawner(x, y + 3, z, "blaze")
+                    b.spawner(x, y + 3, z, "cinder")
                     for d in -2...2 {
                         b.set(x + d, y + 2, z - 2, FENCE); b.set(x + d, y + 2, z + 2, FENCE)
                         b.set(x - 2, y + 2, z + d, FENCE); b.set(x + 2, y + 2, z + d, FENCE)
@@ -317,14 +317,14 @@ func registerNetherEndStructures() {
                 let (ex, ez) = bridge(cx, cz, dir, len)
                 crossing(ex, ez)
                 let what = rng.nextFloat()
-                if what < 0.4 { blazePlatform(ex + (dir < 2 ? 8 : 0), ez + (dir >= 2 ? 8 : 0)) }
+                if what < 0.4 { cinderPlatform(ex + (dir < 2 ? 8 : 0), ez + (dir >= 2 ? 8 : 0)) }
                 else if what < 0.65 { wartRoom(ex + (dir < 2 ? 9 : 0), ez + (dir >= 2 ? 9 : 0)) }
                 else if what < 0.85 {
                     let len2 = 12 + rng.nextInt(12)
                     let dir2 = (dir + (rng.nextBoolean() ? 2 : 3)) % 4
                     let (ex2, ez2) = bridge(ex, ez, dir2, len2)
                     crossing(ex2, ez2)
-                    if rng.nextBoolean() { blazePlatform(ex2, ez2 + 8) }
+                    if rng.nextBoolean() { cinderPlatform(ex2, ez2 + 8) }
                 }
             }
             return StructurePlan(id: "fortress", pieces: pieces,
@@ -394,13 +394,13 @@ func registerNetherEndStructures() {
                         if b.get(lx, ly - 1, lz) > 0 { b.chest(lx, ly, lz, facing, "bastion_other") }
                     }
                     // mobs
-                    b.mob("piglin", cx + 3, y + 1, cz + 3, ["persistent": .bool(true)])
-                    b.mob("piglin", cx - 3, y + 7, cz - 3, ["persistent": .bool(true)])
-                    b.mob("piglin", x0 + 6, y + 1, z0 + 6, ["persistent": .bool(true)])
-                    b.mob("piglin_brute", cx + 1, y + 3, cz - 2, ["persistent": .bool(true)])
-                    b.mob("piglin_brute", x0 + W - 6, y + 13, z0 + 6, ["persistent": .bool(true)])
-                    b.mob("hoglin", x0 + 8, y + 1, z0 + D - 8, ["persistent": .bool(true)])
-                    b.mob("hoglin", x0 + W - 8, y + 1, z0 + D - 8, ["persistent": .bool(true)])
+                    b.mob("snouter", cx + 3, y + 1, cz + 3, ["persistent": .bool(true)])
+                    b.mob("snouter", cx - 3, y + 7, cz - 3, ["persistent": .bool(true)])
+                    b.mob("snouter", x0 + 6, y + 1, z0 + 6, ["persistent": .bool(true)])
+                    b.mob("snouter_brute", cx + 1, y + 3, cz - 2, ["persistent": .bool(true)])
+                    b.mob("snouter_brute", x0 + W - 6, y + 13, z0 + 6, ["persistent": .bool(true)])
+                    b.mob("tusker", x0 + 8, y + 1, z0 + D - 8, ["persistent": .bool(true)])
+                    b.mob("tusker", x0 + W - 8, y + 1, z0 + D - 8, ["persistent": .bool(true)])
                 },
             ], ref: StructRefBox(x0 - 8, y - 16, z0 - 8, x0 + W + 8, y + H + 4, z0 + D + 8))
         }
@@ -418,7 +418,7 @@ func registerNetherEndStructures() {
         plan: { ctx, ocx, ocz, rng in
             let cx = ocx * 16 + 8, cz = ocz * 16 + 8
             let baseY = ctx.heightAt(cx, cz)
-            let PUR = Int(cell(B.purpur_block)), PIL = Int(cell(B.purpur_pillar)), END_ROD = Int(cell(B.end_rod))
+            let PUR = Int(cell(B.violite_block)), PIL = Int(cell(B.violite_pillar)), END_ROD = Int(cell(B.end_rod))
             var pieces: [StructPiece] = []
             let floors = 3 + rng.nextInt(3)
 
@@ -448,13 +448,13 @@ func registerNetherEndStructures() {
                     for (px, pz) in [(-4, -4), (4, -4), (-4, 4), (4, 4)] {
                         for h in 0..<5 { b.set(cx + px, fy + h, cz + pz, PIL) }
                     }
-                    // spiral purpur stairs inside
+                    // spiral violite stairs inside
                     let steps = [(-2, -2), (0, -3), (2, -2), (3, 0), (2, 2), (0, 3), (-2, 2), (-3, 0)]
                     let (sx, sz) = steps[f % steps.count]
-                    b.set(cx + sx, fy + 1, cz + sz, Int(cell(B.purpur_stairs, f % 4)))
+                    b.set(cx + sx, fy + 1, cz + sz, Int(cell(B.violite_stairs, f % 4)))
                     b.set(cx + sx, fy + 2, cz + sz, AIR)
-                    // shulker guarding each floor
-                    b.mob("shulker", cx + (f % 2 == 0 ? 2 : -2), fy, cz + (f % 2 == 0 ? 2 : -2), ["persistent": .bool(true)])
+                    // lurker guarding each floor
+                    b.mob("lurker", cx + (f % 2 == 0 ? 2 : -2), fy, cz + (f % 2 == 0 ? 2 : -2), ["persistent": .bool(true)])
                     // end rods
                     b.set(cx - 3, fy + 3, cz - 3, END_ROD)
                     b.set(cx + 3, fy + 3, cz + 3, END_ROD)
@@ -464,13 +464,13 @@ func registerNetherEndStructures() {
                 // roof + loot
                 let ty = baseY + floors * 5
                 for dz in -5...5 { for dx in -5...5 {
-                    if abs(dx) == 5 || abs(dz) == 5 { b.set(cx + dx, ty, cz + dz, Int(cell(B.purpur_slab, 0))) }
+                    if abs(dx) == 5 || abs(dz) == 5 { b.set(cx + dx, ty, cz + dz, Int(cell(B.violite_slab, 0))) }
                     else { b.set(cx + dx, ty, cz + dz, PUR) }
                 } }
                 b.chest(cx - 2, ty + 1, cz, 3, "end_city_treasure")
                 b.chest(cx + 2, ty + 1, cz, 2, "end_city_treasure")
                 b.set(cx, ty + 1, cz, END_ROD)
-                b.mob("shulker", cx, ty + 1, cz + 2, ["persistent": .bool(true)])
+                b.mob("lurker", cx, ty + 1, cz + 2, ["persistent": .bool(true)])
             })
 
             // end ship (60%)
@@ -494,13 +494,13 @@ func registerNetherEndStructures() {
                     for h in 0..<8 { b.set(sx + 6, sy + 3 + h, sz, PIL) }
                     // dragon head prow
                     b.set(sx - 1, sy + 1, sz, Int(cell(B.dragon_head)))
-                    // treasure: elytra chest + brewing stand
+                    // treasure: wingsuit chest + brewing stand
                     b.chest(sx + 10, sy + 3, sz, 4, "end_city_treasure")
-                    b.s.addBlockEntity(BESpec(x: sx + 11, y: sy + 3, z: sz, kind: "elytra_chest"))
+                    b.s.addBlockEntity(BESpec(x: sx + 11, y: sy + 3, z: sz, kind: "wingsuit_chest"))
                     b.set(sx + 11, sy + 3, sz, Int(cell(B.chest, 4)))
                     b.set(sx + 12, sy + 3, sz - 1, Int(cell(B.brewing_stand)))
-                    b.mob("shulker", sx + 7, sy + 3, sz, ["persistent": .bool(true)])
-                    b.mob("shulker", sx + 11, sy + 4, sz + 1, ["persistent": .bool(true)])
+                    b.mob("lurker", sx + 7, sy + 3, sz, ["persistent": .bool(true)])
+                    b.mob("lurker", sx + 11, sy + 4, sz + 1, ["persistent": .bool(true)])
                 })
             }
             return StructurePlan(id: "end_city", pieces: pieces,

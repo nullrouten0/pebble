@@ -1,8 +1,8 @@
-// Projectiles — arrows, snowballs, eggs, ender
-// pearls, XP bottles, potions, fireballs, wither skulls, shulker bullets,
+// Projectiles — arrows, snowballs, eggs, rift
+// pearls, XP bottles, potions, fireballs, blight skulls, lurker bullets,
 // tridents, fishing bobbers, fireworks, llama spit, dragon fireballs.
 //
-// Two deterministic bug-compats kept on purpose: Fireball.width and WitherSkull.drag read
+// Two deterministic bug-compats kept on purpose: Fireball.width and BlightSkull.drag read
 // their `small`/`blue` flags during construction (always false), so width=1 /
 // drag=1 regardless of the flag set afterwards.
 
@@ -77,7 +77,7 @@ open class Projectile: Entity {
         for e in world.getEntitiesNear(x, y, z, speed + 2) {
             guard let ent = e as? Entity else { continue }
             if ent === self || (ent === owner && age < 5) || ent.dead { continue }
-            if !(ent is LivingEntity) && ent.type != "end_crystal" { continue }
+            if !(ent is LivingEntity) && ent.type != "rift_crystal" { continue }
             let bb = ent.bb()
             // ray vs box
             let t = rayBox(x, y, z, vx, vy, vz,
@@ -193,7 +193,7 @@ public final class ArrowEntity: Projectile {
 public final class ThrownSnowball: Projectile {
     public override var type: String { "snowball" }
     public override func onHitEntity(_ e: Entity) {
-        let dmg: Double = e.type == "blaze" ? 3 : 0
+        let dmg: Double = e.type == "cinder" ? 3 : 0
         e.hurt(dmg, .projectile, owner)
         world.hooks.addParticles("snow", x, y, z, 6, 0.2, 0)
         remove()
@@ -224,7 +224,7 @@ public final class ThrownEgg: Projectile {
 }
 
 public final class ThrownPearl: Projectile {
-    public override var type: String { "ender_pearl" }
+    public override var type: String { "rift_pearl" }
     public override func onHitEntity(_ e: Entity) { teleport() }
     public override func onHitBlock(_ hit: RaycastHit) { teleport() }
     private func teleport() {
@@ -233,7 +233,7 @@ public final class ThrownPearl: Projectile {
             owner.y = y + 0.1
             owner.z = z
             owner.hurt(5, .fall)
-            world.hooks.playSound("entity.enderman.teleport", x, y, z, 1, 1)
+            world.hooks.playSound("entity.riftwalker.teleport", x, y, z, 1, 1)
             world.hooks.addParticles("portal", x, y + 1, z, 24, 0.5, 0)
         }
         remove()
@@ -323,7 +323,7 @@ public final class Fireball: Projectile {
         }
         remove()
     }
-    /// ghast fireballs can be deflected
+    /// wailer fireballs can be deflected
     @discardableResult
     public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if let attacker {
@@ -338,8 +338,8 @@ public final class Fireball: Projectile {
     }
 }
 
-public final class WitherSkull: Projectile {
-    public override var type: String { "wither_skull" }
+public final class BlightSkull: Projectile {
+    public override var type: String { "blight_skull" }
     public var blue = false
     public override init(world: World) {
         super.init(world: world)
@@ -347,8 +347,8 @@ public final class WitherSkull: Projectile {
         drag = 1    // baseline evaluates `blue ? 0.73 : 1` at construction (blue=false)
     }
     public override func onHitEntity(_ e: Entity) {
-        e.hurt(8, .witherSkull, owner)
-        (e as? LivingEntity)?.addEffect("wither", 200, 1)
+        e.hurt(8, .blightSkull, owner)
+        (e as? LivingEntity)?.addEffect("blight", 200, 1)
         explode()
     }
     public override func onHitBlock(_ hit: RaycastHit) { explode() }
@@ -381,8 +381,8 @@ public final class DragonFireball: Projectile {
     }
 }
 
-public final class ShulkerBullet: Projectile {
-    public override var type: String { "shulker_bullet" }
+public final class LurkerBullet: Projectile {
+    public override var type: String { "lurker_bullet" }
     public var targetId: Int? = nil
     public override init(world: World) {
         super.init(world: world)
@@ -501,7 +501,7 @@ public final class FireworkEntity: Entity {
         // desyncing the shared deterministic stream for everything else
         if life == 0 { lifeTotal = 20 * (flightDuration + 1) + gameRng.nextInt(6) }
         if let e = attachedTo, !e.dead {
-            // elytra boost
+            // wingsuit boost
             let lookX = -detSin(e.yaw) * detCos(e.pitch)
             let lookY = -detSin(e.pitch)
             let lookZ = detCos(e.yaw) * detCos(e.pitch)

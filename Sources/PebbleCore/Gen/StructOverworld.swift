@@ -166,7 +166,7 @@ private func well(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ st: VillageStyle
 // =============================================================================
 public func buildRuinedPortal(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ nether: Bool) {
     let OBS = Int(cell(B.obsidian)), CRY = Int(cell(B.crying_obsidian))
-    let STONE_FILL = Int(cell(B.netherrack))
+    let STONE_FILL = Int(cell(B.ashrock))
     let w = 4, h = 5
     // the nether variant decays less and runs hotter (more magma/lava) —
     // same rng draw count either way, only thresholds differ
@@ -182,7 +182,7 @@ public func buildRuinedPortal(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ neth
             b.set(x + dx, y + dy, z, b.rng.nextFloat() < 0.18 ? CRY : OBS)
         }
     }
-    // netherrack + magma splash
+    // ashrock + magma splash
     for _ in 0..<14 {
         let px = x + b.rng.nextInt(7) - 2, pz = z + b.rng.nextInt(5) - 2
         let py = y - 1 + b.rng.nextInt(2) - 1

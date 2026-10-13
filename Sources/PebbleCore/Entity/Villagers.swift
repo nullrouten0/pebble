@@ -77,10 +77,10 @@ func tradesFor(_ prof: String, _ level: Int, _ rng: inout RandomX) -> [TradeOffe
         [offer(("emerald", 16), ("diamond_shovel", 1)), offer(("emerald", 22), ("diamond_hoe", 1))],
     ]
     T["cleric"] = [
-        [offer(("rotten_flesh", 32), ("emerald", 1)), offer(("emerald", 1), ("redstone", 2))],
+        [offer(("rotten_flesh", 32), ("emerald", 1)), offer(("emerald", 1), ("sparkstone", 2))],
         [offer(("gold_ingot", 3), ("emerald", 1)), offer(("emerald", 1), ("lapis_lazuli", 1))],
-        [offer(("rabbit_foot", 2), ("emerald", 1)), offer(("emerald", 4), ("glowstone", 1))],
-        [offer(("scute", 4), ("emerald", 1)), offer(("glass_bottle", 9), ("emerald", 1)), offer(("emerald", 5), ("ender_pearl", 1))],
+        [offer(("rabbit_foot", 2), ("emerald", 1)), offer(("emerald", 4), ("lumenstone", 1))],
+        [offer(("scute", 4), ("emerald", 1)), offer(("glass_bottle", 9), ("emerald", 1)), offer(("emerald", 5), ("rift_pearl", 1))],
         [offer(("nether_wart", 22), ("emerald", 1)), offer(("emerald", 3), ("experience_bottle", 1))],
     ]
     T["butcher"] = [
@@ -122,7 +122,7 @@ func tradesFor(_ prof: String, _ level: Int, _ rng: inout RandomX) -> [TradeOffe
         [offer(("paper", 24), ("emerald", 1)), offer(("emerald", 7), ("compass", 1))],
         [offer(("glass_pane", 11), ("emerald", 1))],
         [offer(("compass", 1), ("emerald", 1))],
-        [offer(("emerald", 14), ("ender_eye", 1))],
+        [offer(("emerald", 14), ("rift_eye", 1))],
         [offer(("emerald", 8), ("clock", 1))],
     ]
     T["leatherworker"] = [
@@ -175,7 +175,7 @@ open class Villager: Mob {
         xpReward = 0
         goals.add(FloatGoal(self, 0))
         goals.add(AvoidEntityGoal(self, 1, { e in
-            ["zombie", "husk", "drowned", "zombie_villager", "pillager", "vindicator", "evoker", "vex", "ravager", "zoglin"].contains(e.type)
+            ["zombie", "husk", "drowned", "zombie_villager", "pillager", "vindicator", "conjurer", "vex", "ravager", "ghoultusk"].contains(e.type)
         }, 10, 1.2))
         goals.add(FindWorkstationGoal(self, 2))
         goals.add(StrollGoal(self, 6, 0.7))
@@ -297,7 +297,7 @@ public final class WanderingTrader: Mob {
         goals.add(FloatGoal(self, 0))
         goals.add(PanicGoal(self, 1, 1.4))
         goals.add(AvoidEntityGoal(self, 2, { e in
-            ["zombie", "pillager", "vindicator", "evoker", "vex", "zoglin"].contains(e.type)
+            ["zombie", "pillager", "vindicator", "conjurer", "vex", "ghoultusk"].contains(e.type)
         }, 10, 1.2))
         goals.add(StrollGoal(self, 5, 1))
         goals.add(LookAtPlayerGoal(self, 7))
@@ -349,8 +349,8 @@ public final class IronGolem: Mob {
         targetGoals.add(HurtByTargetGoal(self, 1))
         targetGoals.add(NearestTargetGoal(self, 2, { e in
             let t = e.type
-            return ((e as? Mob)?.category == .monster && t != "creeper")
-                || ["zombie", "skeleton", "spider", "pillager", "vindicator", "evoker", "ravager"].contains(t)
+            return ((e as? Mob)?.category == .monster && t != "fizzler")
+                || ["zombie", "skeleton", "spider", "pillager", "vindicator", "conjurer", "ravager"].contains(t)
         }, 20))
     }
     public override func doMeleeAttack(_ target: LivingEntity) {

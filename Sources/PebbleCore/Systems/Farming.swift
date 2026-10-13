@@ -1,7 +1,7 @@
 // Random-tick behaviors — crop growth, saplings,
 // grass/mycelium spread, leaf decay, fire spread, ice/snow, copper oxidation,
 // cane/cactus/bamboo/kelp/vines/berries, farmland moisture, turtle eggs,
-// frogspawn, amethyst, dripstone, sculk, chorus, gravity blocks, weather.
+// frogspawn, amethyst, dripstone, hush, chorus, gravity blocks, weather.
 //
 // Uses its own seeded module RNG (0xFA01) exactly like the frozen baseline.
 
@@ -75,14 +75,14 @@ public func igniteTNT(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     world.hooks.playSound("entity.tnt.primed", Double(x) + 0.5, Double(y), Double(z) + 0.5, 1, 1)
 }
 
-// sculk spreading from catalysts handled at mob death (Game hook)
-public func sculkBloom(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ xp: Int) {
+// hush spreading from catalysts handled at mob death (Game hook)
+public func hushBloom(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ xp: Int) {
     // find catalyst nearby
     for dy in -4...4 {
         for dz in -8...8 {
             for dx in -8...8 {
-                if (world.getBlock(x + dx, y + dy, z + dz) >> 4) == Int(B.sculk_catalyst) {
-                    // spread sculk around death point
+                if (world.getBlock(x + dx, y + dy, z + dz) >> 4) == Int(B.hush_catalyst) {
+                    // spread hush around death point
                     let n = min(20, 2 + xp)
                     for _ in 0..<n {
                         let sx = x + farmingRng.nextInt(7) - 3
@@ -91,16 +91,16 @@ public func sculkBloom(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ xp: Int) 
                         while sy > y - 4 {
                             let ground = world.getBlock(sx, sy - 1, sz) >> 4
                             let at = world.getBlock(sx, sy, sz) >> 4
-                            if at == 0 && ground != 0 && blockDefs[ground].solid && ground != Int(B.sculk) {
-                                world.setBlock(sx, sy - 1, sz, Int(cell(B.sculk)))
-                                if farmingRng.nextFloat() < 0.09 { world.setBlock(sx, sy, sz, Int(cell(B.sculk_vein, 0))) }
+                            if at == 0 && ground != 0 && blockDefs[ground].solid && ground != Int(B.hush) {
+                                world.setBlock(sx, sy - 1, sz, Int(cell(B.hush)))
+                                if farmingRng.nextFloat() < 0.09 { world.setBlock(sx, sy, sz, Int(cell(B.hush_vein, 0))) }
                                 break
                             }
                             sy -= 1
                         }
                     }
-                    world.hooks.playSound("block.sculk_catalyst.bloom", Double(x + dx), Double(y + dy), Double(z + dz), 1, 1)
-                    world.hooks.addParticles("sculk_soul", Double(x), Double(y) + 0.5, Double(z), 6, 0.4, 0)
+                    world.hooks.playSound("block.hush_catalyst.bloom", Double(x + dx), Double(y + dy), Double(z + dz), 1, 1)
+                    world.hooks.addParticles("hush_soul", Double(x), Double(y) + 0.5, Double(z), 6, 0.4, 0)
                     return
                 }
             }
@@ -287,7 +287,7 @@ private let registerFarmingHandlersOnce: Void = {
     for nylium in [B.crimson_nylium, B.warped_nylium] {
         reg(nylium) { world, x, y, z, _ in
             let above = world.getBlock(x, y + 1, z) >> 4
-            if blockDefs[above].lightOpacity >= 15 && above != 0 { world.setBlock(x, y, z, Int(cell(B.netherrack))) }
+            if blockDefs[above].lightOpacity >= 15 && above != 0 { world.setBlock(x, y, z, Int(cell(B.ashrock))) }
         }
     }
 
@@ -332,7 +332,7 @@ private let registerFarmingHandlersOnce: Void = {
     blockTickHandlers[Int(B.fire)] = { world, x, y, z, c in
         if !world.rule("doFireTick") { return }
         let below = world.getBlock(x, y - 1, z) >> 4
-        let infiniburn = below == Int(B.netherrack) || below == Int(B.magma_block) || below == Int(B.bedrock)
+        let infiniburn = below == Int(B.ashrock) || below == Int(B.magma_block) || below == Int(B.bedrock)
         // rain extinguish
         if world.isRainingAt(x, y, z) && !infiniburn {
             world.setBlock(x, y, z, 0)
@@ -387,7 +387,7 @@ private let registerFarmingHandlersOnce: Void = {
     neighborHandlers[Int(B.fire)] = { world, x, y, z, c, _, _, _ in
         if !world.hasScheduledTick(x, y, z, Int(B.fire)) { world.scheduleTick(x, y, z, Int(B.fire), 30) }
         let below = world.getBlock(x, y - 1, z) >> 4
-        if below == 0 || (!blockDefs[below].solid && below != Int(B.netherrack)) {
+        if below == 0 || (!blockDefs[below].solid && below != Int(B.ashrock)) {
             var anyNeighbor = false
             for (dx, dy, dz) in [(1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1), (0, 1, 0)] {
                 if blockDefs[world.getBlock(x + dx, y + dy, z + dz) >> 4].flammable > 0 { anyNeighbor = true; break }

@@ -74,7 +74,7 @@ private func materialColors(_ name: String) -> (Int, Int, Int) {
     if name.hasPrefix("iron") { return (0xe8e8e8, 0xc8c8c8, 0x8a8a8a) }
     if name.hasPrefix("golden") { return (0xfcee4b, 0xe8c83c, 0xa8862c) }
     if name.hasPrefix("diamond") { return (0x8cf4e2, 0x4aedd9, 0x2ca89a) }
-    if name.hasPrefix("netherite") { return (0x5a5054, 0x42383b, 0x2a2326) }
+    if name.hasPrefix("darksteel") { return (0x5a5054, 0x42383b, 0x2a2326) }
     if name.hasPrefix("leather") { return (0xc08850, 0x9a6a42, 0x6a4426) }
     if name.hasPrefix("chainmail") { return (0xd8d8d8, 0xaaaaaa, 0x787878) }
     if name.hasPrefix("turtle") { return (0x6a9a4c, 0x47702e, 0x2c4c1c) }
@@ -207,7 +207,7 @@ private func paintIcon(_ img: inout [UInt8], _ def: ItemDef, _ data: StackData?)
     }
     // armor (the headlamp is worn but has its own picture)
     if name == "headlamp", paintSpecific(&img, name, data) { return }
-    if let armor = def.armor, armor.material != "elytra", let tpl = ARMOR_TEMPLATES[armor.slot] {
+    if let armor = def.armor, armor.material != "wingsuit", let tpl = ARMOR_TEMPLATES[armor.slot] {
         let (H, Bc, D) = materialColors(armor.material)
         drawTemplate(&img, tpl, H, Bc, D, 1, 3)
         return
@@ -368,15 +368,15 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
     case "iron_ingot": ingot(&img, 0xe8e8e8, 0xc8c8c8, 0x8a8a8a); return true
     case "gold_ingot": ingot(&img, 0xfcee4b, 0xe8c83c, 0xa8862c); return true
     case "copper_ingot": ingot(&img, 0xe8966a, 0xc06843, 0x8a4a30); return true
-    case "netherite_ingot": ingot(&img, 0x5a5054, 0x42383b, 0x2a2326); return true
-    case "netherite_scrap": blob(&img, 0x42383b, 0x5e4439); return true
+    case "darksteel_ingot": ingot(&img, 0x5a5054, 0x42383b, 0x2a2326); return true
+    case "darksteel_scrap": blob(&img, 0x42383b, 0x5e4439); return true
     case "raw_iron": blob(&img, 0xa88a72, 0xc8aa90); return true
     case "raw_copper": blob(&img, 0xa05a3c, 0xc87a52); return true
     case "raw_gold": blob(&img, 0xddaa3e, 0xf8d860); return true
     case "iron_nugget": smallBlob(&img, 0xc8c8c8, 0xe8e8e8); return true
     case "gold_nugget": smallBlob(&img, 0xe8c83c, 0xfcee4b); return true
-    case "redstone": pile(&img, 0xcc1500, 0xff2200); return true
-    case "glowstone_dust": pile(&img, 0xd8a84a, 0xfcd97a); return true
+    case "sparkstone": pile(&img, 0xcc1500, 0xff2200); return true
+    case "lumenstone_dust": pile(&img, 0xd8a84a, 0xfcd97a); return true
     case "gunpowder": pile(&img, 0x5a5a5a, 0x7a7a7a); return true
     case "sugar": pile(&img, 0xe8e8e8, 0xffffff); return true
     case "bone_meal": pile(&img, 0xd8d8c8, 0xf0f0e0); return true
@@ -419,16 +419,16 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         px(12, 3, 0xd8d8d8); px(11, 4, 0xd8d8d8); px(3, 12, 0xe8e8e8); px(4, 11, 0xe8e8e8)
         return true
     case "bow": arc(&img); return true
-    case "ender_pearl": orb(&img, 0x1c5c50, 0x39e8c8); return true
-    case "ender_eye": orb(&img, 0x39e8c8, 0x1c5c50); return true
-    case "blaze_rod":
+    case "rift_pearl": orb(&img, 0x1c5c50, 0x39e8c8); return true
+    case "rift_eye": orb(&img, 0x39e8c8, 0x1c5c50); return true
+    case "cinder_rod":
         for i in 0..<10 {
             px(10 - i / 2, 3 + i, 0xe8c23c)
             px(11 - i / 2, 3 + i, 0xd8a02c)
         }
         return true
-    case "blaze_powder": pile(&img, 0xe8901c, 0xfcb83c); return true
-    case "ghast_tear": gem(&img, 0xe8e8f0, 0xb8b8c8, 0xffffff); return true
+    case "cinder_powder": pile(&img, 0xe8901c, 0xfcb83c); return true
+    case "wailer_tear": gem(&img, 0xe8e8f0, 0xb8b8c8, 0xffffff); return true
     case "slime_ball": orb(&img, 0x6fc05c, 0x84d46e); return true
     case "magma_cream": orb(&img, 0xc8742c, 0xe8a23c); return true
     case "snowball": orb(&img, 0xe8f0f0, 0xffffff); return true
@@ -468,10 +468,10 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
     case "spider_eye": orb(&img, 0x8a1c2c, 0xc83a4a); px(8, 7, 0x3c0a12); return true
     case "fermented_spider_eye": orb(&img, 0x9a6a8a, 0xc898b8); px(8, 7, 0x3c0a12); return true
     case "shield": shieldIcon(&img); return true
-    case "elytra": elytraIcon(&img); return true
-    case "totem_of_undying": totemIcon(&img); return true
+    case "wingsuit": wingsuitIcon(&img); return true
+    case "lifecharm": totemIcon(&img); return true
     case "nether_star": starIcon(&img, 0xf8f8d8); return true
-    case "ender_chest": return false
+    case "rift_chest": return false
     case "firework_rocket": rocketIcon(&img); return true
     case "name_tag": fill(4, 6, 11, 10, 0xd8c898); px(5, 7, 0x8a7a52); fill(3, 7, 3, 9, 0x8a7a52); return true
     case "lead":
@@ -480,11 +480,11 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
     case "saddle":
         fill(4, 6, 11, 8, 0x8a4a2c); fill(5, 5, 10, 5, 0x6a3a20); px(4, 9, 0xe8c83c); px(11, 9, 0xe8c83c)
         return true
-    case "shulker_shell": fill(4, 5, 11, 9, 0x976797); fill(5, 4, 10, 4, 0xb89ab8); fill(5, 10, 10, 10, 0x7a527a); return true
+    case "lurker_shell": fill(4, 5, 11, 9, 0x976797); fill(5, 4, 10, 4, 0xb89ab8); fill(5, 10, 10, 10, 0x7a527a); return true
     case "nautilus_shell": orb(&img, 0xd8c8b8, 0xb89a88); px(7, 7, 0x8a6a58); px(9, 7, 0x8a6a58); return true
     case "heart_of_the_sea": orb(&img, 0x1c8ac8, 0x3ab8e8); return true
-    case "prismarine_shard": gem(&img, 0x6fa495, 0x4a7468, 0x9ac8b8); return true
-    case "prismarine_crystals": gem(&img, 0xcdebe2, 0x9ac0b4, 0xffffff); return true
+    case "seaglass_shard": gem(&img, 0x6fa495, 0x4a7468, 0x9ac8b8); return true
+    case "seaglass_crystals": gem(&img, 0xcdebe2, 0x9ac0b4, 0xffffff); return true
     case "ink_sac": blob(&img, 0x1c1c28, 0x3a3a4a); return true
     case "glow_ink_sac": blob(&img, 0x1c5c5c, 0x2ce8e8); return true
     case "scute": blob(&img, 0x47702e, 0x6a9a4c); return true
@@ -520,7 +520,7 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         }
         return true
     case "brush": fill(7, 3, 8, 7, 0x8a6a42); fill(6, 8, 9, 11, 0xc8a868); fill(6, 12, 9, 12, 0xe8d8a8); return true
-    case "end_crystal": gem(&img, 0xe8a8e8, 0xc84ae8, 0xf8e0f8); return true
+    case "rift_crystal": gem(&img, 0xe8a8e8, 0xc84ae8, 0xf8e0f8); return true
     case "trident":
         for i in 0..<9 { px(8, 4 + i, 0x2c8a7a) }
         px(6, 4, 0x2c8a7a); px(10, 4, 0x2c8a7a); px(6, 5, 0x2c8a7a); px(10, 5, 0x2c8a7a)
@@ -615,7 +615,7 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         px(7, 7, 0x5a3220); px(8, 8, 0x5a3220)
         return true
     }
-    if name.hasSuffix("armor_trim") || name == "netherite_upgrade" {
+    if name.hasSuffix("armor_trim") || name == "darksteel_upgrade" {
         fill(4, 3, 11, 12, 0x3a5c5c); fill(5, 4, 10, 11, 0x4a7474); px(7, 6, 0x8ac8c8); px(8, 8, 0x8ac8c8)
         return true
     }
@@ -755,7 +755,7 @@ private func shieldIcon(_ img: inout [UInt8]) {
     }
     for y in 3..<8 { put(&img, 7, y, 0xc8c8c8) }
 }
-private func elytraIcon(_ img: inout [UInt8]) {
+private func wingsuitIcon(_ img: inout [UInt8]) {
     for i in 0..<6 {
         for w in 0...i {
             put(&img, 6 - i + w, 4 + i, 0xd8d8e8)

@@ -29,13 +29,13 @@ struct EntityPose {
     var hanging = false
     var open = 0.0
     var sitting = false
-    var elytraFlying = false
+    var wingsuitFlying = false
 }
 
 struct EntityUniforms {
     var viewProj: simd_float4x4
     var model: simd_float4x4
-    // 24 slots — the ender dragon's rig needs more than the old 16
+    // 24 slots — the rift dragon's rig needs more than the old 16
     var parts: (simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4,
                 simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4,
                 simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4, simd_float4x4,
@@ -137,7 +137,7 @@ final class EntityRendererM {
             let n = part.name
             let anim = model.anim
             switch anim {
-            case "biped", "zombie", "skeleton", "illager", "villager", "fly_biped":
+            case "biped", "zombie", "skeleton", "marauder", "villager", "fly_biped":
                 if n == "head" {
                     m = mRotateY(m, Float(p.headYaw))
                     m = mRotateX(m, Float(-p.pitch))
@@ -145,12 +145,12 @@ final class EntityRendererM {
                     var rx = walkA * 0.8
                     if anim == "zombie" || (anim == "skeleton" && p.aiming) { rx = .pi / 2 + idle * 4 }
                     if p.attackSwing > 0 { rx = .pi / 2 * Foundation.sin(p.attackSwing * .pi) + 0.4 }
-                    if anim == "illager" && p.crossed { rx = 0.7 }
+                    if anim == "marauder" && p.crossed { rx = 0.7 }
                     m = mRotateX(m, Float(rx))
                 } else if n == "armL" {
                     var rx = walkB * 0.8
                     if anim == "zombie" { rx = .pi / 2 - idle * 4 }
-                    if anim == "illager" && p.crossed { rx = 0.7 }
+                    if anim == "marauder" && p.crossed { rx = 0.7 }
                     m = mRotateX(m, Float(rx))
                 } else if n == "legR" {
                     m = mRotateX(m, Float(walkA))
@@ -172,7 +172,7 @@ final class EntityRendererM {
                 } else if n == "tail" {
                     m = mRotateX(m, Float(-0.6 - Foundation.sin(time * 3) * 0.15 * (1 + amp * 2)))
                 }
-            case "creeper":
+            case "fizzler":
                 if n == "head" {
                     m = mRotateY(m, Float(p.headYaw))
                     m = mRotateX(m, Float(-p.pitch))
@@ -208,7 +208,7 @@ final class EntityRendererM {
             case "slime":
                 let squish = 1 + Foundation.sin(time * 6 + p.x) * 0.06 * (1 + amp)
                 m = mScale(m, Float(squish), Float(1 / squish), Float(squish))
-            case "blaze":
+            case "cinder":
                 if n.hasPrefix("rod") {
                     let ri = Double(Int(n.dropFirst(3)) ?? 0)
                     let ring = (ri / 4).rounded(.down)
@@ -221,7 +221,7 @@ final class EntityRendererM {
                     m = mRotateY(m, Float(p.headYaw))
                     m = mRotateX(m, Float(-p.pitch))
                 }
-            case "ghast":
+            case "wailer":
                 if n.hasPrefix("tent") {
                     let ti = Double(Int(n.dropFirst(4)) ?? 0)
                     m = mRotateX(m, Float(Foundation.sin(time * 2 + ti * 1.3) * 0.25))
@@ -270,7 +270,7 @@ final class EntityRendererM {
                 } else if n == "tail" {
                     m = mRotateY(m, Float(Foundation.sin(time * 4) * 0.3))
                 }
-            case "shulker":
+            case "lurker":
                 if n == "lid" {
                     let open = p.open
                     m = mTranslate(m, 0, Float(open * 0.45), 0)
@@ -326,7 +326,7 @@ final class EntityRendererM {
                 } else if n.hasPrefix("leg") {
                     m = mRotateX(m, 0.4)
                 }
-            case "wither":
+            case "blight":
                 if n == "head" {
                     m = mRotateY(m, Float(p.headYaw))
                     m = mRotateX(m, Float(-p.pitch))
@@ -349,17 +349,17 @@ final class EntityRendererM {
                 } else if n == "legL" {
                     m = mRotateX(m, Float(walkB))
                 }
-            case "elytra":
-                let spread = p.elytraFlying ? 0.08 : 0.72
-                let pitch = p.elytraFlying ? 0.18 : 0.38
+            case "wingsuit":
+                let spread = p.wingsuitFlying ? 0.08 : 0.72
+                let pitch = p.wingsuitFlying ? 0.18 : 0.38
                 if n == "wingR" {
                     m = mRotateY(m, Float(-spread))
                     m = mRotateX(m, Float(pitch))
-                    m = mRotateZ(m, Float(p.elytraFlying ? 0.08 : 0.18))
+                    m = mRotateZ(m, Float(p.wingsuitFlying ? 0.08 : 0.18))
                 } else if n == "wingL" {
                     m = mRotateY(m, Float(spread))
                     m = mRotateX(m, Float(pitch))
-                    m = mRotateZ(m, Float(p.elytraFlying ? -0.08 : -0.18))
+                    m = mRotateZ(m, Float(p.wingsuitFlying ? -0.08 : -0.18))
                 }
             case "rabbit", "frog":
                 let hop = min(1, max(0, Foundation.sin(swing * 1.2) * amp * 2))

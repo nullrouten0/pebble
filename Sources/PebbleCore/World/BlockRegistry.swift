@@ -92,10 +92,10 @@ public let STONE_FAMILIES: [(String, String)] = [
     ("brick", "bricks"), ("mud_brick", "mud_bricks"),
     ("sandstone", "sandstone"), ("smooth_sandstone", "sandstone_top"), ("cut_sandstone", "cut_sandstone"),
     ("red_sandstone", "red_sandstone"), ("smooth_red_sandstone", "red_sandstone_top"), ("cut_red_sandstone", "cut_red_sandstone"),
-    ("prismarine", "prismarine"), ("prismarine_brick", "prismarine_bricks"), ("dark_prismarine", "dark_prismarine"),
+    ("seaglass", "seaglass"), ("seaglass_brick", "seaglass_bricks"), ("dark_seaglass", "dark_seaglass"),
     ("nether_brick", "nether_bricks"), ("red_nether_brick", "red_nether_bricks"),
     ("blackstone", "blackstone"), ("polished_blackstone", "polished_blackstone"), ("polished_blackstone_brick", "polished_blackstone_bricks"),
-    ("end_stone_brick", "end_stone_bricks"), ("purpur", "purpur_block"),
+    ("end_stone_brick", "end_stone_bricks"), ("violite", "violite_block"),
     ("quartz", "quartz_block_side"), ("smooth_quartz", "quartz_block_bottom"),
     ("tuff", "tuff"),
 ]
@@ -178,17 +178,17 @@ private let registerAllBlocksOnce: Void = {
     ore("deepslate_iron_ore", 1, nil, hardness: 4.5, sound: "deepslate", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("deepslate_iron_ore")] : [Drop("raw_iron")] })
     ore("gold_ore", 2, nil, drops: .fn { _, ctx in ctx.silkTouch ? [Drop("gold_ore")] : [Drop("raw_gold")] })
     ore("deepslate_gold_ore", 2, nil, hardness: 4.5, sound: "deepslate", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("deepslate_gold_ore")] : [Drop("raw_gold")] })
-    ore("redstone_ore", 2, nil, randomTicks: true, drops: .fn { _, ctx in ctx.silkTouch ? [Drop("redstone_ore")] : [Drop("redstone", 4, 5 + ctx.fortune)] })
-    ore("deepslate_redstone_ore", 2, nil, hardness: 4.5, sound: "deepslate", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("deepslate_redstone_ore")] : [Drop("redstone", 4, 5 + ctx.fortune)] })
+    ore("sparkstone_ore", 2, nil, randomTicks: true, drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sparkstone_ore")] : [Drop("sparkstone", 4, 5 + ctx.fortune)] })
+    ore("deepslate_sparkstone_ore", 2, nil, hardness: 4.5, sound: "deepslate", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("deepslate_sparkstone_ore")] : [Drop("sparkstone", 4, 5 + ctx.fortune)] })
     ore("lapis_ore", 1, nil, drops: .fn { _, ctx in ctx.silkTouch ? [Drop("lapis_ore")] : [Drop("lapis_lazuli", 4, 9)] })
     ore("deepslate_lapis_ore", 1, nil, hardness: 4.5, sound: "deepslate", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("deepslate_lapis_ore")] : [Drop("lapis_lazuli", 4, 9)] })
     ore("diamond_ore", 2, "diamond")
     ore("deepslate_diamond_ore", 2, "diamond", hardness: 4.5, sound: "deepslate")
     ore("emerald_ore", 2, "emerald")
     ore("deepslate_emerald_ore", 2, "emerald", hardness: 4.5, sound: "deepslate")
-    ore("nether_gold_ore", 0, nil, sound: "netherrack", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("nether_gold_ore")] : [Drop("gold_nugget", 2, 6)] })
-    ore("nether_quartz_ore", 0, "quartz", sound: "netherrack")
-    registerBlock("ancient_debris", tex: texCol("ancient_debris_top", "ancient_debris_side"), hardness: 30, resistance: 1200, tool: .pickaxe, tier: 3, requiresTool: true, sound: "netherite")
+    ore("nether_gold_ore", 0, nil, sound: "ashrock", drops: .fn { _, ctx in ctx.silkTouch ? [Drop("nether_gold_ore")] : [Drop("gold_nugget", 2, 6)] })
+    ore("nether_quartz_ore", 0, "quartz", sound: "ashrock")
+    registerBlock("ancient_debris", tex: texCol("ancient_debris_top", "ancient_debris_side"), hardness: 30, resistance: 1200, tool: .pickaxe, tier: 3, requiresTool: true, sound: "darksteel")
 
     // mineral blocks
     stone("coal_block", 5, resistance: 6)
@@ -197,8 +197,8 @@ private let registerAllBlocksOnce: Void = {
     stone("diamond_block", 5, resistance: 6, tier: 2, sound: "metal")
     stone("emerald_block", 5, resistance: 6, tier: 2, sound: "metal")
     stone("lapis_block", 3, tier: 1)
-    stone("redstone_block", 5, resistance: 6, sound: "metal")
-    stone("netherite_block", 50, resistance: 1200, tier: 3, sound: "netherite")
+    stone("sparkstone_block", 5, resistance: 6, sound: "metal")
+    stone("darksteel_block", 50, resistance: 1200, tier: 3, sound: "darksteel")
     stone("quartz_block", 0.8, tex: texTB("quartz_block_top", "quartz_block_bottom", "quartz_block_side"))
     stone("chiseled_quartz_block", 0.8, tex: texCol("chiseled_quartz_block_top", "chiseled_quartz_block"))
     stone("quartz_pillar", 0.8, tex: texCol("quartz_pillar_top", "quartz_pillar"))
@@ -313,12 +313,12 @@ private let registerAllBlocksOnce: Void = {
                       drops: .fn { m, _ in (m & 4) != 0 ? [] : [Drop("\(c)_bed")] })
         registerBlock("\(c)_candle", shape: .candle, tex: .named("\(c)_candle"), opaque: false, solid: false, fullCube: false, hardness: 0.1, sound: "candle", piston: .destroy,
                       drops: .fn { m, _ in [Drop("\(c)_candle", (m & 3) + 1)] })
-        registerBlock("\(c)_shulker_box", opaque: false, hardness: 2, tool: .pickaxe, sound: "stone", piston: .blockEntity, drops: .none)
+        registerBlock("\(c)_lurker_box", opaque: false, hardness: 2, tool: .pickaxe, sound: "stone", piston: .blockEntity, drops: .none)
     }
     stone("terracotta", 1.25, resistance: 4.2)
     registerBlock("candle", shape: .candle, opaque: false, solid: false, fullCube: false, hardness: 0.1, sound: "candle", piston: .destroy,
                   drops: .fn { m, _ in [Drop("candle", (m & 3) + 1)] })
-    registerBlock("shulker_box", opaque: false, hardness: 2, tool: .pickaxe, sound: "stone", piston: .blockEntity, drops: .none)
+    registerBlock("lurker_box", opaque: false, hardness: 2, tool: .pickaxe, sound: "stone", piston: .blockEntity, drops: .none)
 
     // plants
     plant("short_grass", display: "Grass", replaceable: true, tint: 1,
@@ -331,7 +331,7 @@ private let registerAllBlocksOnce: Void = {
     plant("large_fern", shape: .tallCross, replaceable: true, tint: 1,
           drops: .fn { m, ctx in ctx.shears && (m & 1) == 0 ? [Drop("large_fern")] : [] })
     for f in FLOWERS { plant(f) }
-    plant("wither_rose")
+    plant("blight_rose")
     for f in ["sunflower", "lilac", "rose_bush", "peony"] {
         plant(f, shape: .tallCross, tex: .named("\(f)_bottom"), texFn: { m, _ in tileId((m & 1) != 0 ? "\(f)_top" : "\(f)_bottom") },
               drops: .fn { m, _ in (m & 1) != 0 ? [] : [Drop(f)] })
@@ -359,8 +359,8 @@ private let registerAllBlocksOnce: Void = {
                   drops: .fn { _, ctx in ctx.shears ? [Drop("vine")] : [] }, ao: false)
     registerBlock("glow_lichen", shape: .glowLichen, opaque: false, solid: false, fullCube: false, replaceable: true, light: 7, hardness: 0.2, tool: .shears, sound: "glow_lichen", piston: .destroy,
                   drops: .fn { _, ctx in ctx.shears ? [Drop("glow_lichen")] : [] }, ao: false)
-    registerBlock("sculk_vein", shape: .sculkVein, opaque: false, solid: false, fullCube: false, replaceable: true, hardness: 0.2, tool: .hoe, sound: "sculk", piston: .destroy,
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sculk_vein")] : [] }, ao: false)
+    registerBlock("hush_vein", shape: .hushVein, opaque: false, solid: false, fullCube: false, replaceable: true, hardness: 0.2, tool: .hoe, sound: "hush", piston: .destroy,
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("hush_vein")] : [] }, ao: false)
     registerBlock("lily_pad", shape: .lilyPad, opaque: false, fullCube: false, hardness: 0, sound: "wet_grass", tint: 2, piston: .destroy)
     plant("seagrass", replaceable: true, sound: "wet_grass", flammable: 0,
           drops: .fn { _, ctx in ctx.shears ? [Drop("seagrass")] : [] })

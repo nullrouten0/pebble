@@ -84,8 +84,8 @@ private let registerAllBiomesOnce: Void = {
     BIOMES = [BiomeDef?](repeating: nil, count: Biome.allCases.count)
 
     let DEF_MONSTERS: [SpawnEntry] = [
-        ("zombie", 95, 4, 4), ("skeleton", 100, 4, 4), ("creeper", 100, 4, 4),
-        ("spider", 100, 4, 4), ("enderman", 10, 1, 4), ("witch", 5, 1, 1),
+        ("zombie", 95, 4, 4), ("skeleton", 100, 4, 4), ("fizzler", 100, 4, 4),
+        ("spider", 100, 4, 4), ("riftwalker", 10, 1, 4), ("witch", 5, 1, 1),
     ]
     let DEF_CREATURES: [SpawnEntry] = [
         ("sheep", 12, 4, 4), ("pig", 10, 4, 4), ("chicken", 10, 4, 4), ("cow", 8, 4, 4),
@@ -245,7 +245,7 @@ private let registerAllBiomesOnce: Void = {
     biome(.mushroomFields, "mushroom_fields", temperature: 0.9, downfall: 1, grassColor: 0x55c93f, foliageColor: 0x2bbb0f,
           top: cell(B.mycelium), under: cell(B.dirt),
           features: ["huge_mushroom:3", "patch:red_mushroom:8", "patch:brown_mushroom:8"],
-          monsters: [], creatures: [("mooshroom", 8, 4, 8)])
+          monsters: [], creatures: [("mushcow", 8, 4, 8)])
 
     // cave biomes
     biome(.dripstoneCaves, "dripstone_caves", temperature: 0.8, downfall: 0.4,
@@ -254,35 +254,35 @@ private let registerAllBiomesOnce: Void = {
           features: ["moss_patch:40", "lush_vegetation:60", "glow_berries:30", "spore_blossom:8", "azalea_tree:2", "big_dripleaf:10", "small_dripleaf:8", "clay_pool:6"],
           waterCreatures: [("axolotl", 10, 1, 4), ("glow_squid", 10, 2, 4), ("tropical_fish", 25, 8, 8)], mood: "lush")
     biome(.deepDark, "deep_dark", temperature: 0.8, downfall: 0.4,
-          features: ["sculk_patch:60", "sculk_vein:40", "sculk_shrieker:4", "sculk_sensor:8"],
+          features: ["hush_patch:60", "hush_vein:40", "hush_shrieker:4", "hush_sensor:8"],
           monsters: [], creatures: [], ambient: [], mood: "dark")
 
     // nether
-    let rack = cell(B.netherrack)
+    let rack = cell(B.ashrock)
     biome(.netherWastes, "nether_wastes", temperature: 2, downfall: 0, fogTint: 0x330808,
           top: rack, under: rack, underwaterTop: rack,
-          features: ["glowstone_cluster:10", "lava_spring:8", "fire_patch:3", "magma_blob:4", "brown_mushroom_nether:2", "red_mushroom_nether:2"],
-          monsters: [("ghast", 50, 4, 4), ("zombified_piglin", 100, 4, 4), ("magma_cube", 2, 4, 4), ("enderman", 1, 4, 4), ("piglin", 15, 4, 4)],
+          features: ["lumenstone_cluster:10", "lava_spring:8", "fire_patch:3", "magma_blob:4", "brown_mushroom_nether:2", "red_mushroom_nether:2"],
+          monsters: [("wailer", 50, 4, 4), ("rotting_snouter", 100, 4, 4), ("magma_cube", 2, 4, 4), ("riftwalker", 1, 4, 4), ("snouter", 15, 4, 4)],
           creatures: [("strider", 60, 1, 2)], ambient: [], mood: "nether")
     biome(.crimsonForest, "crimson_forest", temperature: 2, downfall: 0, fogTint: 0x330303,
           top: cell(B.crimson_nylium), under: rack, underwaterTop: rack,
-          features: ["huge_fungus:crimson:8", "nether_vegetation:crimson:40", "weeping_vines:30", "glowstone_cluster:8", "lava_spring:4"],
-          monsters: [("zombified_piglin", 1, 2, 4), ("hoglin", 9, 3, 4), ("piglin", 5, 3, 4)],
+          features: ["huge_fungus:crimson:8", "nether_vegetation:crimson:40", "weeping_vines:30", "lumenstone_cluster:8", "lava_spring:4"],
+          monsters: [("rotting_snouter", 1, 2, 4), ("tusker", 9, 3, 4), ("snouter", 5, 3, 4)],
           creatures: [("strider", 60, 1, 2)], ambient: [], mood: "nether")
     biome(.warpedForest, "warped_forest", temperature: 2, downfall: 0, fogTint: 0x0a1b1b,
           top: cell(B.warped_nylium), under: rack, underwaterTop: rack,
-          features: ["huge_fungus:warped:8", "nether_vegetation:warped:40", "twisting_vines:20", "glowstone_cluster:8"],
-          monsters: [("enderman", 1, 4, 4)],
+          features: ["huge_fungus:warped:8", "nether_vegetation:warped:40", "twisting_vines:20", "lumenstone_cluster:8"],
+          monsters: [("riftwalker", 1, 4, 4)],
           creatures: [("strider", 60, 1, 2)], ambient: [], mood: "nether")
     biome(.soulSandValley, "soul_sand_valley", temperature: 2, downfall: 0, fogTint: 0x1b4745,
           top: cell(B.soul_sand), under: cell(B.soul_soil), underwaterTop: cell(B.soul_sand),
-          features: ["basalt_pillar:4", "fire_patch_soul:6", "glowstone_cluster:6", "bone_spire:2"],
-          monsters: [("skeleton", 20, 5, 5), ("ghast", 50, 4, 4), ("enderman", 1, 4, 4)],
+          features: ["basalt_pillar:4", "fire_patch_soul:6", "lumenstone_cluster:6", "bone_spire:2"],
+          monsters: [("skeleton", 20, 5, 5), ("wailer", 50, 4, 4), ("riftwalker", 1, 4, 4)],
           creatures: [("strider", 60, 1, 2)], ambient: [], mood: "nether")
     biome(.basaltDeltas, "basalt_deltas", temperature: 2, downfall: 0, fogTint: 0x685f70,
           top: cell(B.basalt), under: cell(B.blackstone), underwaterTop: cell(B.basalt),
-          features: ["delta:12", "basalt_column:8", "magma_blob:8", "lava_spring:8", "glowstone_cluster:4"],
-          monsters: [("ghast", 40, 1, 1), ("magma_cube", 100, 2, 5)],
+          features: ["delta:12", "basalt_column:8", "magma_blob:8", "lava_spring:8", "lumenstone_cluster:4"],
+          monsters: [("wailer", 40, 1, 1), ("magma_cube", 100, 2, 5)],
           creatures: [("strider", 60, 1, 2)], ambient: [], mood: "nether")
 
     // end
@@ -290,7 +290,7 @@ private let registerAllBiomesOnce: Void = {
     func endBiome(_ id: Biome, _ name: String, features: [String] = []) {
         biome(id, name, temperature: 0.5, downfall: 0.5, fogTint: 0xa080a0,
               top: endStone, under: endStone, underwaterTop: endStone,
-              features: features, monsters: [("enderman", 10, 4, 4)], creatures: [], ambient: [], mood: "end")
+              features: features, monsters: [("riftwalker", 10, 4, 4)], creatures: [], ambient: [], mood: "end")
     }
     endBiome(.theEnd, "the_end")
     endBiome(.endHighlands, "end_highlands", features: ["chorus:6"])

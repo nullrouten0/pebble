@@ -29,7 +29,7 @@ This is the technical tour. The one-paragraph version: **PebbleCore** is a headl
 │  GameCore (20Hz tick orchestrator)  ·  GameWorld  ·  LightEngine │
 │  Net (LAN host/guest sessions over TCP + Bonjour)                │
 │  Gen (terrain/biomes/features/structures)  ·  Entity (AI)        │
-│  Items (recipes/enchants/loot)  ·  Systems (redstone/interact/…) │
+│  Items (recipes/enchants/loot)  ·  Systems (sparkstone/interact/…) │
 │  Render (mesher + texture atlas — data only, no Metal)           │
 │  Saves (SQLite)  ·  Core (fdlibm, RNG, noise)                    │
 └──────────────────────────────────────────────────────────────────┘
@@ -58,7 +58,7 @@ Climate sampling (six FBM samplers seeded from the world seed) feeds spline look
 
 ## Entities (Entity/)
 
-`Entity` (AABB physics with auto-step, fluid state, fire, riding) → `LivingEntity` (health, effects with insertion-order semantics, equipment, per-entity seeded RNG) → `Mob` (goal selectors with stable priority sort, A* grid navigation up to 600 nodes) → 100 concrete types. The player is vanilla-1.20-exact: input ×0.98, ground accel `speed × 0.21600002 / slip³`, friction `slip × 0.91`, gravity `(vy − 0.08) × 0.98`, jump 0.42 + sprint boost, water/lava/elytra regimes, sneak edge-guard. Those constants are *derived* in the test suite, not just asserted.
+`Entity` (AABB physics with auto-step, fluid state, fire, riding) → `LivingEntity` (health, effects with insertion-order semantics, equipment, per-entity seeded RNG) → `Mob` (goal selectors with stable priority sort, A* grid navigation up to 600 nodes) → 100 concrete types. The player is vanilla-1.20-exact: input ×0.98, ground accel `speed × 0.21600002 / slip³`, friction `slip × 0.91`, gravity `(vy − 0.08) × 0.98`, jump 0.42 + sprint boost, water/lava/wingsuit regimes, sneak edge-guard. Those constants are *derived* in the test suite, not just asserted.
 
 ## Rendering
 
@@ -94,7 +94,7 @@ Block and item ids follow registration order, which may change between builds. E
 
 About 790 checks, run with `pebble test`:
 
-random/noise/math → block & item registries → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full redstone contraption, explosion crater, interactions, portals) → a suite that *independently derives* vanilla physics constants instead of trusting goldens → and analog (stick/touch) movement checked against the keyboard path through a live headless `GameCore`.
+random/noise/math → block & item registries → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full sparkstone contraption, explosion crater, interactions, portals) → a suite that *independently derives* vanilla physics constants instead of trusting goldens → and analog (stick/touch) movement checked against the keyboard path through a live headless `GameCore`.
 
 pebsmoke builds and runs on iOS too: `pebble test ios` spawns it inside the iOS Simulator runtime, where the same seeds produce the same worlds.
 

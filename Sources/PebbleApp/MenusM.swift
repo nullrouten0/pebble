@@ -9,14 +9,14 @@ import PebbleCore
 final class TitleScreen: Screen {
     var splash = ""
     static let SPLASHES = [
-        "Punch a tree!", "Watch out for creepers!", "Don't dig straight down!",
-        "Diamonds run deep!", "Now with wardens!", "Sculk is listening!",
+        "Punch a tree!", "Watch out for fizzlers!", "Don't dig straight down!",
+        "Diamonds run deep!", "Now with wardens!", "Hush is listening!",
         "The dragon is waiting!", "Cherry blossoms!", "Archaeology!",
         "Goats will punt you!", "Trade with villagers!", "Ride a strider!",
         "X marks the buried treasure!", "Hero of the Village!", "Now with LAN!",
-        "Do not stare at endermen!", "Beds explode in the Nether!", "Llamas spit back!",
+        "Do not stare at riftwalkers!", "Beds explode in the Nether!", "Llamas spit back!",
         "Lava is not a swimming pool!", "Blame the goat!", "Bring a bucket!",
-        "Mostly bug free!", "Creepers hate him!", "The chickens are watching!",
+        "Mostly bug free!", "Fizzlers hate him!", "The chickens are watching!",
     ]
     override init() {
         super.init()

@@ -30,7 +30,7 @@ Hardening that already exists: chunk-blob decoding validates section lengths and
 
 If you find a way for a crafted save file, texture archive, or LAN message to do anything beyond crashing the game (memory corruption, code execution, file writes outside the support directory), please report it privately:
 
-- **Email:** briangaoo2@gmail.com — subject line starting with `[pebble security]`
+- **Email:** nullrouten@gmail.com — subject line starting with `[pebble security]`
 - Include: macOS version, a minimal reproducing file if possible, and what you observed.
 
 Plain crashes / hangs from malformed files are ordinary bugs — file those as [regular GitHub issues](https://github.com/nullrouten0/pebble/issues) with the offending file attached (the README lists what else to include). This is a beta; reports of every kind are incredibly welcome.

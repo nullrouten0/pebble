@@ -34,7 +34,7 @@ public struct DimState: Codable {
 /// overlay and save records all read this (Info.plist is bumped separately
 /// at packaging time). major.minor.revision: a new minor adds features, a
 /// new revision is a small feature or a fix.
-public let PEBBLE_VERSION = "1.5.0"
+public let PEBBLE_VERSION = "1.5.1"
 
 /// the commit this build came from: 8 hex digits, "+" when built with
 /// uncommitted changes. Stamped into the app's Info.plist at build time
@@ -453,13 +453,17 @@ public final class SaveDB {
     /// build, once, before it opens: every chunk record and every player row
     /// (the host's and LAN guests') is rewritten with this build's ids, then
     /// the current palette is recorded. Worlds from before palettes were
-    /// saved in registration order, which only ever grew, so they simply get
-    /// the current palette. Returns the remap it applied, if any.
+    /// saved in this registration order but under the names Pebble used then
+    /// (Palette.beforePalettes), so they get the same translation. Returns the
+    /// remap it applied, if any.
     @discardableResult
     public func migratePalette(_ worldId: String) -> PaletteRemap? {
         let now = Palette.current()
-        guard let old = getPalette(worldId) else { putPalette(worldId, now); return nil }
-        guard let remap = PaletteRemap(from: old) else { return nil }
+        let old = getPalette(worldId) ?? Palette.beforePalettes()
+        guard let remap = PaletteRemap(from: old) else {
+            if getPalette(worldId) == nil { putPalette(worldId, now) }
+            return nil
+        }
         var batch: [ChunkRecord] = []
         for (dim, cx, cz) in chunkCoords(worldId) {
             if let r = getChunk(worldId, dim, cx, cz, remap: remap) { batch.append(r) }
@@ -469,6 +473,7 @@ public final class SaveDB {
         for key in playerKeys(worldId) {
             if let p = getPlayer(key), let d = remap.json(p) as? [String: Any] { putPlayer(key, d) }
         }
+        if let adv = getAdvancements(worldId) { putAdvancements(worldId, adv.map(pebbleName)) }
         putPalette(worldId, now)
         return remap
     }

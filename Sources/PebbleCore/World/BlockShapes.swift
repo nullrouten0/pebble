@@ -341,7 +341,7 @@ public func shapeBoxes(_ cell: Int, _ get: CellGetter, _ out: inout [AABB], _ fo
     case .rail:
         if forCollision { return }
         out.append(aabb(0, 0, 0, 1, 2 / 16, 1))
-    case .redstoneWire, .tripwire:
+    case .sparkstoneWire, .tripwire:
         if forCollision { return }
         out.append(aabb(0, 0, 0, 1, 1 / 16, 1))
     case .tripwireHook:
@@ -519,7 +519,7 @@ public func shapeBoxes(_ cell: Int, _ get: CellGetter, _ out: inout [AABB], _ fo
         let dx = Double(FACE_DX[f]), dz = Double(FACE_DZ[f])
         let cx = 0.5 + dx * Double(6 - age) / 16, cz = 0.5 + dz * Double(6 - age) / 16
         out.append(aabb(cx - size / 32, (12 - size) / 16 - 1 / 16, cz - size / 32, cx + size / 32, 12 / 16, cz + size / 32))
-    case .vine, .glowLichen, .sculkVein:
+    case .vine, .glowLichen, .hushVein:
         if forCollision { return }
         out.append(aabb(1 / 16, 0, 1 / 16, 15 / 16, 1, 15 / 16))
     case .bigDripleaf:

@@ -421,11 +421,11 @@ private let NAME_MAP: [String: [String]] = [
     "soul_campfire_log": ["block/soul_campfire_log_lit"],
     "respawn_anchor_side": ["block/respawn_anchor_side0"],
     "honey_block": ["block/honey_block_side"],
-    "calibrated_sculk_sensor_side": ["block/calibrated_sculk_sensor_input_side"],
+    "calibrated_hush_sensor_side": ["block/calibrated_sculk_sensor_input_side"],
     "pointed_dripstone": ["block/pointed_dripstone_down_tip"],
     "sniffer_egg": ["block/sniffer_egg_not_cracked_north", "block/sniffer_egg_not_cracked"],
     "cocoa_stage3": ["block/cocoa_stage2"],
-    "redstone_dust_line": ["block/redstone_dust_line0"],
+    "sparkstone_dust_line": ["block/redstone_dust_line0"],
     "stem_stage7": ["block/pumpkin_stem", "block/melon_stem"],
     "attached_stem": ["block/attached_pumpkin_stem", "block/attached_melon_stem"],
     // particle sprites (best-effort; procedural fallback is fine)
@@ -443,11 +443,11 @@ private let NAME_MAP: [String: [String]] = [
     "snow_particle": ["particle/snowflake"],
     "petal_particle": ["particle/cherry_0", "particle/glow"],
     "portal_particle": ["particle/glow"],
-    "redstone_particle": ["particle/glitter_0"],
+    "sparkstone_particle": ["particle/glitter_0"],
     "enchant_particle": ["particle/sga_a"],
     // entity-textured / shader-effect blocks: stay procedural
     "air": [], "cave_air": [], "void_air": [],
-    "end_portal": [], "chest_side": [], "ender_chest_side": [],
+    "end_portal": [], "chest_side": [], "rift_chest_side": [],
     "decorated_pot_side": [], "bell_body": [],
 ]
 
@@ -455,8 +455,8 @@ private let NAME_MAP: [String: [String]] = [
 private let BAKE_TINT: [String: Int] = [
     "birch_leaves": 0x80A755,
     "spruce_leaves": 0x619961,
-    "redstone_dust_dot": 0xFF3030,
-    "redstone_dust_line": 0xFF3030,
+    "sparkstone_dust_dot": 0xFF3030,
+    "sparkstone_dust_line": 0xFF3030,
 ]
 
 /// tiles whose MC art is grayscale-by-design and must KEEP the engine's biome
@@ -475,16 +475,13 @@ private func candidates(_ tile: String) -> [String] {
     if tile.hasPrefix("stem_stage"), Int(tile.dropFirst("stem_stage".count)) != nil {
         return ["block/pumpkin_stem", "block/melon_stem"]
     }
-    return ["block/\(tile)"]
+    return ["block/\(packName(tile))"]
 }
 
 /// tiles built by stacking MC top/bottom halves into one square (door + 2-tall plants)
 private func compositeHalves(_ tile: String) -> (top: String, bottom: String)? {
-    if tile.hasSuffix("_door") {
-        return ("block/\(tile)_top", "block/\(tile)_bottom")
-    }
-    if tile == "tall_grass" || tile == "large_fern" {
-        return ("block/\(tile)_top", "block/\(tile)_bottom")
+    if tile.hasSuffix("_door") || tile == "tall_grass" || tile == "large_fern" {
+        return ("block/\(packName(tile))_top", "block/\(packName(tile))_bottom")
     }
     return nil
 }
@@ -558,7 +555,7 @@ private func entityTileCrop(_ tile: String) -> EntityTileCrop? {
         return EntityTileCrop(path: "entity/chest/normal",
                               rects: [(14.0 / 64.0, 14.0 / 64.0, 14.0 / 64.0, 5.0 / 64.0),
                                       (14.0 / 64.0, 33.0 / 64.0, 14.0 / 64.0, 10.0 / 64.0)], rotate: false)
-    case "ender_chest_side":
+    case "rift_chest_side":
         return EntityTileCrop(path: "entity/chest/ender",
                               rects: [(14.0 / 64.0, 14.0 / 64.0, 14.0 / 64.0, 5.0 / 64.0),
                                       (14.0 / 64.0, 33.0 / 64.0, 14.0 / 64.0, 10.0 / 64.0)], rotate: false)
@@ -782,7 +779,7 @@ func buildPackAtlas(_ packs: [ResourcePack]) -> PackAtlasResult? {
                 img = stripFrame(img, 0)
             }
             guard img.width == img.height else { continue }
-            itemIcons[base] = scaleBox(img, to: 16)
+            itemIcons[pebbleName(base)] = scaleBox(img, to: 16)
         }
     }
 
@@ -903,7 +900,7 @@ final class PackUI {
         "icons": (0, 0), "widgets": (512, 0), "ascii": (1024, 0), "bg": (1536, 0),
         "inventory": (0, 512), "generic_54": (512, 512), "crafting_table": (1024, 512), "furnace": (1536, 512),
         "brewing_stand": (0, 1024), "enchanting_table": (512, 1024), "anvil": (1024, 1024), "hopper": (1536, 1024),
-        "dispenser": (0, 1536), "shulker_box": (512, 1536), "grindstone": (1024, 1536), "stonecutter": (1536, 1536),
+        "dispenser": (0, 1536), "lurker_box": (512, 1536), "grindstone": (1024, 1536), "stonecutter": (1536, 1536),
         "smithing": (0, 2048), "cartography_table": (512, 2048), "beacon": (1024, 2048), "horse": (1536, 2048),
     ]
 
@@ -943,7 +940,7 @@ final class PackUI {
             ("anvil", "gui/container/anvil", 256),
             ("hopper", "gui/container/hopper", 256),
             ("dispenser", "gui/container/dispenser", 256),
-            ("shulker_box", "gui/container/shulker_box", 256),
+            ("lurker_box", "gui/container/shulker_box", 256),
             ("grindstone", "gui/container/grindstone", 256),
             ("stonecutter", "gui/container/stonecutter", 256),
             ("smithing", "gui/container/smithing", 256),

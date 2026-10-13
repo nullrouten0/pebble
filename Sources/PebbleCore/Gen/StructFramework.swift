@@ -312,7 +312,7 @@ public func piece(_ x0: Int, _ y0: Int, _ z0: Int, _ x1: Int, _ y1: Int, _ z1: I
     StructPiece(x0: x0, y0: y0, z0: z0, x1: x1, y1: y1, z1: z1, build: build)
 }
 
-/// stronghold ring positions — pure function of seed, also used by eyes of ender
+/// stronghold ring positions — pure function of seed, also used by eyes of rift
 public func strongholdPositions(_ seed: UInt32) -> [(Int, Int)] {
     var rng = RandomX(hash2(seed, 0, 0, 0x57A0))
     var out: [(Int, Int)] = []

@@ -1,6 +1,6 @@
 # Contributing to Pebble
 
-**Contribution is incredibly welcome.** Pebble is the open-source alternative to Minecraft: Java Edition, it's a public beta, and the bug list is unknown by definition — every issue filed and every PR opened genuinely moves the project. You don't need permission to start: pick something broken or missing and go. This file is short on ceremony and long on the things that will actually break the game if you don't know them.
+**Contribution is incredibly welcome.** Pebble is an open-source block-building game inspired by Minecraft: Java Edition, it's a public beta, and the bug list is unknown by definition — every issue filed and every PR opened genuinely moves the project. You don't need permission to start: pick something broken or missing and go. This file is short on ceremony and long on the things that will actually break the game if you don't know them.
 
 ## Filing a bug
 
@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/nullrouten0
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `788 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `790 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 
@@ -21,7 +21,7 @@ Even better than a report is a PR with the fix — the rest of this file tells y
 xcode-select --install        # Swift toolchain (Swift 6, macOS 14+ SDK)
 git clone https://github.com/nullrouten0/pebble.git && cd pebble
 swift build                   # debug build, ~35s clean
-swift run -c release pebsmoke # the test suite — must print "788 passed, 0 failed"
+swift run -c release pebsmoke # the test suite — must print "790 passed, 0 failed"
 ./pebble install              # optional: build + install the real app
 ```
 
@@ -51,7 +51,7 @@ cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # then add your
 
 ## What Pebble is aiming for
 
-**Vanilla Minecraft: Java Edition is the reference.** When something behaves differently from vanilla, vanilla wins: fix it, and say which vanilla rule you matched ("`FoodData.tick`: regen spends `min(saturation, 6)`"). Pebble began as a port of a JavaScript original, and comments that mention "the baseline" refer to it. Matching that original is no longer a goal, so a quirk that exists only because the original had it is a bug like any other.
+**Vanilla Minecraft: Java Edition's gameplay is the reference.** When something plays differently from vanilla, vanilla wins: fix it, and say what you observed and where ("regen with a full food bar spends up to 6 saturation per half heart — Minecraft Wiki, *Hunger*; confirmed in-game"). Work only from observable behaviour and public documentation such as the Minecraft Wiki. **Never read, copy or port Minecraft's code (decompiled or otherwise), and don't use its internal class or method names in Pebble**; contributions that do can't be accepted. Pebble's names, text and art are its own too: don't copy Minecraft's in-game text or invent look-alike branding. Pebble began as a port of a JavaScript original, and comments that mention "the baseline" refer to it. Matching that original is no longer a goal, so a quirk that exists only because the original had it is a bug like any other.
 
 **Clean code beats preserved accidents.** Dead code goes, copies get merged, and strings that stand for a fixed set of things become enums. If keeping something odd is genuinely necessary, a comment says why.
 

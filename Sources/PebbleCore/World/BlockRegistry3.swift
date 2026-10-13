@@ -1,4 +1,4 @@
-// Block registrations, part 3: functional blocks, redstone, rails, stone
+// Block registrations, part 3: functional blocks, sparkstone, rails, stone
 // families, copper, amethyst, mushroom, misc — then lookup tables.
 
 import Foundation
@@ -31,8 +31,8 @@ func registerFunctionalToEnd() {
                   texFn: facingFrontTexFn("smoker_front_lit", "smoker_top", "smoker_side", bottom: "smoker_bottom"), light: 13, hardness: 3.5, tool: .pickaxe, requiresTool: true, piston: .blockEntity, drops: .item("smoker"))
     registerBlock("chest", shape: .chest, tex: .named("chest_side"), opaque: false, fullCube: false, hardness: 2.5, tool: .axe, sound: "wood", flammable: 5, piston: .blockEntity)
     registerBlock("trapped_chest", shape: .chest, tex: .named("chest_side"), opaque: false, fullCube: false, hardness: 2.5, tool: .axe, sound: "wood", flammable: 5, piston: .blockEntity)
-    registerBlock("ender_chest", shape: .chest, tex: .named("ender_chest_side"), opaque: false, fullCube: false, light: 7, hardness: 22.5, resistance: 600, tool: .pickaxe, requiresTool: true, piston: .blockEntity,
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("ender_chest")] : [Drop("obsidian", 8)] })
+    registerBlock("rift_chest", shape: .chest, tex: .named("rift_chest_side"), opaque: false, fullCube: false, light: 7, hardness: 22.5, resistance: 600, tool: .pickaxe, requiresTool: true, piston: .blockEntity,
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("rift_chest")] : [Drop("obsidian", 8)] })
     registerBlock("barrel", tex: texCol("barrel_top", "barrel_side"),
                   texFn: { m, f in
                       let facing = m & 7
@@ -97,12 +97,12 @@ func registerFunctionalToEnd() {
     registerBlock("cake", shape: .cake, tex: texTB("cake_top", "cake_bottom", "cake_side"), opaque: false, fullCube: false, hardness: 0.5, sound: "cloth", piston: .destroy, drops: .none)
     registerBlock("dragon_head", shape: .head, tex: .named("obsidian"), opaque: false, solid: false, fullCube: false, hardness: 1, piston: .destroy, drops: .item("dragon_head"))
     registerBlock("skeleton_skull", shape: .head, tex: .named("bone_block_side"), opaque: false, solid: false, fullCube: false, hardness: 1, piston: .destroy, drops: .item("skeleton_skull"))
-    registerBlock("wither_skeleton_skull", shape: .head, tex: .named("blackstone"), opaque: false, solid: false, fullCube: false, hardness: 1, piston: .destroy, drops: .item("wither_skeleton_skull"))
+    registerBlock("blight_skeleton_skull", shape: .head, tex: .named("blackstone"), opaque: false, solid: false, fullCube: false, hardness: 1, piston: .destroy, drops: .item("blight_skeleton_skull"))
 
-    // redstone
-    registerBlock("redstone_wire", shape: .redstoneWire, tex: .named("redstone_dust_dot"), opaque: false, solid: false, fullCube: false, hardness: 0, piston: .destroy, drops: .item("redstone"), ao: false)
-    registerBlock("redstone_torch", shape: .torch, tex: .named("redstone_torch"), opaque: false, solid: false, fullCube: false, light: 7, hardness: 0, sound: "wood", piston: .destroy, emissiveRender: true, ao: false)
-    registerBlock("redstone_torch_off", shape: .torch, tex: .named("redstone_torch_off"), opaque: false, solid: false, fullCube: false, hardness: 0, sound: "wood", piston: .destroy, drops: .item("redstone_torch"), ao: false)
+    // sparkstone
+    registerBlock("sparkstone_wire", shape: .sparkstoneWire, tex: .named("sparkstone_dust_dot"), opaque: false, solid: false, fullCube: false, hardness: 0, piston: .destroy, drops: .item("sparkstone"), ao: false)
+    registerBlock("sparkstone_torch", shape: .torch, tex: .named("sparkstone_torch"), opaque: false, solid: false, fullCube: false, light: 7, hardness: 0, sound: "wood", piston: .destroy, emissiveRender: true, ao: false)
+    registerBlock("sparkstone_torch_off", shape: .torch, tex: .named("sparkstone_torch_off"), opaque: false, solid: false, fullCube: false, hardness: 0, sound: "wood", piston: .destroy, drops: .item("sparkstone_torch"), ao: false)
     registerBlock("repeater", shape: .repeater, tex: .named("repeater"), opaque: false, fullCube: false, hardness: 0, sound: "wood", piston: .destroy, drops: .item("repeater"))
     registerBlock("repeater_on", shape: .repeater, tex: .named("repeater_on"), opaque: false, fullCube: false, light: 7, hardness: 0, sound: "wood", piston: .destroy, drops: .item("repeater"))
     registerBlock("comparator", shape: .comparator, tex: .named("comparator"), opaque: false, fullCube: false, hardness: 0, sound: "wood", piston: .destroy, drops: .item("comparator"))
@@ -117,7 +117,7 @@ func registerFunctionalToEnd() {
     registerBlock("tripwire_hook", shape: .tripwireHook, tex: .named("tripwire_hook"), opaque: false, solid: false, fullCube: false, hardness: 0, sound: "wood", piston: .destroy)
     registerBlock("tripwire", shape: .tripwire, tex: .named("tripwire"), opaque: false, solid: false, fullCube: false, hardness: 0, piston: .destroy, drops: .item("string"), ao: false)
     // Retracted piston bases are movable (flying machines depend on this);
-    // the redstone mover rejects the extended state dynamically.
+    // the sparkstone mover rejects the extended state dynamically.
     registerBlock("piston", shape: .piston, tex: texCol("piston_top", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .normal)
     registerBlock("sticky_piston", shape: .piston, tex: texCol("piston_top_sticky", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .normal)
     registerBlock("piston_head", shape: .pistonHead, tex: texCol("piston_top", "piston_side"), opaque: false, fullCube: false, hardness: 1.5, piston: .block, drops: .none)
@@ -142,20 +142,20 @@ func registerFunctionalToEnd() {
                       return f <= 1 ? tileId("furnace_top") : tileId("furnace_side")
                   }, hardness: 3.5, tool: .pickaxe, requiresTool: true, piston: .blockEntity)
     registerBlock("hopper", shape: .hopper, tex: texTB("hopper_top", "hopper_outside", "hopper_outside"), opaque: false, fullCube: false, hardness: 3, resistance: 4.8, tool: .pickaxe, requiresTool: true, sound: "metal", piston: .blockEntity)
-    registerBlock("redstone_lamp", hardness: 0.3, sound: "glass")
-    registerBlock("redstone_lamp_on", light: 15, hardness: 0.3, sound: "glass", drops: .item("redstone_lamp"))
+    registerBlock("sparkstone_lamp", hardness: 0.3, sound: "glass")
+    registerBlock("sparkstone_lamp_on", light: 15, hardness: 0.3, sound: "glass", drops: .item("sparkstone_lamp"))
     registerBlock("daylight_detector", shape: .daylightSensor, tex: texTB("daylight_detector_top", "daylight_detector_side", "daylight_detector_side"), opaque: false, fullCube: false, hardness: 0.2, tool: .axe, sound: "wood", piston: .blockEntity)
     registerBlock("daylight_detector_inverted", shape: .daylightSensor, tex: texTB("daylight_detector_inverted_top", "daylight_detector_side", "daylight_detector_side"), opaque: false, fullCube: false, hardness: 0.2, tool: .axe, sound: "wood", piston: .blockEntity, drops: .item("daylight_detector"))
-    registerBlock("sculk_sensor", shape: .daylightSensor, tex: texTB("sculk_sensor_top", "sculk_sensor_bottom", "sculk_sensor_side"), opaque: false, fullCube: false, light: 1, hardness: 1.5, tool: .hoe, sound: "sculk_sensor", piston: .destroy,
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sculk_sensor")] : [] })
-    registerBlock("calibrated_sculk_sensor", shape: .daylightSensor, tex: texTB("calibrated_sculk_sensor_top", "sculk_sensor_bottom", "calibrated_sculk_sensor_side"), opaque: false, fullCube: false, light: 1, hardness: 1.5, tool: .hoe, sound: "sculk_sensor", piston: .destroy,
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("calibrated_sculk_sensor")] : [] })
-    registerBlock("sculk", hardness: 0.2, tool: .hoe, sound: "sculk",
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sculk")] : [] })
-    registerBlock("sculk_catalyst", tex: texTB("sculk_catalyst_top", "sculk_catalyst_bottom", "sculk_catalyst_side"), light: 6, hardness: 3, tool: .hoe, sound: "sculk_catalyst",
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sculk_catalyst")] : [] })
-    registerBlock("sculk_shrieker", shape: .daylightSensor, tex: texTB("sculk_shrieker_top", "sculk_shrieker_bottom", "sculk_shrieker_side"), opaque: false, fullCube: false, hardness: 3, tool: .hoe, sound: "sculk_shrieker", piston: .destroy,
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sculk_shrieker")] : [] })
+    registerBlock("hush_sensor", shape: .daylightSensor, tex: texTB("hush_sensor_top", "hush_sensor_bottom", "hush_sensor_side"), opaque: false, fullCube: false, light: 1, hardness: 1.5, tool: .hoe, sound: "hush_sensor", piston: .destroy,
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("hush_sensor")] : [] })
+    registerBlock("calibrated_hush_sensor", shape: .daylightSensor, tex: texTB("calibrated_hush_sensor_top", "hush_sensor_bottom", "calibrated_hush_sensor_side"), opaque: false, fullCube: false, light: 1, hardness: 1.5, tool: .hoe, sound: "hush_sensor", piston: .destroy,
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("calibrated_hush_sensor")] : [] })
+    registerBlock("hush", hardness: 0.2, tool: .hoe, sound: "hush",
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("hush")] : [] })
+    registerBlock("hush_catalyst", tex: texTB("hush_catalyst_top", "hush_catalyst_bottom", "hush_catalyst_side"), light: 6, hardness: 3, tool: .hoe, sound: "hush_catalyst",
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("hush_catalyst")] : [] })
+    registerBlock("hush_shrieker", shape: .daylightSensor, tex: texTB("hush_shrieker_top", "hush_shrieker_bottom", "hush_shrieker_side"), opaque: false, fullCube: false, hardness: 3, tool: .hoe, sound: "hush_shrieker", piston: .destroy,
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("hush_shrieker")] : [] })
 
     // rails
     registerBlock("rail", shape: .rail, tex: .named("rail"), opaque: false, solid: false, fullCube: false, hardness: 0.7, tool: .pickaxe, sound: "metal", ao: false)
@@ -168,7 +168,7 @@ func registerFunctionalToEnd() {
     registerBlock("iron_trapdoor", shape: .trapdoor, tex: .named("iron_trapdoor"), opaque: false, fullCube: false, hardness: 5, resistance: 5, tool: .pickaxe, requiresTool: true, sound: "metal")
 
     // stone families (stairs/slabs/walls)
-    let NO_WALL: Set<String> = ["smooth_stone", "purpur", "quartz", "smooth_quartz", "smooth_sandstone", "smooth_red_sandstone", "cut_sandstone", "cut_red_sandstone"]
+    let NO_WALL: Set<String> = ["smooth_stone", "violite", "quartz", "smooth_quartz", "smooth_sandstone", "smooth_red_sandstone", "cut_sandstone", "cut_red_sandstone"]
     let NO_STAIRS: Set<String> = ["cut_sandstone", "cut_red_sandstone"]
     for (fam, baseTex) in STONE_FAMILIES {
         let deep = fam.contains("deepslate")
@@ -302,12 +302,12 @@ func finalizeBlockRegistry() {
         }
     }
     for extra in [
-        "redstone_dust_line", "campfire_fire", "soul_campfire_fire",
+        "sparkstone_dust_line", "campfire_fire", "soul_campfire_fire",
         "destroy_0", "destroy_1", "destroy_2", "destroy_3", "destroy_4",
         "destroy_5", "destroy_6", "destroy_7", "destroy_8", "destroy_9",
         "smoke_particle", "flame_particle", "portal_particle", "crit_particle",
         "heart_particle", "angry_particle", "splash_particle", "bubble_particle",
-        "snow_particle", "petal_particle", "note_particle", "redstone_particle",
+        "snow_particle", "petal_particle", "note_particle", "sparkstone_particle",
         "soul_particle", "enchant_particle", "slime_particle", "sweep_particle",
     ] { tileId(extra) }
 
@@ -375,6 +375,6 @@ public func lightEmitOf(_ c: UInt16) -> Int {
     if id == B.cave_vines || id == B.cave_vines_plant { return (m & 8) != 0 ? 14 : 0 }
     if id == B.sea_pickle { return 6 + 3 * (m & 3) }
     if CANDLE_IDS.contains(id) { return (m & 8) != 0 ? 3 * ((m & 3) + 1) : 0 }
-    if id == B.redstone_ore || id == B.deepslate_redstone_ore { return (m & 1) != 0 ? 9 : 0 }
+    if id == B.sparkstone_ore || id == B.deepslate_sparkstone_ore { return (m & 1) != 0 ? 9 : 0 }
     return Int(LIGHT_EMIT[Int(id)])
 }

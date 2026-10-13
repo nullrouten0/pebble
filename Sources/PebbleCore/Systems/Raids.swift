@@ -1,5 +1,5 @@
 // Raids — triggered by Bad Omen near a village,
-// waves of pillagers/vindicators/witches/ravagers/evokers, Hero of the
+// waves of pillagers/vindicators/witches/ravagers/conjurers, Hero of the
 // Village on victory. Plus wandering pillager patrols.
 
 import Foundation
@@ -31,9 +31,9 @@ private let WAVES: [Int: [(String, Int)]] = [
     2: [("pillager", 5), ("vindicator", 2)],
     3: [("pillager", 4), ("vindicator", 2), ("witch", 1), ("ravager", 1)],
     4: [("pillager", 5), ("vindicator", 3), ("witch", 2)],
-    5: [("pillager", 5), ("vindicator", 4), ("witch", 2), ("evoker", 1), ("ravager", 1)],
-    6: [("pillager", 6), ("vindicator", 4), ("witch", 2), ("evoker", 1)],
-    7: [("pillager", 7), ("vindicator", 5), ("witch", 3), ("evoker", 2), ("ravager", 2)],
+    5: [("pillager", 5), ("vindicator", 4), ("witch", 2), ("conjurer", 1), ("ravager", 1)],
+    6: [("pillager", 6), ("vindicator", 4), ("witch", 2), ("conjurer", 1)],
+    7: [("pillager", 7), ("vindicator", 5), ("witch", 3), ("conjurer", 2), ("ravager", 2)],
 ]
 
 public final class RaidManager {

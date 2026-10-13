@@ -1,5 +1,5 @@
 // Combat — player attacks (1.9 cooldown, crits,
-// sweeping, knockback, fire aspect), mob ranged-attack bindings, evoker
+// sweeping, knockback, fire aspect), mob ranged-attack bindings, conjurer
 // fangs, lightning conversions, breaking and harvesting math.
 
 import Foundation
@@ -23,11 +23,11 @@ public func playerAttack(_ player: Player, _ target: Entity) {
     // enchants
     if let held {
         dmg += Double(enchLevel(held, "sharpness")) * 0.5 + (enchLevel(held, "sharpness") > 0 ? 0.5 : 0)
-        if typeMatchesAny(target.type, ["zombie", "skeleton", "wither", "phantom", "drowned", "husk", "stray", "zoglin"]) {
+        if typeMatchesAny(target.type, ["zombie", "skeleton", "blight", "phantom", "drowned", "husk", "stray", "ghoultusk"]) {
             dmg += Double(enchLevel(held, "smite")) * 2.5
         }
-        if typeMatchesAny(target.type, ["spider", "silverfish", "endermite", "bee"]) {
-            dmg += Double(enchLevel(held, "bane_of_arthropods")) * 2.5
+        if typeMatchesAny(target.type, ["spider", "silverfish", "riftmite", "bee"]) {
+            dmg += Double(enchLevel(held, "bugbane")) * 2.5
         }
     }
     dmg += 3 * Double(player.effectLevel("strength"))
@@ -163,7 +163,7 @@ public func throwTridentPlayer(_ player: Player, _ chargeTicks: Int) {
 }
 
 // ---------------------------------------------------------------------------
-// Evoker fangs: delayed bite at position
+// Conjurer fangs: delayed bite at position
 // ---------------------------------------------------------------------------
 private var fangQueue: [(world: World, x: Double, y: Double, z: Double, time: Int, owner: Entity)] = []
 
@@ -182,7 +182,7 @@ public func tickFangs(_ world: World) {
                 gy -= 1
             }
             world.hooks.addParticles("crit", f.x, Double(gy) + 0.3, f.z, 8, 0.3, 0)
-            world.hooks.playSound("entity.evoker_fangs.attack", f.x, Double(gy), f.z, 1, 1)
+            world.hooks.playSound("entity.conjurer_fangs.attack", f.x, Double(gy), f.z, 1, 1)
             for e in world.getEntitiesNear(f.x, Double(gy) + 0.5, f.z, 1.2) {
                 guard let liv = e as? LivingEntity, liv !== f.owner else { continue }
                 liv.hurt(6, .magic, f.owner)
@@ -306,10 +306,10 @@ public func registerCombatBindings() {
         let t = e.type
         let w = e.world
         if t == "pig" {
-            let zp = spawnMob(w, "zombified_piglin", e.x, e.y, e.z, SpawnOpts())
+            let zp = spawnMob(w, "rotting_snouter", e.x, e.y, e.z, SpawnOpts())
             if zp != nil { e.remove() }
-        } else if t == "creeper" {
-            (e as? Creeper)?.charged = true
+        } else if t == "fizzler" {
+            (e as? Fizzler)?.charged = true
         } else if t == "villager" {
             let witch = spawnMob(w, "witch", e.x, e.y, e.z, SpawnOpts())
             if witch != nil { e.remove() }

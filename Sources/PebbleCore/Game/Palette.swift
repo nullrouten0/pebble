@@ -18,6 +18,11 @@ public struct Palette: Codable, Equatable {
     public static func current() -> Palette {
         Palette(blocks: blockDefs.map(\.name), items: itemDefs.map(\.name))
     }
+    /// what a world saved before palettes existed used: this registration
+    /// order, under the names Pebble had then
+    public static func beforePalettes() -> Palette {
+        Palette(blocks: blockDefs.map { packName($0.name) }, items: itemDefs.map { packName($0.name) })
+    }
 }
 
 /// old ids → this build's, for records written under another palette
@@ -39,14 +44,14 @@ public struct PaletteRemap {
         for (i, n) in now.items.enumerated() { itemIds[n] = i }
         var dropped: [String] = []
         blocks = old.blocks.map { name in
-            if let id = blockIds[BLOCK_ALIASES[name] ?? name] { return UInt16(id) }
+            if let id = blockIds[BLOCK_ALIASES[name] ?? name] ?? blockIds[pebbleName(name)] { return UInt16(id) }
             dropped.append(name)
             return 0
         }
         droppedBlocks = dropped
         dropped = []
         items = old.items.map { name in
-            if let id = itemIds[ITEM_ALIASES[name] ?? name] { return id }
+            if let id = itemIds[ITEM_ALIASES[name] ?? name] ?? itemIds[pebbleName(name)] { return id }
             dropped.append(name)
             return -1
         }
@@ -67,6 +72,9 @@ public struct PaletteRemap {
     /// whose item is gone becomes null, which every loader reads as empty.
     public func json(_ v: Any) -> Any {
         if let a = v as? [Any] { return a.map(json) }
+        // ids saved as text (entity and block-entity types, effects,
+        // enchantments, death causes) under names Pebble has since changed
+        if let s = v as? String { return s.allSatisfy({ $0.isLowercase || $0.isNumber || $0 == "_" }) ? pebbleName(s) : s }
         guard var d = v as? [String: Any] else { return v }
         if d["count"] != nil, d["damage"] != nil, d["ench"] != nil, d["data"] != nil,
            let id = (d["id"] as? NSNumber)?.intValue {
@@ -77,7 +85,7 @@ public struct PaletteRemap {
         for (k, x) in d {
             if k == "blockCell" || k == "movedCell", let c = (x as? NSNumber)?.intValue, c >= 0, c <= Int(UInt16.max) {
                 d[k] = Int(cell(UInt16(c)))
-            } else if x is [Any] || x is [String: Any] {
+            } else if x is [Any] || x is [String: Any] || x is String {
                 d[k] = json(x)
             }
         }

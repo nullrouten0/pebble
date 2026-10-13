@@ -154,12 +154,12 @@ final class HUD {
             let hearts = Int((player.maxHealth / 2).rounded(.up))
             let hp = player.health
             let shake = player.hurtTime > 0 ? (Foundation.sin(CACurrentMediaTime() * 50) * 1).rounded() : 0
-            let kind = player.hasEffect("wither") ? "wither"
+            let kind = player.hasEffect("blight") ? "blight"
                 : player.hasEffect("poison") ? "poison"
                 : player.freezeTicks > 100 ? "frozen" : "normal"
             // icons.png heart column x by kind (full, half)
             let heartX: [String: (Double, Double)] = [
-                "normal": (52, 61), "poison": (88, 97), "wither": (124, 133),
+                "normal": (52, 61), "poison": (88, 97), "blight": (124, 133),
                 "absorb": (160, 169), "frozen": (178, 187),
             ]
             for i in 0..<hearts {
@@ -348,7 +348,7 @@ final class HUD {
         "bg": ("#3f1414", "#1f0a0a"),
         "normal": ("#ff2020", "#a80000"),
         "poison": ("#94a061", "#586038"),
-        "wither": ("#3a3a3a", "#1c1c1c"),
+        "blight": ("#3a3a3a", "#1c1c1c"),
         "frozen": ("#60c8e8", "#3088a8"),
         "absorb": ("#e8c83c", "#a8862c"),
     ]

@@ -122,8 +122,8 @@ private let GRASS_FALLBACK = 0x91bd59
 /// goldens exercise — costs nothing in the hot loop.
 public var PACK_TINT_GATE: [UInt8]? = nil
 
-let TILE_WIRE_DOT = tileId("redstone_dust_dot")
-let TILE_WIRE_LINE = tileId("redstone_dust_line")
+let TILE_WIRE_DOT = tileId("sparkstone_dust_dot")
+let TILE_WIRE_LINE = tileId("sparkstone_dust_line")
 
 public func buildSectionMesh(_ input: MeshInput) -> MeshOutput {
     let m = SectionMesher(input)
@@ -408,7 +408,7 @@ final class SectionMesher {
                             shape == .fire || shape == .sweetBerry || shape == .bambooSapling ||
                             shape == .caveVinesShape || shape == .hangingRoots ||
                             shape == .smallDripleafShape || shape == .pitcherCropShape ||
-                            shape == .vine || shape == .glowLichen || shape == .sculkVein
+                            shape == .vine || shape == .glowLichen || shape == .hushVein
                         if gate[tileOf(crossLike ? 2 : 1)] == 0 { tint = WHITE }
                     }
 
@@ -432,11 +432,11 @@ final class SectionMesher {
                         emitCross(target, x, y, z, tileOf(2), s4, b4, tint, anim, shape == .crop)
                         continue
                     }
-                    if shape == .vine || shape == .glowLichen || shape == .sculkVein {
+                    if shape == .vine || shape == .glowLichen || shape == .hushVein {
                         emitWallQuads(target, x, y, z, cell, tileOf(2), s4, b4, tint)
                         continue
                     }
-                    if shape == .redstoneWire {
+                    if shape == .sparkstoneWire {
                         emitWire(cutout, x, y, z, meta, s4, b4)
                         continue
                     }
@@ -609,7 +609,7 @@ final class SectionMesher {
             }
             return
         }
-        // glow lichen / sculk vein: meta = attach dir 0..5
+        // glow lichen / hush vein: meta = attach dir 0..5
         let d = meta % 6
         if d == 0 { emitFlatTop(b, xd, yd - 14.0 / 16, zd, tile, sky, blk, tint, 15.0 / 16) }
         else if d == 1 {
@@ -650,12 +650,12 @@ final class SectionMesher {
     private func wireConnects(_ x: Int, _ y: Int, _ z: Int, _ dx: Int, _ dz: Int) -> Bool {
         let n = cellAt(x + dx, y, z + dz)
         let nid = UInt16(n >> 4)
-        if nid == B.redstone_wire || nid == B.repeater || nid == B.repeater_on || nid == B.comparator || nid == B.comparator_on ||
-            nid == B.redstone_torch || nid == B.redstone_torch_off || nid == B.lever || nid == B.target || nid == B.daylight_detector { return true }
+        if nid == B.sparkstone_wire || nid == B.repeater || nid == B.repeater_on || nid == B.comparator || nid == B.comparator_on ||
+            nid == B.sparkstone_torch || nid == B.sparkstone_torch_off || nid == B.lever || nid == B.target || nid == B.daylight_detector { return true }
         // wire up a block
-        if OPAQUE[Int(nid)] == 1 && UInt16(cellAt(x + dx, y + 1, z + dz) >> 4) == B.redstone_wire { return true }
+        if OPAQUE[Int(nid)] == 1 && UInt16(cellAt(x + dx, y + 1, z + dz) >> 4) == B.sparkstone_wire { return true }
         // wire down a block
-        if OPAQUE[Int(nid)] == 0 && UInt16(cellAt(x + dx, y - 1, z + dz) >> 4) == B.redstone_wire { return true }
+        if OPAQUE[Int(nid)] == 0 && UInt16(cellAt(x + dx, y - 1, z + dz) >> 4) == B.sparkstone_wire { return true }
         return false
     }
 
@@ -681,7 +681,7 @@ final class SectionMesher {
         for d in 0..<4 {
             let dx = [0, 0, -1, 1][d], dz = [-1, 1, 0, 0][d]
             let n = cellAt(x + dx, y, z + dz)
-            if OPAQUE[n >> 4] == 1 && UInt16(cellAt(x + dx, y + 1, z + dz) >> 4) == B.redstone_wire {
+            if OPAQUE[n >> 4] == 1 && UInt16(cellAt(x + dx, y + 1, z + dz) >> 4) == B.sparkstone_wire {
                 let e = 0.6 / 16
                 let px = dx == -1 ? xd + e : dx == 1 ? xd + 1 - e : 0
                 let pz = dz == -1 ? zd + e : dz == 1 ? zd + 1 - e : 0

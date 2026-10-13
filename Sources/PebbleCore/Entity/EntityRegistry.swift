@@ -19,7 +19,7 @@ private func regLate(_ name: String, _ f: @escaping EntityFactory) {
 private let registerAllEntitiesOnce: Void = {
     registerEntityHelpers()
 
-    reg("cow") { Cow(world: $0) }; reg("mooshroom") { Mooshroom(world: $0) }
+    reg("cow") { Cow(world: $0) }; reg("mushcow") { Mushcow(world: $0) }
     reg("pig") { Pig(world: $0) }; reg("sheep") { Sheep(world: $0) }
     reg("chicken") { Chicken(world: $0) }; reg("rabbit") { Rabbit(world: $0) }
     reg("wolf") { Wolf(world: $0) }; reg("cat") { Cat(world: $0) }; reg("ocelot") { Ocelot(world: $0) }
@@ -38,33 +38,33 @@ private let registerAllEntitiesOnce: Void = {
     reg("zombie") { Zombie(world: $0) }; reg("husk") { Husk(world: $0) }; reg("drowned") { Drowned(world: $0) }
     reg("zombie_villager") { ZombieVillagerMob(world: $0) }
     reg("skeleton") { Skeleton(world: $0) }; reg("stray") { Stray(world: $0) }
-    reg("creeper") { Creeper(world: $0) }
+    reg("fizzler") { Fizzler(world: $0) }
     reg("spider") { Spider(world: $0) }; reg("cave_spider") { CaveSpider(world: $0) }
     reg("slime") { Slime(world: $0) }; reg("witch") { Witch(world: $0) }
-    reg("enderman") { Enderman(world: $0) }
-    reg("silverfish") { Silverfish(world: $0) }; reg("endermite") { Endermite(world: $0) }
+    reg("riftwalker") { Riftwalker(world: $0) }
+    reg("silverfish") { Silverfish(world: $0) }; reg("riftmite") { Riftmite(world: $0) }
     reg("phantom") { Phantom(world: $0) }
     reg("guardian") { Guardian(world: $0) }; reg("elder_guardian") { ElderGuardian(world: $0) }
-    reg("shulker") { Shulker(world: $0) }
+    reg("lurker") { Lurker(world: $0) }
     reg("pillager") { Pillager(world: $0) }; reg("vindicator") { Vindicator(world: $0) }
-    reg("evoker") { Evoker(world: $0) }; reg("vex") { Vex(world: $0) }; reg("ravager") { Ravager(world: $0) }
-    reg("blaze") { Blaze(world: $0) }; reg("ghast") { Ghast(world: $0) }; reg("magma_cube") { MagmaCube(world: $0) }
-    reg("zombified_piglin") { ZombifiedPiglin(world: $0) }
-    reg("piglin") { Piglin(world: $0) }; reg("piglin_brute") { PiglinBrute(world: $0) }
-    reg("hoglin") { Hoglin(world: $0) }; reg("zoglin") { Zoglin(world: $0) }
-    reg("wither_skeleton") { WitherSkeletonMob(world: $0) }
+    reg("conjurer") { Conjurer(world: $0) }; reg("vex") { Vex(world: $0) }; reg("ravager") { Ravager(world: $0) }
+    reg("cinder") { Cinder(world: $0) }; reg("wailer") { Wailer(world: $0) }; reg("magma_cube") { MagmaCube(world: $0) }
+    reg("rotting_snouter") { RottingSnouter(world: $0) }
+    reg("snouter") { Snouter(world: $0) }; reg("snouter_brute") { SnouterBrute(world: $0) }
+    reg("tusker") { Tusker(world: $0) }; reg("ghoultusk") { Ghoultusk(world: $0) }
+    reg("blight_skeleton") { BlightSkeletonMob(world: $0) }
     reg("warden") { Warden(world: $0) }
-    reg("ender_dragon") { EnderDragon(world: $0) }
-    reg("wither") { WitherBoss(world: $0) }
+    reg("rift_dragon") { RiftDragon(world: $0) }
+    reg("blight") { BlightBoss(world: $0) }
     reg("item") { ItemEntity(world: $0) }; reg("xp_orb") { XPOrb(world: $0) }
     reg("falling_block") { FallingBlockEntity(world: $0) }; reg("tnt") { TNTEntity(world: $0) }
-    reg("lightning") { LightningBolt(world: $0) }; reg("end_crystal") { EndCrystal(world: $0) }
-    reg("effect_cloud") { AreaEffectCloud(world: $0) }; reg("eye_of_ender") { EyeOfEnderEntity(world: $0) }
+    reg("lightning") { LightningBolt(world: $0) }; reg("rift_crystal") { RiftCrystal(world: $0) }
+    reg("effect_cloud") { AreaEffectCloud(world: $0) }; reg("rift_eye") { RiftEyeEntity(world: $0) }
     reg("arrow") { ArrowEntity(world: $0) }; reg("snowball") { ThrownSnowball(world: $0) }
-    reg("egg") { ThrownEgg(world: $0) }; reg("ender_pearl") { ThrownPearl(world: $0) }
+    reg("egg") { ThrownEgg(world: $0) }; reg("rift_pearl") { ThrownPearl(world: $0) }
     reg("xp_bottle") { ThrownXPBottle(world: $0) }; reg("thrown_potion") { ThrownPotion(world: $0) }
-    reg("fireball") { Fireball(world: $0) }; reg("wither_skull") { WitherSkull(world: $0) }
-    reg("dragon_fireball") { DragonFireball(world: $0) }; reg("shulker_bullet") { ShulkerBullet(world: $0) }
+    reg("fireball") { Fireball(world: $0) }; reg("blight_skull") { BlightSkull(world: $0) }
+    reg("dragon_fireball") { DragonFireball(world: $0) }; reg("lurker_bullet") { LurkerBullet(world: $0) }
     reg("trident") { TridentEntity(world: $0) }; reg("firework") { FireworkEntity(world: $0) }
     reg("fishing_bobber") { FishingBobber(world: $0) }; reg("llama_spit") { LlamaSpit(world: $0) }
     reg("boat") { Boat(world: $0) }; reg("minecart") { Minecart(world: $0) }
@@ -107,7 +107,8 @@ public func spawnMob(_ world: World, _ type: String, _ x: Double, _ y: Double, _
 }
 
 public func loadEntity(_ world: World, _ d: [String: Any]) -> Entity? {
-    guard let type = d["type"] as? String, let e = createEntity(type, world) else { return nil }
+    guard let type = d["type"] as? String,
+          let e = createEntity(type, world) ?? createEntity(pebbleName(type), world) else { return nil }
     e.load(d)
     return e
 }
@@ -203,7 +204,7 @@ func canSpawnAt(_ world: World, _ mobType: String, _ cat: MobCategory, _ x: Int,
         // light vs rand(8). The old "≤7" rule let every midday shadow spawn mobs.
         let blockLight = world.getBlockLight(x, y, z)
         if blockLight > 0 { return false }
-        if mobType == "blaze" || mobType == "magma_cube" || mobType == "ghast" || mobType == "zombified_piglin" || mobType == "piglin" || mobType == "hoglin" || mobType == "strider" {
+        if mobType == "cinder" || mobType == "magma_cube" || mobType == "wailer" || mobType == "rotting_snouter" || mobType == "snouter" || mobType == "tusker" || mobType == "strider" {
             return true // nether mobs ignore light
         }
         if world.info.hasSky {
@@ -239,6 +240,6 @@ private func imul32(_ a: Int, _ b: UInt32) -> UInt32 {
 
 /// helper for commands /summon listing
 public func spawnableMobs() -> [String] {
-    let excluded: Set<String> = ["item", "xp_orb", "falling_block", "tnt", "lightning", "effect_cloud", "eye_of_ender", "arrow", "snowball", "egg", "ender_pearl", "xp_bottle", "thrown_potion", "fireball", "wither_skull", "dragon_fireball", "shulker_bullet", "trident", "firework", "fishing_bobber", "llama_spit", "player"]
+    let excluded: Set<String> = ["item", "xp_orb", "falling_block", "tnt", "lightning", "effect_cloud", "rift_eye", "arrow", "snowball", "egg", "rift_pearl", "xp_bottle", "thrown_potion", "fireball", "blight_skull", "dragon_fireball", "lurker_bullet", "trident", "firework", "fishing_bobber", "llama_spit", "player"]
     return entityTypes().filter { !excluded.contains($0) }
 }

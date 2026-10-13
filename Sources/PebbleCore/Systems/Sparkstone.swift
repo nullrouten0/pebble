@@ -1,4 +1,4 @@
-// Redstone — power model, wire networks, torches
+// Sparkstone — power model, wire networks, torches
 // (with burnout), repeaters (delay + locking), comparators (compare/subtract +
 // container reading), pistons (incl. sticky + slime/honey push sets +
 // quasi-connectivity), observers, dispensers/droppers, note blocks, lamps,
@@ -8,7 +8,7 @@
 
 import Foundation
 
-var redstoneRng = RandomX(0x4ED0)
+var sparkstoneRng = RandomX(0x4ED0)
 
 private let FACING_DX = [0, 0, -1, 1] // 0=N 1=S 2=W 3=E (horizontal facing in meta)
 private let FACING_DZ = [-1, 1, 0, 0]
@@ -23,8 +23,8 @@ private var WOOD_PLATES: [Int] = []
 public func emittedPower(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ dir: Int) -> Int {
     let c = world.getBlock(x, y, z)
     let id = c >> 4, meta = c & 15
-    if id == Int(B.redstone_block) { return 15 }
-    if id == Int(B.redstone_torch) {
+    if id == Int(B.sparkstone_block) { return 15 }
+    if id == Int(B.sparkstone_torch) {
         // emits 15 except toward its support block
         let attach = meta == 0 ? Dir.down : meta
         return dir == attach ? 0 : 15
@@ -33,7 +33,7 @@ public func emittedPower(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ dir: In
         return (meta & 8) != 0 ? 15 : 0
     }
     for w in WOOD_BUTTONS where id == w { return (meta & 8) != 0 ? 15 : 0 }
-    if id == Int(B.redstone_wire) {
+    if id == Int(B.sparkstone_wire) {
         if dir == Dir.up { return 0 }
         if dir == Dir.down { return meta }
         // emits to the sides its visual shape points at: connected sides, plus
@@ -66,7 +66,7 @@ public func emittedPower(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ dir: In
     if id == Int(B.detector_rail) { return (meta & 8) != 0 ? 15 : 0 }
     if id == Int(B.daylight_detector) || id == Int(B.daylight_detector_inverted) { return meta }
     if id == Int(B.target) { return meta }
-    if id == Int(B.sculk_sensor) || id == Int(B.calibrated_sculk_sensor) { return meta }
+    if id == Int(B.hush_sensor) || id == Int(B.calibrated_hush_sensor) { return meta }
     if id == Int(B.tripwire_hook) { return (meta & 8) != 0 ? 15 : 0 }
     if id == Int(B.lightning_rod) { return (meta & 8) != 0 ? 15 : 0 }
     if id == Int(B.lectern) { return 0 }
@@ -82,7 +82,7 @@ public func emittedPower(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ dir: In
 private func strongPowerInto(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ dir: Int) -> Int {
     let c = world.getBlock(x, y, z)
     let id = c >> 4, meta = c & 15
-    if id == Int(B.redstone_torch) { return dir == Dir.up ? 15 : 0 } // powers block above
+    if id == Int(B.sparkstone_torch) { return dir == Dir.up ? 15 : 0 } // powers block above
     if id == Int(B.repeater_on) {
         return dir == facingToDir(meta & 3) ? 15 : 0
     }
@@ -98,7 +98,7 @@ private func strongPowerInto(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ dir
     }
     if isPressurePlate(id) { return dir == Dir.down ? ((meta & 8) != 0 ? 15 : 0) : 0 }
     if id == Int(B.detector_rail) { return dir == Dir.down ? ((meta & 8) != 0 ? 15 : 0) : 0 }
-    if id == Int(B.redstone_wire) {
+    if id == Int(B.sparkstone_wire) {
         if dir == Dir.down { return meta } // treat as weak (matches baseline comment)
         return 0
     }
@@ -128,7 +128,7 @@ public func powerAt(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ ignoreWire: 
         let nx = x + DIR_X[d], ny = y + DIR_Y[d], nz = z + DIR_Z[d]
         let nc = world.getBlock(nx, ny, nz)
         let nid = nc >> 4
-        if ignoreWire && nid == Int(B.redstone_wire) { continue }
+        if ignoreWire && nid == Int(B.sparkstone_wire) { continue }
         p = max(p, emittedPower(world, nx, ny, nz, DIR_OPPOSITE[d]))
         // conduction through solid block
         if blockDefs[nid].opaque && blockDefs[nid].fullCube {
@@ -164,16 +164,16 @@ public func wireConnectsDir(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ faci
     if connectsToWire(nid, n & 15, facing) { return true }
     // up a block
     let upBlocked = blockDefs[world.getBlock(x, y + 1, z) >> 4].opaque
-    if !upBlocked && blockDefs[nid].opaque && (world.getBlock(x + dx, y + 1, z + dz) >> 4) == Int(B.redstone_wire) { return true }
+    if !upBlocked && blockDefs[nid].opaque && (world.getBlock(x + dx, y + 1, z + dz) >> 4) == Int(B.sparkstone_wire) { return true }
     // down a block
-    if !blockDefs[nid].opaque && (world.getBlock(x + dx, y - 1, z + dz) >> 4) == Int(B.redstone_wire) { return true }
+    if !blockDefs[nid].opaque && (world.getBlock(x + dx, y - 1, z + dz) >> 4) == Int(B.sparkstone_wire) { return true }
     return false
 }
 private func connectsToWire(_ id: Int, _ meta: Int, _ facingToward: Int) -> Bool {
-    if id == Int(B.redstone_wire) || id == Int(B.redstone_torch) || id == Int(B.redstone_torch_off) ||
-        id == Int(B.lever) || isButton(id) || id == Int(B.redstone_block) || id == Int(B.target) ||
+    if id == Int(B.sparkstone_wire) || id == Int(B.sparkstone_torch) || id == Int(B.sparkstone_torch_off) ||
+        id == Int(B.lever) || isButton(id) || id == Int(B.sparkstone_block) || id == Int(B.target) ||
         id == Int(B.daylight_detector) || id == Int(B.daylight_detector_inverted) ||
-        id == Int(B.sculk_sensor) || id == Int(B.calibrated_sculk_sensor) || id == Int(B.tripwire_hook) ||
+        id == Int(B.hush_sensor) || id == Int(B.calibrated_hush_sensor) || id == Int(B.tripwire_hook) ||
         isPressurePlate(id) || id == Int(B.detector_rail) || id == Int(B.trapped_chest) || id == Int(B.lightning_rod) || id == Int(B.observer) { return true }
     if id == Int(B.repeater) || id == Int(B.repeater_on) || id == Int(B.comparator) || id == Int(B.comparator_on) {
         let f = meta & 3
@@ -190,7 +190,7 @@ public func updateWireNetwork(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     var networkOrder: [K] = []
     var networkSet = Set<K>()
     var queue: [(Int, Int, Int)] = [(x, y, z)]
-    if (world.getBlock(x, y, z) >> 4) != Int(B.redstone_wire) { return }
+    if (world.getBlock(x, y, z) >> 4) != Int(B.sparkstone_wire) { return }
     let k0 = K(x: x, y: y, z: z)
     networkOrder.append(k0)
     networkSet.insert(k0)
@@ -200,7 +200,7 @@ public func updateWireNetwork(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
             let dx = FACING_DX[f], dz = FACING_DZ[f]
             for dy in [0, 1, -1] {
                 let nx = qx + dx, ny = qy + dy, nz = qz + dz
-                if (world.getBlock(nx, ny, nz) >> 4) != Int(B.redstone_wire) { continue }
+                if (world.getBlock(nx, ny, nz) >> 4) != Int(B.sparkstone_wire) { continue }
                 if dy == 1 && blockDefs[world.getBlock(qx, qy + 1, qz) >> 4].opaque { continue }
                 if dy == -1 && blockDefs[world.getBlock(nx, ny + 1, nz) >> 4].opaque { continue }
                 let k = K(x: nx, y: ny, z: nz)
@@ -242,7 +242,7 @@ public func updateWireNetwork(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
         let cur = world.getBlock(k.x, k.y, k.z)
         let newMeta = levels[k] ?? 0
         if (cur & 15) != newMeta {
-            world.setBlock(k.x, k.y, k.z, Int(cell(B.redstone_wire, newMeta)), 1 | 4)
+            world.setBlock(k.x, k.y, k.z, Int(cell(B.sparkstone_wire, newMeta)), 1 | 4)
             // also update diagonal neighbors' components (block below wire)
             world.notifyBlock(k.x, k.y - 1, k.z, k.x, k.y, k.z)
         }
@@ -274,7 +274,7 @@ private func torchShouldBeOff(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ me
 private func torchTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
     let id = c >> 4, meta = c & 15
     let shouldOff = torchShouldBeOff(world, x, y, z, meta)
-    let isOn = id == Int(B.redstone_torch)
+    let isOn = id == Int(B.sparkstone_torch)
     if isOn == !shouldOff { return }
     // burnout: 8 toggles in 60 ticks
     let k = BlockPos(x, y, z)
@@ -290,10 +290,10 @@ private func torchTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
             world.torchBurnout = world.torchBurnout.filter { now - ($0.value.last ?? 0) <= 60 }
             world.torchBurnoutPruneAt = max(64, world.torchBurnout.count * 2)
         }
-        world.setBlock(x, y, z, Int(cell(shouldOff ? B.redstone_torch_off : B.redstone_torch, meta)))
+        world.setBlock(x, y, z, Int(cell(shouldOff ? B.sparkstone_torch_off : B.sparkstone_torch, meta)))
         if hist.count >= 8 && !shouldOff {
             // burned out — re-light later
-            world.scheduleTick(x, y, z, Int(B.redstone_torch_off), 160)
+            world.scheduleTick(x, y, z, Int(B.sparkstone_torch_off), 160)
         }
     }
 }
@@ -308,7 +308,7 @@ private func repeaterInputPower(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ 
     let nc = world.getBlock(nx, y, nz)
     let nid = nc >> 4
     var p = emittedPower(world, nx, y, nz, facingToDir(facing))
-    if nid == Int(B.redstone_wire) { p = max(p, nc & 15) }
+    if nid == Int(B.sparkstone_wire) { p = max(p, nc & 15) }
     if blockDefs[nid].opaque && blockDefs[nid].fullCube { p = max(p, strongPowerAt(world, nx, y, nz)) }
     return p
 }
@@ -393,7 +393,7 @@ private func comparatorRearSignal(_ world: World, _ x: Int, _ y: Int, _ z: Int, 
     }
     let wire = world.getBlock(nx, y, nz)
     var p = emittedPower(world, nx, y, nz, facingToDir(facing))
-    if (wire >> 4) == Int(B.redstone_wire) { p = max(p, wire & 15) }
+    if (wire >> 4) == Int(B.sparkstone_wire) { p = max(p, wire & 15) }
     if blockDefs[nc >> 4].opaque && blockDefs[nc >> 4].fullCube { p = max(p, strongPowerAt(world, nx, y, nz)) }
     return p
 }
@@ -403,9 +403,9 @@ private func comparatorSideSignal(_ world: World, _ x: Int, _ y: Int, _ z: Int, 
         let dx = FACING_DX[side], dz = FACING_DZ[side]
         let nc = world.getBlock(x + dx, y, z + dz)
         let nid = nc >> 4
-        if nid == Int(B.redstone_wire) { p = max(p, nc & 15) }
+        if nid == Int(B.sparkstone_wire) { p = max(p, nc & 15) }
         else if nid == Int(B.repeater_on) && (nc & 3) == oppFacing(side) { p = max(p, 15) }
-        else if nid == Int(B.redstone_block) { p = max(p, 15) }
+        else if nid == Int(B.sparkstone_block) { p = max(p, 15) }
         else if nid == Int(B.comparator_on) && (nc & 3) == oppFacing(side) {
             p = max(p, world.getBlockEntity(x + dx, y, z + dz)?.output ?? 0)
         }
@@ -501,7 +501,7 @@ public func playNoteBlock(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     if name.contains("wool") { instrument = "guitar" }
     else if name.contains("sand") || name.contains("gravel") { instrument = "snare" }
     else if name.contains("glass") || name.contains("sea_lantern") { instrument = "hat" }
-    else if name.contains("stone") || name.contains("netherrack") || name.contains("obsidian") || name.contains("quartz") || name.contains("sandstone") || name.contains("prismarine") || name.contains("brick") || name.contains("deepslate") || name.contains("blackstone") { instrument = "basedrum" }
+    else if name.contains("stone") || name.contains("ashrock") || name.contains("obsidian") || name.contains("quartz") || name.contains("sandstone") || name.contains("seaglass") || name.contains("brick") || name.contains("deepslate") || name.contains("blackstone") { instrument = "basedrum" }
     else if name.contains("gold_block") { instrument = "bell" }
     else if name.contains("clay") { instrument = "flute" }
     else if name.contains("packed_ice") { instrument = "chime" }
@@ -511,7 +511,7 @@ public func playNoteBlock(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     else if name.contains("pumpkin") { instrument = "didgeridoo" }
     else if name.contains("emerald_block") { instrument = "bit" }
     else if name.contains("hay_block") { instrument = "banjo" }
-    else if name.contains("glowstone") { instrument = "pling" }
+    else if name.contains("lumenstone") { instrument = "pling" }
     else if name.contains("planks") || name.contains("log") || name.contains("wood") { instrument = "bass" }
     world.hooks.playSound("note.\(instrument).\(note)", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 1, 1)
     world.hooks.addParticles("note", Double(x) + 0.5, Double(y) + 1.1, Double(z) + 0.5, 1, 0, note)
@@ -531,7 +531,7 @@ private func dispense(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int, _ 
         world.hooks.playSound("block.dispenser.fail", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 1, 1.2)
         return
     }
-    let slot = slots[redstoneRng.nextInt(slots.count)]
+    let slot = slots[sparkstoneRng.nextInt(slots.count)]
     let stack = items[slot]!
     let facing = c & 7
     let name = itemDef(stack.id).name
@@ -551,9 +551,9 @@ private func dispense(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int, _ 
     let one = stack.copy()
     one.count = 1
     let item = spawnItem(world, Double(x) + 0.5 + Double(DIR_X[facing]) * 0.7, Double(y) + 0.5 + Double(DIR_Y[facing]) * 0.7, Double(z) + 0.5 + Double(DIR_Z[facing]) * 0.7, one)
-    item.vx = Double(DIR_X[facing]) * 0.2 + (redstoneRng.nextFloat() - 0.5) * 0.05
+    item.vx = Double(DIR_X[facing]) * 0.2 + (sparkstoneRng.nextFloat() - 0.5) * 0.05
     item.vy = Double(DIR_Y[facing]) * 0.2 + 0.1
-    item.vz = Double(DIR_Z[facing]) * 0.2 + (redstoneRng.nextFloat() - 0.5) * 0.05
+    item.vz = Double(DIR_Z[facing]) * 0.2 + (sparkstoneRng.nextFloat() - 0.5) * 0.05
     world.hooks.playSound("block.dispenser.dispense", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 1, 1)
 }
 
@@ -671,7 +671,7 @@ private func dispenseBehavior(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ fa
             sheep.sheared = true
             // baseline: rng-in-loop-condition — rerolls every iteration check
             var i = 0
-            while i < 1 + redstoneRng.nextInt(3) {
+            while i < 1 + sparkstoneRng.nextInt(3) {
                 spawnItem(world, sheep.x, sheep.y + 0.5, sheep.z, ItemStack(iid("white_wool"), 1))
                 i += 1
             }
@@ -723,7 +723,7 @@ private func railChainPoweredShallow(_ world: World, _ x: Int, _ y: Int, _ z: In
 }
 
 // ---------------------------------------------------------------------------
-// Sculk sensors & shriekers
+// Hush sensors & shriekers
 // ---------------------------------------------------------------------------
 public func handleVibration(_ world: World, _ x: Double, _ y: Double, _ z: Double, _ freq: Int) {
     // find sensors within 8 blocks via chunk-tracked sets
@@ -734,17 +734,17 @@ public func handleVibration(_ world: World, _ x: Double, _ y: Double, _ z: Doubl
             guard let chunk = world.getChunk(cx, cz) else { continue }
             // Set iteration is hash-ordered — sort so multi-sensor activations
             // schedule their ticks in a deterministic order
-            for idx in chunk.sculkSensors.sorted() {
+            for idx in chunk.hushSensors.sorted() {
                 let (sx, sy, sz) = chunk.idxToWorld(idx)
                 let ddx = Double(sx) - x, ddy = Double(sy) - y, ddz = Double(sz) - z
                 let dSq = ddx * ddx + ddy * ddy + ddz * ddz
                 if dSq > 64 { continue }
                 let c = world.getBlock(sx, sy, sz)
                 let id = c >> 4
-                if id == Int(B.sculk_sensor) || id == Int(B.calibrated_sculk_sensor) {
+                if id == Int(B.hush_sensor) || id == Int(B.calibrated_hush_sensor) {
                     if (c & 15) > 0 { continue } // cooldown
                     // calibrated filters by side input
-                    if id == Int(B.calibrated_sculk_sensor) {
+                    if id == Int(B.calibrated_hush_sensor) {
                         let inputPower = powerAt(world, sx, sy, sz)
                         if inputPower > 0 && inputPower != freq { continue }
                     }
@@ -752,9 +752,9 @@ public func handleVibration(_ world: World, _ x: Double, _ y: Double, _ z: Doubl
                     let power = max(1, min(15, Int(detRound((1 - dist / 8) * 15))))
                     world.setBlock(sx, sy, sz, Int(cell(UInt16(id), power)))
                     world.scheduleTick(sx, sy, sz, id, 40)
-                    world.hooks.playSound("block.sculk_sensor.clicking", Double(sx) + 0.5, Double(sy) + 0.5, Double(sz) + 0.5, 1, 1)
-                    world.hooks.addParticles("sculk_soul", Double(sx) + 0.5, Double(sy) + 0.5, Double(sz) + 0.5, 3, 0.3, 0)
-                } else if id == Int(B.sculk_shrieker) {
+                    world.hooks.playSound("block.hush_sensor.clicking", Double(sx) + 0.5, Double(sy) + 0.5, Double(sz) + 0.5, 1, 1)
+                    world.hooks.addParticles("hush_soul", Double(sx) + 0.5, Double(sy) + 0.5, Double(sz) + 0.5, 3, 0.3, 0)
+                } else if id == Int(B.hush_shrieker) {
                     shriek(world, sx, sy, sz)
                 }
             }
@@ -766,10 +766,10 @@ public var wardenWarnings = 0
 public func shriek(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     let c = world.getBlock(x, y, z)
     if (c & 1) != 0 { return } // already shrieking
-    world.setBlock(x, y, z, Int(cell(B.sculk_shrieker, 1)), 4)
-    world.scheduleTick(x, y, z, Int(B.sculk_shrieker), 60)
-    world.hooks.playSound("block.sculk_shrieker.shriek", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 3, 1)
-    world.hooks.addParticles("sculk_soul", Double(x) + 0.5, Double(y) + 1, Double(z) + 0.5, 10, 0.3, 0)
+    world.setBlock(x, y, z, Int(cell(B.hush_shrieker, 1)), 4)
+    world.scheduleTick(x, y, z, Int(B.hush_shrieker), 60)
+    world.hooks.playSound("block.hush_shrieker.shriek", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 3, 1)
+    world.hooks.addParticles("hush_soul", Double(x) + 0.5, Double(y) + 1, Double(z) + 0.5, 10, 0.3, 0)
     if world.getBlockEntity(x, y, z)?.canSummon == true {
         wardenWarnings += 1
         for p in world.getEntitiesNear(Double(x), Double(y), Double(z), 16, filter: { ($0 as? Entity)?.isPlayer ?? false }) {
@@ -929,11 +929,11 @@ private func pistonTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) 
 // Registration
 // ---------------------------------------------------------------------------
 
-private let registerRedstoneHandlersOnce: Void = {
+private let registerSparkstoneHandlersOnce: Void = {
     WOOD_BUTTONS = WOODS.map { Int(bid("\($0)_button")) }
     WOOD_PLATES = WOODS.map { Int(bid("\($0)_pressure_plate")) }
 
-    neighborHandlers[Int(B.redstone_wire)] = { world, x, y, z, _, _, _, _ in
+    neighborHandlers[Int(B.sparkstone_wire)] = { world, x, y, z, _, _, _, _ in
         // support check
         let below = world.getBlock(x, y - 1, z)
         if !blockDefs[below >> 4].fullCube {
@@ -942,15 +942,15 @@ private let registerRedstoneHandlersOnce: Void = {
         }
         updateWireNetwork(world, x, y, z)
     }
-    onPlacedHandlers[Int(B.redstone_wire)] = { world, x, y, z, _ in updateWireNetwork(world, x, y, z) }
+    onPlacedHandlers[Int(B.sparkstone_wire)] = { world, x, y, z, _ in updateWireNetwork(world, x, y, z) }
 
-    blockTickHandlers[Int(B.redstone_torch)] = torchTick
-    blockTickHandlers[Int(B.redstone_torch_off)] = torchTick
-    neighborHandlers[Int(B.redstone_torch)] = { world, x, y, z, _, _, _, _ in
-        if !world.hasScheduledTick(x, y, z, Int(B.redstone_torch)) { world.scheduleTick(x, y, z, Int(B.redstone_torch), 2) }
+    blockTickHandlers[Int(B.sparkstone_torch)] = torchTick
+    blockTickHandlers[Int(B.sparkstone_torch_off)] = torchTick
+    neighborHandlers[Int(B.sparkstone_torch)] = { world, x, y, z, _, _, _, _ in
+        if !world.hasScheduledTick(x, y, z, Int(B.sparkstone_torch)) { world.scheduleTick(x, y, z, Int(B.sparkstone_torch), 2) }
     }
-    neighborHandlers[Int(B.redstone_torch_off)] = { world, x, y, z, _, _, _, _ in
-        if !world.hasScheduledTick(x, y, z, Int(B.redstone_torch_off)) { world.scheduleTick(x, y, z, Int(B.redstone_torch_off), 2) }
+    neighborHandlers[Int(B.sparkstone_torch_off)] = { world, x, y, z, _, _, _, _ in
+        if !world.hasScheduledTick(x, y, z, Int(B.sparkstone_torch_off)) { world.scheduleTick(x, y, z, Int(B.sparkstone_torch_off), 2) }
     }
 
     neighborHandlers[Int(B.repeater)] = { world, x, y, z, c, _, _, _ in repeaterNeighbor(world, x, y, z, c) }
@@ -1062,16 +1062,16 @@ private let registerRedstoneHandlersOnce: Void = {
     }
 
     // lamp / doors / gates / hopper / TNT / note ----------------------------------
-    neighborHandlers[Int(B.redstone_lamp)] = { world, x, y, z, _, _, _, _ in
-        if powerAt(world, x, y, z) > 0 { world.setBlock(x, y, z, Int(cell(B.redstone_lamp_on))) }
+    neighborHandlers[Int(B.sparkstone_lamp)] = { world, x, y, z, _, _, _, _ in
+        if powerAt(world, x, y, z) > 0 { world.setBlock(x, y, z, Int(cell(B.sparkstone_lamp_on))) }
     }
-    neighborHandlers[Int(B.redstone_lamp_on)] = { world, x, y, z, _, _, _, _ in
-        if powerAt(world, x, y, z) == 0 && !world.hasScheduledTick(x, y, z, Int(B.redstone_lamp_on)) {
-            world.scheduleTick(x, y, z, Int(B.redstone_lamp_on), 4)
+    neighborHandlers[Int(B.sparkstone_lamp_on)] = { world, x, y, z, _, _, _, _ in
+        if powerAt(world, x, y, z) == 0 && !world.hasScheduledTick(x, y, z, Int(B.sparkstone_lamp_on)) {
+            world.scheduleTick(x, y, z, Int(B.sparkstone_lamp_on), 4)
         }
     }
-    blockTickHandlers[Int(B.redstone_lamp_on)] = { world, x, y, z, _ in
-        if powerAt(world, x, y, z) == 0 { world.setBlock(x, y, z, Int(cell(B.redstone_lamp))) }
+    blockTickHandlers[Int(B.sparkstone_lamp_on)] = { world, x, y, z, _ in
+        if powerAt(world, x, y, z) == 0 { world.setBlock(x, y, z, Int(cell(B.sparkstone_lamp))) }
     }
 
     // doors/trapdoors/gates respond to power TRANSITIONS, not absolute state —
@@ -1192,16 +1192,16 @@ private let registerRedstoneHandlersOnce: Void = {
         if !blockDefs[below >> 4].fullCube { world.breakBlockNaturally(x, y, z) }
     }
 
-    // sculk sensors / shrieker ------------------------------------------------------
-    for sid in [Int(B.sculk_sensor), Int(B.calibrated_sculk_sensor)] {
+    // hush sensors / shrieker ------------------------------------------------------
+    for sid in [Int(B.hush_sensor), Int(B.calibrated_hush_sensor)] {
         blockTickHandlers[sid] = { world, x, y, z, c in
             if (c & 15) != 0 {
                 world.setBlock(x, y, z, Int(cell(UInt16(sid), 0)))
             }
         }
     }
-    blockTickHandlers[Int(B.sculk_shrieker)] = { world, x, y, z, c in
-        if (c & 1) != 0 { world.setBlock(x, y, z, Int(cell(B.sculk_shrieker, 0)), 4) }
+    blockTickHandlers[Int(B.hush_shrieker)] = { world, x, y, z, c in
+        if (c & 1) != 0 { world.setBlock(x, y, z, Int(cell(B.hush_shrieker, 0)), 4) }
     }
 
     // daylight detector --------------------------------------------------------------
@@ -1240,4 +1240,4 @@ private let registerRedstoneHandlersOnce: Void = {
         if (c & 8) != 0 { world.setBlock(x, y, z, Int(cell(B.lightning_rod, c & 7))) }
     }
 }()
-public func registerRedstoneHandlers() { _ = registerRedstoneHandlersOnce }
+public func registerSparkstoneHandlers() { _ = registerSparkstoneHandlersOnce }

@@ -5,10 +5,10 @@
 public enum DamageSource: String {
     // attacks
     case mob, player, projectile, fireball
-    case witherSkull = "wither_skull"
+    case blightSkull = "blight_skull"
     case explosion, thorns, sonic, sting, firework
     // effects
-    case magic, wither, poison
+    case magic, blight, poison
     // the world
     case fall
     case flyIntoWall = "fly_into_wall"
@@ -20,7 +20,7 @@ public enum DamageSource: String {
     /// damage that armor doesn't reduce
     public var bypassesArmor: Bool {
         switch self {
-        case .fall, .void, .magic, .wither, .starve, .drown, .freeze, .sonic: return true
+        case .fall, .void, .magic, .blight, .starve, .drown, .freeze, .sonic: return true
         default: return false
         }
     }
@@ -28,7 +28,7 @@ public enum DamageSource: String {
     /// a raised shield facing the attacker stops it
     public var shieldable: Bool {
         switch self {
-        case .mob, .player, .projectile, .explosion, .fireball, .witherSkull: return true
+        case .mob, .player, .projectile, .explosion, .fireball, .blightSkull: return true
         default: return false
         }
     }
@@ -36,59 +36,58 @@ public enum DamageSource: String {
 
 /// a player's death-screen line, from the `deathCause` its save recorded
 /// (a DamageSource raw value, or "fall_high" for a fall of more than 5
-/// blocks) and the name of whoever last hurt it — vanilla 1.20's wording
+/// blocks) and the name of whoever last hurt it
 public func deathCauseText(_ cause: String?, _ attacker: String? = nil) -> String {
     let high = cause == "fall_high"
-    guard let source = high ? .fall : cause.flatMap(DamageSource.init(rawValue:)) else { return "died" }
+    guard let source = high ? .fall : cause.flatMap(DamageSource.init(rawValue:)) else { return "didn't make it" }
     if let a = attacker {
         switch source {
-        case .mob, .player: return "was slain by \(a)"
-        case .projectile: return "was shot by \(a)"
-        case .fireball: return "was fireballed by \(a)"
-        case .witherSkull: return "was shot by a skull from \(a)"
-        case .explosion: return "was blown up by \(a)"
-        case .thorns: return "was killed while trying to hurt \(a)"
-        case .sonic: return "was sonically charged by \(a)"
-        case .sting: return "was stung to death by \(a)"
-        case .firework: return "went off with a bang whilst fighting \(a)"
-        case .magic: return "was killed by \(a) using magic"
-        case .wither: return "withered away whilst fighting \(a)"
-        case .poison: return "died"
-        case .fall: return high ? "fell from a high place whilst trying to escape \(a)"
-                                : "hit the ground too hard whilst trying to escape \(a)"
-        case .flyIntoWall: return "experienced kinetic energy whilst trying to escape \(a)"
-        case .anvil: return "was squashed by a falling anvil whilst fighting \(a)"
-        case .lightning: return "was struck by lightning whilst fighting \(a)"
-        case .fire: return "was burned to a crisp whilst fighting \(a)"
-        case .lava: return "tried to swim in lava to escape \(a)"
-        case .drown: return "drowned whilst trying to escape \(a)"
-        case .freeze: return "was frozen to death by \(a)"
-        case .starve: return "starved to death whilst fighting \(a)"
-        case .void: return "didn't want to live in the same world as \(a)"
+        case .mob, .player: return "was defeated by \(a)"
+        case .projectile: return "took an arrow from \(a)"
+        case .fireball: return "was scorched by \(a)'s fireball"
+        case .blightSkull: return "was hit by \(a)'s blight skull"
+        case .explosion: return "was caught in \(a)'s blast"
+        case .thorns: return "was cut on \(a)'s thorns"
+        case .sonic: return "was flattened by \(a)'s sonic boom"
+        case .sting: return "was stung once too often by \(a)"
+        case .firework: return "was caught by a firework while facing \(a)"
+        case .magic: return "was undone by \(a)'s magic"
+        case .blight: return "succumbed to blight while facing \(a)"
+        case .poison: return "didn't make it"
+        case .fall: return high ? "took a long fall while running from \(a)" : "landed badly while running from \(a)"
+        case .flyIntoWall: return "hit a wall at speed while running from \(a)"
+        case .anvil: return "was crushed by an anvil while facing \(a)"
+        case .lightning: return "was hit by lightning while facing \(a)"
+        case .fire: return "burned while facing \(a)"
+        case .lava: return "fled from \(a) into lava"
+        case .drown: return "ran out of air while running from \(a)"
+        case .freeze: return "was frozen solid by \(a)"
+        case .starve: return "starved while facing \(a)"
+        case .void: return "dropped into the void while running from \(a)"
         }
     }
     switch source {
-    case .mob, .player: return "was slain"
-    case .projectile: return "was shot"
-    case .fireball: return "was fireballed"
-    case .witherSkull: return "was shot by a skull"
-    case .explosion: return "blew up"
-    case .thorns: return "was killed trying to hurt something"
-    case .sonic: return "was sonically charged"
-    case .sting: return "was stung to death"
-    case .firework: return "went off with a bang"
-    case .magic: return "was killed by magic"
-    case .wither: return "withered away"
-    case .poison: return "died"
-    case .fall: return high ? "fell from a high place" : "hit the ground too hard"
-    case .flyIntoWall: return "experienced kinetic energy"
-    case .anvil: return "was squashed by a falling anvil"
-    case .lightning: return "was struck by lightning"
-    case .fire: return "burned to death"
-    case .lava: return "tried to swim in lava"
-    case .drown: return "drowned"
-    case .freeze: return "froze to death"
-    case .starve: return "starved to death"
-    case .void: return "fell out of the world"
+    case .mob, .player: return "was defeated"
+    case .projectile: return "took an arrow"
+    case .fireball: return "was scorched by a fireball"
+    case .blightSkull: return "was hit by a blight skull"
+    case .explosion: return "was caught in a blast"
+    case .thorns: return "was cut on thorns"
+    case .sonic: return "was flattened by a sonic boom"
+    case .sting: return "was stung once too often"
+    case .firework: return "was caught by a firework"
+    case .magic: return "was undone by magic"
+    case .blight: return "succumbed to blight"
+    case .poison: return "didn't make it"
+    case .fall: return high ? "took a long fall" : "landed badly"
+    case .flyIntoWall: return "hit a wall at speed"
+    case .anvil: return "was crushed by an anvil"
+    case .lightning: return "was hit by lightning"
+    case .fire: return "burned"
+    case .lava: return "fell into lava"
+    case .drown: return "ran out of air"
+    case .freeze: return "froze solid"
+    case .starve: return "starved"
+    case .void: return "dropped into the void"
     }
 }

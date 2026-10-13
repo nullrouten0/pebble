@@ -675,9 +675,9 @@ private func buildRecipes() {
         ("snow", 1800, 0.4, 0.12), ("cloth", 900, 0.4, 0.1),
         ("glass", 2600, 3, 0.12), ("metal", 1300, 4, 0.14),
         ("slime", 500, 1, 0.18), ("honey", 400, 1, 0.2),
-        ("netherrack", 700, 0.7, 0.1), ("soulsand", 500, 0.5, 0.16),
+        ("ashrock", 700, 0.7, 0.1), ("soulsand", 500, 0.5, 0.16),
         ("bone", 1000, 2, 0.1), ("amethyst", 2200, 6, 0.25),
-        ("sculk", 350, 1.5, 0.2), ("mud", 450, 0.5, 0.16),
+        ("hush", 350, 1.5, 0.2), ("mud", 450, 0.5, 0.16),
         ("water", 1200, 0.6, 0.2), ("lava", 300, 0.6, 0.3),
         ("bamboo", 600, 2, 0.1), ("cherry", 500, 1.2, 0.12),
         ("copper", 1500, 3.5, 0.13), ("chain", 1700, 5, 0.16),
@@ -815,45 +815,45 @@ private func buildRecipes() {
     R("entity.skeleton.shoot", "hostile", "Arrow fired") { s, _, _ in
         s.noiseBurst(dur: 0.12, freq: 2000, q: 1, vol: 0.35)
     }
-    R("entity.creeper.primed", "hostile", "Creeper hisses") { s, _, _ in
+    R("entity.fizzler.primed", "hostile", "Fizzler hisses") { s, _, _ in
         s.noiseBurst(dur: 1.4, freq: 3500, q: 0.4, vol: 0.5, attack: 0.3)
     }
-    mobVoice("entity.creeper.hurt", "hostile", "Creeper hurts", 300, .triangle, 0.2, 0.7)
-    mobVoice("entity.creeper.death", "hostile", "Creeper dies", 280, .triangle, 0.4, 0.5)
+    mobVoice("entity.fizzler.hurt", "hostile", "Fizzler hurts", 300, .triangle, 0.2, 0.7)
+    mobVoice("entity.fizzler.death", "hostile", "Fizzler dies", 280, .triangle, 0.4, 0.5)
     R("entity.spider.ambient", "hostile", "Spider hisses") { s, _, _ in
         s.noiseBurst(dur: 0.3, freq: 2600, q: 1.2, vol: 0.3)
     }
     mobVoice("entity.spider.hurt", "hostile", "Spider hurts", 900, .square, 0.15, 0.8)
     mobVoice("entity.spider.death", "hostile", "Spider dies", 800, .square, 0.35, 0.5)
-    R("entity.enderman.ambient", "hostile", "Enderman vwoops") { s, pitch, _ in
+    R("entity.riftwalker.ambient", "hostile", "Riftwalker vwoops") { s, pitch, _ in
         s.tone(freq: 90 * pitch, endFreq: 50 * pitch, dur: 0.8, vol: 0.4, vibrato: 2)
         s.tone(freq: 180 * pitch, endFreq: 80, dur: 0.6, type: .triangle, vol: 0.15)
     }
-    R("entity.enderman.teleport", "hostile", "Enderman teleports") { s, _, _ in
+    R("entity.riftwalker.teleport", "hostile", "Riftwalker teleports") { s, _, _ in
         s.tone(freq: 1800, endFreq: 200, dur: 0.3, vol: 0.35)
     }
-    R("entity.enderman.stare", "hostile", "Enderman cries out") { s, _, _ in
+    R("entity.riftwalker.stare", "hostile", "Riftwalker cries out") { s, _, _ in
         s.tone(freq: 600, endFreq: 100, dur: 1.0, type: .sawtooth, vol: 0.4, vibrato: 6)
     }
-    mobVoice("entity.enderman.hurt", "hostile", "Enderman hurts", 200, .sine, 0.3, 0.5)
-    mobVoice("entity.enderman.death", "hostile", "Enderman dies", 160, .sine, 0.7, 0.3)
-    R("entity.ghast.ambient", "hostile", "Ghast cries") { s, pitch, _ in
+    mobVoice("entity.riftwalker.hurt", "hostile", "Riftwalker hurts", 200, .sine, 0.3, 0.5)
+    mobVoice("entity.riftwalker.death", "hostile", "Riftwalker dies", 160, .sine, 0.7, 0.3)
+    R("entity.wailer.ambient", "hostile", "Wailer cries") { s, pitch, _ in
         s.tone(freq: 700 * pitch, endFreq: 400 * pitch, dur: 1.2, vol: 0.35, vibrato: 4)
     }
-    R("entity.ghast.warn", "hostile", "Ghast shrieks") { s, _, _ in
+    R("entity.wailer.warn", "hostile", "Wailer shrieks") { s, _, _ in
         s.tone(freq: 500, endFreq: 1200, dur: 0.5, type: .sawtooth, vol: 0.4)
     }
-    R("entity.ghast.shoot", "hostile", "Fireball whooshes") { s, _, _ in
+    R("entity.wailer.shoot", "hostile", "Fireball whooshes") { s, _, _ in
         s.noiseBurst(dur: 0.4, freq: 800, q: 0.5, vol: 0.5)
     }
-    mobVoice("entity.ghast.hurt", "hostile", "Ghast hurts", 800, .sine, 0.4, 1.3, 6)
-    mobVoice("entity.ghast.death", "hostile", "Ghast dies", 700, .sine, 1.0, 0.4, 6)
-    mobVoice("entity.blaze.ambient", "hostile", "Blaze breathes", 200, .sawtooth, 0.5, 1.1, 12)
-    R("entity.blaze.shoot", "hostile", "Blaze shoots") { s, _, _ in
+    mobVoice("entity.wailer.hurt", "hostile", "Wailer hurts", 800, .sine, 0.4, 1.3, 6)
+    mobVoice("entity.wailer.death", "hostile", "Wailer dies", 700, .sine, 1.0, 0.4, 6)
+    mobVoice("entity.cinder.ambient", "hostile", "Cinder breathes", 200, .sawtooth, 0.5, 1.1, 12)
+    R("entity.cinder.shoot", "hostile", "Cinder shoots") { s, _, _ in
         s.noiseBurst(dur: 0.25, freq: 1200, q: 0.6, vol: 0.45)
     }
-    mobVoice("entity.blaze.hurt", "hostile", "Blaze hurts", 300, .sawtooth, 0.25, 0.8, 10)
-    mobVoice("entity.blaze.death", "hostile", "Blaze dies", 260, .sawtooth, 0.5, 0.4, 10)
+    mobVoice("entity.cinder.hurt", "hostile", "Cinder hurts", 300, .sawtooth, 0.25, 0.8, 10)
+    mobVoice("entity.cinder.death", "hostile", "Cinder dies", 260, .sawtooth, 0.5, 0.4, 10)
     mobVoice("entity.slime.jump", "hostile", "Slime squishes", 250, .sine, 0.15, 0.6)
     mobVoice("entity.slime.hurt", "hostile", "Slime hurts", 280, .sine, 0.15, 0.5)
     mobVoice("entity.slime.death", "hostile", "Slime dies", 240, .sine, 0.25, 0.4)
@@ -882,8 +882,8 @@ private func buildRecipes() {
     R("entity.iron_golem.repair", "friendly", "Iron Golem repaired") { s, _, _ in
         s.noiseBurst(dur: 0.2, freq: 1600, q: 3, vol: 0.4)
     }
-    mobVoice("entity.zombified_piglin.angry", "hostile", "Zombified Piglin angers", 350, .sawtooth, 0.4, 1.4, 8)
-    mobVoice("entity.piglin.admiring_item", "hostile", "Piglin admires item", 400, .square, 0.3, 1.3, 5)
+    mobVoice("entity.rotting_snouter.angry", "hostile", "Rotting Snouter angers", 350, .sawtooth, 0.4, 1.4, 8)
+    mobVoice("entity.snouter.admiring_item", "hostile", "Snouter admires item", 400, .square, 0.3, 1.3, 5)
     mobVoice("entity.warden.ambient", "hostile", "Warden whines", 60, .sawtooth, 1.0, 0.8, 2)
     R("entity.warden.heartbeat", "hostile", "Warden's heart beats") { s, _, _ in
         s.tone(freq: 55, endFreq: 35, dur: 0.18, vol: 0.7)
@@ -912,26 +912,26 @@ private func buildRecipes() {
     R("entity.warden.angry", "hostile", "Warden roars") { s, _, _ in
         s.tone(freq: 90, endFreq: 140, dur: 0.9, type: .sawtooth, vol: 0.7, vibrato: 8)
     }
-    R("entity.ender_dragon.growl", "hostile", "Dragon roars") { s, _, _ in
+    R("entity.rift_dragon.growl", "hostile", "Dragon roars") { s, _, _ in
         s.tone(freq: 110, endFreq: 70, dur: 1.4, type: .sawtooth, vol: 0.8, vibrato: 6)
         s.noiseBurst(dur: 1.2, freq: 350, q: 0.5, vol: 0.4)
     }
-    mobVoice("entity.ender_dragon.hurt", "hostile", "Dragon hurts", 180, .sawtooth, 0.5, 0.6, 6)
-    R("entity.ender_dragon.death", "hostile", "Dragon dies") { s, _, _ in
+    mobVoice("entity.rift_dragon.hurt", "hostile", "Dragon hurts", 180, .sawtooth, 0.5, 0.6, 6)
+    R("entity.rift_dragon.death", "hostile", "Dragon dies") { s, _, _ in
         s.tone(freq: 200, endFreq: 40, dur: 3.0, type: .sawtooth, vol: 0.8, vibrato: 4)
     }
-    R("entity.ender_dragon.shoot", "hostile", "Dragon shoots") { s, _, _ in
+    R("entity.rift_dragon.shoot", "hostile", "Dragon shoots") { s, _, _ in
         s.noiseBurst(dur: 0.3, freq: 900, q: 0.6, vol: 0.5)
     }
-    R("entity.wither.spawn", "hostile", "Wither released") { s, _, _ in
+    R("entity.blight.spawn", "hostile", "Blight released") { s, _, _ in
         s.tone(freq: 60, endFreq: 220, dur: 1.5, type: .sawtooth, vol: 0.7)
         s.noiseBurst(dur: 1.5, freq: 300, q: 0.4, vol: 0.5)
     }
-    mobVoice("entity.wither.ambient", "hostile", "Wither angers", 220, .sawtooth, 0.5, 0.7, 10)
-    R("entity.wither.shoot", "hostile", "Wither attacks") { s, _, _ in
+    mobVoice("entity.blight.ambient", "hostile", "Blight angers", 220, .sawtooth, 0.5, 0.7, 10)
+    R("entity.blight.shoot", "hostile", "Blight attacks") { s, _, _ in
         s.noiseBurst(dur: 0.2, freq: 1000, q: 0.8, vol: 0.45)
     }
-    R("entity.wither.break_block", "hostile", nil) { s, _, _ in
+    R("entity.blight.break_block", "hostile", nil) { s, _, _ in
         s.noiseBurst(dur: 0.25, freq: 600, q: 0.6, vol: 0.4)
     }
     mobVoice("entity.bat.ambient", "ambient", "Bat squeaks", 2400, .square, 0.08, 1.3)
@@ -956,15 +956,15 @@ private func buildRecipes() {
     R("entity.allay.item_taken", "friendly", nil) { s, _, _ in
         s.tone(freq: 1000, endFreq: 1400, dur: 0.15, vol: 0.2)
     }
-    mobVoice("entity.shulker.shoot", "hostile", "Shulker shoots", 600, .sine, 0.2, 1.4)
-    mobVoice("entity.shulker.teleport", "hostile", "Shulker teleports", 1200, .sine, 0.25, 0.4)
+    mobVoice("entity.lurker.shoot", "hostile", "Lurker shoots", 600, .sine, 0.2, 1.4)
+    mobVoice("entity.lurker.teleport", "hostile", "Lurker teleports", 1200, .sine, 0.25, 0.4)
     mobVoice("entity.phantom.swoop", "hostile", "Phantom swoops", 1400, .sawtooth, 0.4, 0.5)
     mobVoice("entity.guardian.attack", "hostile", "Guardian charges", 300, .sawtooth, 0.8, 1.6, 4)
     mobVoice("entity.elder_guardian.curse", "hostile", "Elder Guardian curses", 200, .sine, 1.2, 0.5, 3)
     mobVoice("entity.ravager.roar", "hostile", "Ravager roars", 130, .sawtooth, 0.8, 0.7, 7)
-    mobVoice("entity.evoker.cast_spell", "hostile", "Evoker casts spell", 600, .square, 0.4, 0.8, 9)
-    mobVoice("entity.evoker.prepare_summon", "hostile", "Evoker prepares summoning", 400, .square, 0.6, 1.4, 9)
-    R("entity.evoker_fangs.attack", "hostile", "Fangs snap") { s, _, _ in
+    mobVoice("entity.conjurer.cast_spell", "hostile", "Conjurer casts spell", 600, .square, 0.4, 0.8, 9)
+    mobVoice("entity.conjurer.prepare_summon", "hostile", "Conjurer prepares summoning", 400, .square, 0.6, 1.4, 9)
+    R("entity.conjurer_fangs.attack", "hostile", "Fangs snap") { s, _, _ in
         s.noiseBurst(dur: 0.12, freq: 800, q: 1.5, vol: 0.4)
     }
     mobVoice("entity.vex.ambient", "hostile", "Vex vexes", 1000, .square, 0.25, 1.3, 14)
@@ -987,13 +987,13 @@ private func buildRecipes() {
     }
     mobVoice("entity.camel.dash", "friendly", "Camel dashes", 300, .sawtooth, 0.3, 1.3, 6)
     mobVoice("entity.goat.milk", "friendly", nil, 500, .sine, 0.2, 1.1)
-    mobVoice("entity.mooshroom.milk", "friendly", nil, 400, .sine, 0.25, 1.1)
-    mobVoice("entity.mooshroom.shear", "friendly", "Mooshroom transforms", 600, .sine, 0.3, 1.4)
+    mobVoice("entity.mushcow.milk", "friendly", nil, 400, .sine, 0.25, 1.1)
+    mobVoice("entity.mushcow.shear", "friendly", "Mushcow transforms", 600, .sine, 0.3, 1.4)
     mobVoice("entity.cod.flop", "friendly", "Fish flops", 700, .sine, 0.1, 1.4)
     mobVoice("entity.llama.spit", "friendly", "Llama spits", 900, .square, 0.12, 0.7)
     mobVoice("entity.strider.ambient", "friendly", "Strider chirps", 500, .square, 0.3, 1.5, 18)
     mobVoice("entity.zombie_villager.cure", "friendly", "Zombie Villager sizzles", 300, .sawtooth, 0.8, 1.6, 12)
-    mobVoice("entity.hoglin.ambient", "hostile", "Hoglin growls", 200, .sawtooth, 0.4, 0.8, 8)
+    mobVoice("entity.tusker.ambient", "hostile", "Tusker growls", 200, .sawtooth, 0.4, 0.8, 8)
     mobVoice("entity.horse.angry", "friendly", "Horse neighs", 450, .sawtooth, 0.5, 1.5, 12)
     R("entity.horse.saddle", "friendly", nil) { s, _, _ in
         s.noiseBurst(dur: 0.12, freq: 1100, q: 1, vol: 0.3)
@@ -1074,10 +1074,10 @@ private func buildRecipes() {
         s.noiseBurst(dur: 0.4, freq: 600, q: 0.5, vol: 0.6)
         s.noiseBurst(dur: 0.3, freq: 2400, q: 1, vol: 0.3, delay: 0.06)
     }
-    R("entity.ender_eye.launch", "players", "Eye of Ender shoots") { s, _, _ in
+    R("entity.rift_eye.launch", "players", "Rift Eye shoots") { s, _, _ in
         s.tone(freq: 600, endFreq: 1400, dur: 0.4, vol: 0.3)
     }
-    R("entity.ender_eye.death", "players", "Eye of Ender breaks") { s, _, _ in
+    R("entity.rift_eye.death", "players", "Rift Eye breaks") { s, _, _ in
         s.noiseBurst(dur: 0.2, freq: 2200, q: 2, vol: 0.35)
     }
     R("item.totem.use", "players", "Totem activates") { s, _, _ in
@@ -1130,7 +1130,7 @@ private func buildRecipes() {
     R("item.armor.equip_generic", "players", "Gear equips") { s, _, _ in
         s.noiseBurst(dur: 0.15, freq: 1100, q: 1, vol: 0.3)
     }
-    R("item.armor.equip_elytra", "players", "Gear equips") { s, _, _ in
+    R("item.armor.equip_wingsuit", "players", "Gear equips") { s, _, _ in
         s.noiseBurst(dur: 0.15, freq: 1100, q: 1, vol: 0.3)
     }
     R("item.chorus_fruit.teleport", "players", "Player teleports") { s, _, _ in
@@ -1155,7 +1155,7 @@ private func buildRecipes() {
     R("block.barrel.open", "blocks", "Barrel opens") { s, _, _ in
         s.noiseBurst(dur: 0.15, freq: 500, q: 1, vol: 0.3)
     }
-    R("block.ender_chest.open", "blocks", "Ender Chest opens") { s, _, _ in
+    R("block.rift_chest.open", "blocks", "Rift Chest opens") { s, _, _ in
         s.tone(freq: 300, endFreq: 600, dur: 0.4, vol: 0.3)
     }
     R("block.wooden_door.open", "blocks", "Door creaks") { s, _, rng in
@@ -1223,7 +1223,7 @@ private func buildRecipes() {
     R("block.end_portal.spawn", "ambient", "End portal opens") { s, _, _ in
         s.tone(freq: 80, endFreq: 800, dur: 2, vol: 0.5)
     }
-    R("block.end_portal_frame.fill", "blocks", "Eye of Ender attaches") { s, _, _ in
+    R("block.end_portal_frame.fill", "blocks", "Rift Eye attaches") { s, _, _ in
         s.tone(freq: 800, endFreq: 1400, dur: 0.3, vol: 0.35)
     }
     R("block.brewing_stand.brew", "blocks", "Brewing Stand bubbles") { s, _, rng in
@@ -1273,13 +1273,13 @@ private func buildRecipes() {
     R("block.amethyst_cluster.step", "blocks", "Amethyst chimes") { s, _, rng in
         s.tone(freq: 1800 + rng() * 1200, dur: 0.4, vol: 0.2)
     }
-    R("block.sculk_sensor.clicking", "blocks", "Sculk Sensor clicks") { s, _, _ in
+    R("block.hush_sensor.clicking", "blocks", "Hush Sensor clicks") { s, _, _ in
         for i in 0..<3 { s.tone(freq: 500 - Double(i) * 80, dur: 0.06, type: .square, vol: 0.25, delay: Double(i) * 0.05) }
     }
-    R("block.sculk_shrieker.shriek", "hostile", "Sculk Shrieker shrieks") { s, _, _ in
+    R("block.hush_shrieker.shriek", "hostile", "Hush Shrieker shrieks") { s, _, _ in
         s.tone(freq: 300, endFreq: 900, dur: 0.8, type: .sawtooth, vol: 0.5, vibrato: 15)
     }
-    R("block.sculk_catalyst.bloom", "blocks", "Sculk blooms") { s, _, _ in
+    R("block.hush_catalyst.bloom", "blocks", "Hush blooms") { s, _, _ in
         s.tone(freq: 250, endFreq: 120, dur: 0.6, vol: 0.3, vibrato: 8)
     }
     R("block.beacon.power_select", "blocks", "Beacon hums") { s, _, _ in
@@ -1336,10 +1336,10 @@ private func buildRecipes() {
     }
 }
 
-private let hostileNames = ["zombie", "skeleton", "creeper", "spider", "blaze", "ghast", "witch", "pillager",
-                            "vindicator", "evoker", "vex", "ravager", "guardian", "shulker", "phantom", "wither",
-                            "warden", "hoglin", "piglin", "silverfish", "endermite", "stray", "husk", "drowned",
-                            "magma", "slime", "zoglin"]
+private let hostileNames = ["zombie", "skeleton", "fizzler", "spider", "cinder", "wailer", "witch", "pillager",
+                            "vindicator", "conjurer", "vex", "ravager", "guardian", "lurker", "phantom", "blight",
+                            "warden", "tusker", "snouter", "silverfish", "riftmite", "stray", "husk", "drowned",
+                            "magma", "slime", "ghoultusk"]
 
 private func resolveRecipe(_ name: String) -> SoundRecipe? {
     buildRecipes()

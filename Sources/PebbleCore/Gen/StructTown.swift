@@ -36,7 +36,7 @@ private func school(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, floors: Int, sig
     let outer = floors > 1 ? N("bricks") : N("white_terracotta")
     let trim = N("stone_bricks"), inner = N("white_concrete"), board = N("black_concrete")
     let roomFloor = N("oak_planks"), hallFloor = N("smooth_stone"), win = N("glass_pane")
-    let light = N("glowstone")
+    let light = N("lumenstone")
     let RW = 10, RD = 9, HW = 5                       // room width (x), room depth (z), hall width
     let W = 1 + RW + 1 + HW + 1 + RW + 1               // 29
     let D = 1 + RD + 1 + RD + 1                        // 21
@@ -312,7 +312,7 @@ private func cityBuilding(_ b: Builder, _ bx: Int, _ y: Int, _ bz: Int, _ w: Int
         b.fill(bx + 3, top + 1, bz + 3, bx + 2 + cw, top + 1, bz + 2 + cw, frame)
         let tip = top + 2 + b.rng.nextIntBetween(6, 14)
         for ay in (top + 2)..<tip { b.set(mx, ay, mz, N("iron_bars")) }
-        b.set(mx, tip, mz, N("glowstone"))
+        b.set(mx, tip, mz, N("lumenstone"))
     case 1:
         // water tower on legs
         for (lx, lz) in [(mx - 1, mz - 1), (mx + 1, mz - 1), (mx - 1, mz + 1), (mx + 1, mz + 1)] {

@@ -2,7 +2,7 @@
   <img src="packaging/logo.png" alt="Pebble" width="420">
 </p>
 
-<h3 align="center">The open-source alternative to Minecraft: Java Edition.</h3>
+<h3 align="center">A free, open-source block-building game, inspired by Minecraft: Java Edition.</h3>
 
 <p align="center">
   <em>A complete block game, built from scratch in Swift + Metal, for Mac, iPad and iPhone.<br>
@@ -20,11 +20,11 @@
 > ### New in Pebble 1.4: iPad and iPhone (beta)
 > The same game and worlds on iPad and iPhone (landscape), and they play LAN games with the Mac. Touch controls, hardware keyboard and mouse, and game controllers all work. Also new everywhere: a **headlamp**, and four **world wonders** for `/place` (Eiffel Tower, Stonehenge, Colosseum, Devils Tower). See [Install](#install) and the [1.4.0 notes](CHANGELOG.md#140--2026-10-12--ipad--iphone-headlamp-world-wonders).
 
-**Pebble** is a native voxel game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids and boss fights, plus a creative building toolkit and LAN multiplayer. It is **~55,000 lines of Swift** with **no external dependencies** and no game engine: a hand-written Metal renderer, an audio engine that synthesizes every sound at runtime, and multiplayer on Apple's Network framework. Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack.
+**Pebble** is a native voxel game with the full overworld/nether/end progression: worldgen, mobs, sparkstone, crafting, enchanting, brewing, villages, raids and boss fights, plus a creative building toolkit and LAN multiplayer. It is **~55,000 lines of Swift** with **no external dependencies** and no game engine: a hand-written Metal renderer, an audio engine that synthesizes every sound at runtime, and multiplayer on Apple's Network framework. Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack.
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer).
 
-> **Pebble 1.5 is a beta.** The engine is covered by 788 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.5 is a beta.** The engine is covered by 790 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
@@ -38,7 +38,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 788, all green (`pebble test`) |
+| Regression checks | 790, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by the Faithful team (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -49,10 +49,10 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 - **Worldgen** — multi-noise climate sampling through spline-driven terrain, 3D density caves (cheese/spaghetti/noodle), ravines, aquifers, ore distribution per vanilla 1.20 tables, and 63 biomes including lush caves, dripstone caves and the deep dark.
 - **Three dimensions** — overworld, nether (fortresses, bastions, all five nether biomes) and the end (dragon fight, end cities, gateways), connected by working portals.
 - **Structures** — villages with working trades, strongholds, mineshafts, temples, igloos, witch huts, ocean monuments and ruins, shipwrecks, buried treasure, ruined portals, woodland mansions, trail ruins, ancient cities.
-- **Mobs & AI** — 55+ mobs with A* pathfinding, goal-based AI (breeding, taming, fleeing, pack hunting), villager gossip, piglin bartering, raids with Hero of the Village, and the Ender Dragon, Wither and Warden.
-- **Redstone** — 0–15 power wire, repeaters with locking, comparators, pistons with quasi-connectivity and slime/honey, observers, dispensers, hoppers, rails, sculk sensors.
+- **Mobs & AI** — 55+ mobs with A* pathfinding, goal-based AI (breeding, taming, fleeing, pack hunting), villager gossip, snouter bartering, raids with Hero of the Village, and the Rift Dragon, Blight and Warden.
+- **Sparkstone** — 0–15 power wire, repeaters with locking, comparators, pistons with quasi-connectivity and slime/honey, observers, dispensers, hoppers, rails, hush sensors.
 - **Items & systems** — crafting, three furnace types, brewing, 39 enchantments, anvils, grindstones, smithing with armor trims, loot tables with fortune/looting, fishing, archaeology, advancements.
-- **Vanilla-exact player physics** — walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks, plus water, lava, elytra, ice, soul sand and honey, verified by independent-derivation tests.
+- **Vanilla-exact player physics** — walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks, plus water, lava, wingsuit, ice, soul sand and honey, verified by independent-derivation tests.
 - **LAN multiplayer** and a **creative toolkit** — see [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
 - **Ultra graphics** — SSAO, volumetric god rays, Poisson soft shadows and ACES tonemapping, behind one toggle in Options → Video.
 - **Synthesized audio** — no audio files: music, jukebox discs and every sound effect are built from oscillator and noise recipes, with positional stereo, underwater lowpass and cave reverb.
@@ -73,7 +73,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the test suite (788 checks)
+pebble test         run the test suite (790 checks)
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -183,7 +183,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
   Gen/                terrain, biomes, features, structures, placeable builds
   Entity/             entity types, AI, pathfinding, player physics
   Items/              item registry, recipes, enchants, potions, loot
-  Systems/            interact, redstone, fluids, combat, raids, portals,
+  Systems/            interact, sparkstone, fluids, combat, raids, portals,
                       placement, creative tools, undo history
   Net/                LAN multiplayer: wire format, TCP + Bonjour, host and guest
   Render/             section mesher, texture atlas, entity models
@@ -191,7 +191,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     test harness (788 checks; snapshots in goldens/*.json)
+Sources/pebsmoke/     test harness (790 checks; snapshots in goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              snapshot files the harness compares against
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -206,7 +206,7 @@ Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (p
 
 Your worlds are safe across updates. Every chunk you've visited is saved, so a change to world generation only affects land nobody has seen yet. Worlds also record the names behind their block and item ids, so a build that adds, moves or removes blocks opens them correctly. Worlds created before 1.5 keep their original generator.
 
-`pebble test` runs 788 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of vanilla physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a redstone timeline that flag any unintended change. Vanilla Minecraft: Java Edition is the reference for how things behave; see [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
+`pebble test` runs 790 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of vanilla physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. Vanilla Minecraft: Java Edition is the reference for how things behave; see [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -221,7 +221,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, redstone): the tail of `pebble test`, which should print `788 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `790 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 
@@ -238,8 +238,9 @@ Pebble's *gameplay design* is inspired by Minecraft: Java Edition 1.20 — game 
 
 - **No Mojang/Microsoft source code is used.** Every line of game code was written for this project — the sole third-party-derived code is the fdlibm trigonometry port in `Sources/PebbleCore/Core/DetMath.swift` (Sun Microsystems' permissive license, notice preserved there). Nothing is decompiled, disassembled, copied, or derived from Minecraft's code.
 - **No Mojang/Microsoft asset files are included.** The engine's fallback texture atlas is generated by code; the default visual layer is the third-party Faithful 32x pack (credited below — the Faithful team's own artwork); sounds and music are synthesized in real time; fonts are a built-in bitmap glyph set; entity models are hand-written Swift reproducing the vanilla mobs' publicly documented box dimensions and UV layouts — required for Java Edition-format entity textures to map onto them correctly. There are no extracted game files anywhere in this repository.
+- **Pebble's names and words are its own.** Its creatures, blocks, items, effects, achievements and messages use Pebble's names and wording. The reference game's names appear in exactly one place, `Sources/PebbleCore/Game/FormatNames.swift`: a translation table for reading resource packs laid out in Java Edition's file format, and for opening worlds from earlier versions of Pebble.
 - **Pebble is free, open-source, and non-commercial.** Its multiplayer is local-network only, using its own protocol between copies of Pebble. It never connects to Mojang or Microsoft services, or to any internet server, and it collects nothing.
 
 **Third-party content:** the app ships the complete, unmodified [Faithful 32x](https://faithfulpack.net) (1.20.1) as its built-in texture set. That artwork is the work of the Faithful team and its contributors, distributed under the [Faithful License](packaging/FAITHFUL-LICENSE.txt) (included verbatim here and in the app, as it requires) — it is **not** covered by this repository's MIT license. Pebble is free and non-commercial, consistent with that license's no-monetization requirement. If anyone with rights in that artwork prefers it not be bundled, contact the address below and it will be removed promptly; Pebble remains fully functional without it. Pebble's ability to *read* the file format the artwork ships in is an independently implemented compatibility feature and implies no affiliation.
 
-Pebble is provided "as is", without warranty of any kind (see [LICENSE](LICENSE)). On a Mac it writes only to `~/Library/Application Support/Pebble/`, `~/Applications/Pebble.app` and the `pebble` CLI symlink. Questions, concerns, or good-faith takedown requests from rights holders: **briangaoo2@gmail.com** (subject starting with `[pebble]`) — they will be honored quickly.
+Pebble is provided "as is", without warranty of any kind (see [LICENSE](LICENSE)). On a Mac it writes only to `~/Library/Application Support/Pebble/`, `~/Applications/Pebble.app` and the `pebble` CLI symlink. Questions, concerns, or good-faith takedown requests from rights holders: **nullrouten@gmail.com** (subject starting with `[pebble]`) — they will be honored quickly.

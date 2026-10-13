@@ -176,20 +176,20 @@ public func useBlock(_ ctx: InteractCtx, _ hit: RaycastHit) -> Bool {
         world.hooks.playSound("block.barrel.open", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 0.6, 1)
         return true
     }
-    if id == Int(B.ender_chest) {
-        ctx.openScreen("ender_chest", nil)
-        world.hooks.playSound("block.ender_chest.open", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 0.6, 1)
+    if id == Int(B.rift_chest) {
+        ctx.openScreen("rift_chest", nil)
+        world.hooks.playSound("block.rift_chest.open", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 0.6, 1)
         return true
     }
-    if name.hasSuffix("shulker_box") || id == Int(B.shulker_box) {
+    if name.hasSuffix("lurker_box") || id == Int(B.lurker_box) {
         var be = world.getBlockEntity(x, y, z)
         if be == nil { be = makeContainerBE(x, y, z, 27); world.setBlockEntity(be!) }
         var data = ScreenData()
         data.be = be
-        data.title = "Shulker Box"
+        data.title = "Lurker Box"
         data.block = id
         ctx.openScreen("chest", data)
-        world.hooks.playSound("block.shulker_box.open", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 0.6, 1)
+        world.hooks.playSound("block.lurker_box.open", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 0.6, 1)
         return true
     }
     if id == Int(B.furnace) || id == Int(B.furnace_lit) || id == Int(B.blast_furnace) || id == Int(B.blast_furnace_lit) || id == Int(B.smoker) || id == Int(B.smoker_lit) {
@@ -269,7 +269,7 @@ public func useBlock(_ ctx: InteractCtx, _ hit: RaycastHit) -> Bool {
     if id == Int(B.respawn_anchor) {
         let charges = meta & 7
         let held = player.mainHand
-        if let held, itemDef(held.id).name == "glowstone", charges < 4 {
+        if let held, itemDef(held.id).name == "lumenstone", charges < 4 {
             player.consumeHeld(1)
             world.setBlock(x, y, z, Int(cell(B.respawn_anchor, charges + 1)))
             world.hooks.playSound("block.respawn_anchor.charge", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 1, 1)
@@ -455,7 +455,7 @@ public func useBlock(_ ctx: InteractCtx, _ hit: RaycastHit) -> Bool {
         }
         if let held {
             let heldName = itemDef(held.id).name
-            let pottableWords = ["sapling", "fern", "dandelion", "poppy", "orchid", "allium", "bluet", "tulip", "daisy", "cornflower", "lily_of", "wither_rose", "mushroom", "cactus", "bamboo", "azalea", "fungus", "roots", "dead_bush", "torchflower"]
+            let pottableWords = ["sapling", "fern", "dandelion", "poppy", "orchid", "allium", "bluet", "tulip", "daisy", "cornflower", "lily_of", "blight_rose", "mushroom", "cactus", "bamboo", "azalea", "fungus", "roots", "dead_bush", "torchflower"]
             if pottableWords.contains(where: { heldName.contains($0) }) {
                 var pbe = be
                 if pbe == nil {
@@ -481,7 +481,7 @@ public func useBlock(_ ctx: InteractCtx, _ hit: RaycastHit) -> Bool {
         return false // brushing handled by brush item hold
     }
     if id == Int(B.end_portal_frame) {
-        if let held = player.mainHand, itemDef(held.id).name == "ender_eye", (meta & 4) == 0 {
+        if let held = player.mainHand, itemDef(held.id).name == "rift_eye", (meta & 4) == 0 {
             world.setBlock(x, y, z, Int(cell(B.end_portal_frame, meta | 4)))
             player.consumeHeld(1)
             world.hooks.playSound("block.end_portal_frame.fill", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 1, 1)
@@ -637,8 +637,8 @@ private func useCauldron(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int, _ c: 
     }
     // wash dyed items
     if kind == 0 && level > 0 {
-        if name.hasSuffix("_shulker_box") {
-            player.replaceHeld(ItemStack(iid("shulker_box"), 1))
+        if name.hasSuffix("_lurker_box") {
+            player.replaceHeld(ItemStack(iid("lurker_box"), 1))
             world.setBlock(x, y, z, Int(cell(B.cauldron, level - 1)))
             return true
         }
@@ -734,11 +734,11 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
         return true
     }
     // throwables
-    if name == "snowball" || name == "egg" || name == "ender_pearl" || name == "experience_bottle" || name == "splash_potion" || name == "lingering_potion" {
+    if name == "snowball" || name == "egg" || name == "rift_pearl" || name == "experience_bottle" || name == "splash_potion" || name == "lingering_potion" {
         let proj: Projectile
         if name == "snowball" { proj = ThrownSnowball(world: world) }
         else if name == "egg" { proj = ThrownEgg(world: world) }
-        else if name == "ender_pearl" { proj = ThrownPearl(world: world) }
+        else if name == "rift_pearl" { proj = ThrownPearl(world: world) }
         else if name == "experience_bottle" { proj = ThrownXPBottle(world: world) }
         else {
             let p = ThrownPotion(world: world)
@@ -779,7 +779,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
     }
     if name == "firework_rocket" {
         let fw = FireworkEntity(world: world)
-        if player.elytraFlying {
+        if player.wingsuitFlying {
             fw.attachedTo = player
             fw.setPos(player.x, player.y, player.z)
         } else if let hit {
@@ -792,7 +792,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
         player.consumeHeld(1)
         return true
     }
-    if name == "ender_eye" {
+    if name == "rift_eye" {
         // locate stronghold
         let positions = strongholdPositions(world.seed)
         var best: (Double, Double)? = nil
@@ -803,14 +803,14 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
             if d < bestD { bestD = d; best = (Double(scx * 16 + 8), Double(scz * 16 + 8)) }
         }
         if let best {
-            let eye = EyeOfEnderEntity(world: world)
+            let eye = RiftEyeEntity(world: world)
             eye.setPos(player.x, player.eyeY(), player.z)
             eye.targetX = best.0
             eye.targetZ = best.1
             world.addEntity(eye)
-            world.hooks.playSound("entity.ender_eye.launch", player.x, player.y, player.z, 1, 1)
+            world.hooks.playSound("entity.rift_eye.launch", player.x, player.y, player.z, 1, 1)
             player.consumeHeld(1)
-            ctx.advance("follow_ender_eye")
+            ctx.advance("follow_rift_eye")
             return true
         }
         return false
@@ -1156,7 +1156,7 @@ private func attachPlacementBE(_ world: World, _ blockId: Int, _ x: Int, _ y: In
         world.setBlockEntity(makeHopperBE(x, y, z))
     } else if blockId == Int(B.dispenser) || blockId == Int(B.dropper) {
         world.setBlockEntity(makeContainerBE(x, y, z, 9))
-    } else if blockDefs[blockId].name.hasSuffix("shulker_box") || blockId == Int(B.shulker_box) {
+    } else if blockDefs[blockId].name.hasSuffix("lurker_box") || blockId == Int(B.lurker_box) {
         let be = makeContainerBE(x, y, z, 27)
         if let contents = held.data.contents { be.items = contents }
         world.setBlockEntity(be)
@@ -1236,7 +1236,7 @@ private func placementMeta(_ world: World, _ player: Player, _ hit: RaycastHit, 
         }
         let netherWords = ["fungus", "roots", "sprouts"]
         if netherWords.contains(where: { name.contains($0) }) {
-            let netherSoil = ["nylium", "netherrack", "soul", "grass_block", "dirt", "moss"]
+            let netherSoil = ["nylium", "ashrock", "soul", "grass_block", "dirt", "moss"]
             return netherSoil.contains(where: { belowName.contains($0) }) ? 0 : -1
         }
         if name == "sugar_cane" {
@@ -1280,7 +1280,7 @@ private func placementMeta(_ world: World, _ player: Player, _ hit: RaycastHit, 
     case .vine:
         if hit.face < 2 { return -1 }
         return 1 << (hit.face - 2)
-    case .glowLichen, .sculkVein:
+    case .glowLichen, .hushVein:
         return hit.face ^ 1
     case .cocoa:
         if hit.face < 2 { return -1 }
@@ -1294,7 +1294,7 @@ private func placementMeta(_ world: World, _ player: Player, _ hit: RaycastHit, 
         // axis blocks (logs, basalt, chain, bone)
         let isAxis = name.hasSuffix("_log") || name.hasSuffix("_stem") || name.hasSuffix("_wood")
             || name.contains("hyphae") || name.contains("basalt") || name == "bone_block"
-            || name == "chain" || name == "quartz_pillar" || name == "purpur_pillar" || name == "bamboo_block"
+            || name == "chain" || name == "quartz_pillar" || name == "violite_pillar" || name == "bamboo_block"
         if isAxis {
             return hit.face < 2 ? 0 : (hit.face < 4 ? 2 : 1)
         }
@@ -1409,8 +1409,8 @@ public func finishBreaking(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int) {
 
     // container contents spill
     if let be = world.getBlockEntity(x, y, z) {
-        let isShulker = def.name.hasSuffix("shulker_box") || id == Int(B.shulker_box)
-        if !isShulker && (be.type == "container" || be.type == "hopper" || be.type == "furnace" || be.type == "brewing" || be.type == "shelf" || be.type == "campfire") {
+        let isLurker = def.name.hasSuffix("lurker_box") || id == Int(B.lurker_box)
+        if !isLurker && (be.type == "container" || be.type == "hopper" || be.type == "furnace" || be.type == "brewing" || be.type == "shelf" || be.type == "campfire") {
             if let items = be.items {
                 for s in items { if let s { spawnItem(world, Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, s) } }
             }
@@ -1422,8 +1422,8 @@ public func finishBreaking(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int) {
         if be.type == "jukebox", let disc = be.disc {
             spawnItem(world, Double(x) + 0.5, Double(y) + 1, Double(z) + 0.5, disc)
         }
-        if isShulker && world.rule("doTileDrops") {
-            // shulker keeps contents
+        if isLurker && world.rule("doTileDrops") {
+            // lurker keeps contents
             let itemId = blockToItem[id]
             if itemId >= 0 {
                 let stack = ItemStack(Int(itemId), 1)
@@ -1521,9 +1521,9 @@ public func finishBreaking(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int) {
         Int(B.diamond_ore): (3, 7), Int(B.deepslate_diamond_ore): (3, 7),
         Int(B.emerald_ore): (3, 7), Int(B.deepslate_emerald_ore): (3, 7),
         Int(B.lapis_ore): (2, 5), Int(B.deepslate_lapis_ore): (2, 5),
-        Int(B.redstone_ore): (1, 5), Int(B.deepslate_redstone_ore): (1, 5),
+        Int(B.sparkstone_ore): (1, 5), Int(B.deepslate_sparkstone_ore): (1, 5),
         Int(B.nether_quartz_ore): (2, 5), Int(B.nether_gold_ore): (0, 1),
-        Int(B.spawner): (15, 43), Int(B.sculk): (1, 1), Int(B.sculk_sensor): (5, 5), Int(B.sculk_catalyst): (5, 5), Int(B.sculk_shrieker): (5, 5),
+        Int(B.spawner): (15, 43), Int(B.hush): (1, 1), Int(B.hush_sensor): (5, 5), Int(B.hush_catalyst): (5, 5), Int(B.hush_shrieker): (5, 5),
     ]
     if !silk, let (lo, hi) = xpMap[id] {
         spawnXP(world, Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, lo + gameRng.nextInt(hi - lo + 1))
@@ -1635,7 +1635,7 @@ private let registerAllSystemsOnce: Void = {
     registerBlockEntityHandlers()
     registerFarmingHandlers()
     registerSupportPops()
-    registerRedstoneHandlers()
+    registerSparkstoneHandlers()
     registerFluidHandlers()   // was only wired in pebsmoke — in-app water/lava never flowed
     bindBonemeal(applyBonemeal)
 }()

@@ -1,5 +1,5 @@
 // Atlas painters part 1 — terrain, stone families, snow/ice, nether, end,
-// liquids, glass, wool/colored, woods, ores, metals, copper, prismarine,
+// liquids, glass, wool/colored, woods, ores, metals, copper, seaglass,
 // corals. Procedural painter registrations.
 
 import Foundation
@@ -29,7 +29,7 @@ let LEAF_COLORS: [String: Int] = [
 ]
 let ORE_COLORS: [String: Int] = [
     "coal": 0x2e2e2e, "iron": 0xd8af93, "copper": 0xc06843, "gold": 0xfcee4b,
-    "redstone": 0xfc0a0a, "lapis": 0x1e4ca8, "diamond": 0x4aedd9, "emerald": 0x17c544,
+    "sparkstone": 0xfc0a0a, "lapis": 0x1e4ca8, "diamond": 0x4aedd9, "emerald": 0x17c544,
 ]
 
 @inline(__always) func colorRGB(_ name: String?, _ def: Int) -> Int {
@@ -198,11 +198,11 @@ func registerPainters1() {
     p("frosted_ice") { t in t.blotch(0x9cc2f2, 0.08, 4); crack(t, 0xc8e0fa) }
 
     // --- nether ---
-    p("netherrack") { t in t.blotch(C_NETHER, 0.18, 3); t.speckle(shade(C_NETHER, 1.4), 10); t.speckle(shade(C_NETHER, 0.6), 12) }
+    p("ashrock") { t in t.blotch(C_NETHER, 0.18, 3); t.speckle(shade(C_NETHER, 1.4), 10); t.speckle(shade(C_NETHER, 0.6), 12) }
     p("crimson_nylium") { t in t.blotch(0x892c2c, 0.14, 3); t.speckle(0xc23535, 14) }
-    p("crimson_nylium_side") { t in paintInto(t, "netherrack"); for x in 0..<16 { t.set(x, 0, 0x9c3030) } }
+    p("crimson_nylium_side") { t in paintInto(t, "ashrock"); for x in 0..<16 { t.set(x, 0, 0x9c3030) } }
     p("warped_nylium") { t in t.blotch(0x167e86, 0.14, 3); t.speckle(0x2ab5a5, 14) }
-    p("warped_nylium_side") { t in paintInto(t, "netherrack"); for x in 0..<16 { t.set(x, 0, 0x1d8b8b) } }
+    p("warped_nylium_side") { t in paintInto(t, "ashrock"); for x in 0..<16 { t.set(x, 0, 0x1d8b8b) } }
     p("soul_sand") { t in t.blotch(0x514033, 0.13, 3); t.set(4, 5, 0x2e2017); t.set(5, 5, 0x2e2017); t.set(10, 9, 0x2e2017); t.set(11, 9, 0x2e2017); t.set(11, 10, 0x2e2017) }
     p("soul_soil") { t in t.blotch(0x4b3a2e, 0.14, 3); t.speckle(0x39291f, 14) }
     p("magma_block") { t in
@@ -212,8 +212,8 @@ func registerPainters1() {
             t.set(x, y, 0xff7b1d); t.set(x + 1, y, 0xe8521a); t.set(x, y + 1, 0xc23a10)
         }
     }
-    p("glowstone") { t in t.blotch(0xab7b4a, 0.12, 3); t.speckle(0xffd98c, 26); t.speckle(0xfcbd5d, 16) }
-    p("shroomlight") { t in t.blotch(0xf09a5a, 0.1, 3); t.speckle(0xffd6a0, 18) }
+    p("lumenstone") { t in t.blotch(0xab7b4a, 0.12, 3); t.speckle(0xffd98c, 26); t.speckle(0xfcbd5d, 16) }
+    p("glowcap") { t in t.blotch(0xf09a5a, 0.1, 3); t.speckle(0xffd6a0, 18) }
     p("nether_wart_block") { t in t.blotch(0x71080a, 0.14, 2); t.speckle(0xa61415, 16) }
     p("warped_wart_block") { t in t.blotch(0x167b80, 0.14, 2); t.speckle(0x14a8a8, 16) }
     p("basalt_side") { t in t.blotch(0x4e4e56, 0.1); for x in [0, 5, 10, 15] { t.vline(x, 0, 15, shade(0x4e4e56, 0.78)) } }
@@ -245,9 +245,9 @@ func registerPainters1() {
     // --- end ---
     p("end_stone") { t in t.blotch(C_END, 0.09, 3); t.speckle(shade(C_END, 0.85), 18) }
     p("end_stone_bricks") { t in t.bricks(C_END, shade(C_END, 0.82), 8, 4) }
-    p("purpur_block") { t in t.blotch(0xa97aa9, 0.09, 3); t.speckle(0xbf94bf, 10) }
-    p("purpur_pillar") { t in t.blotch(0xaa7caa, 0.07); for x in [0, 15] { t.vline(x, 0, 15, shade(0xaa7caa, 0.85)) } }
-    p("purpur_pillar_top") { t in t.blotch(0xaa7caa, 0.06); t.border(shade(0xaa7caa, 0.85)); t.rect(4, 4, 11, 11, shade(0xaa7caa, 0.92)) }
+    p("violite_block") { t in t.blotch(0xa97aa9, 0.09, 3); t.speckle(0xbf94bf, 10) }
+    p("violite_pillar") { t in t.blotch(0xaa7caa, 0.07); for x in [0, 15] { t.vline(x, 0, 15, shade(0xaa7caa, 0.85)) } }
+    p("violite_pillar_top") { t in t.blotch(0xaa7caa, 0.06); t.border(shade(0xaa7caa, 0.85)); t.rect(4, 4, 11, 11, shade(0xaa7caa, 0.92)) }
     p("end_portal_frame_top") { t in t.blotch(0x3a5e52, 0.08); t.border(shade(C_END, 0.9)); t.disc(7.5, 7.5, 3, 0x2a443c) }
     p("end_portal_frame_side") { t in t.blotch(C_END, 0.08); t.hline(0, 0, 15, 0x3a5e52); t.hline(1, 0, 15, 0x466e60) }
     p("end_portal") { t in t.fill(0x000000); t.speckle(0x4a3a6a, 20); t.speckle(0x8a7ab0, 10); t.speckle(0xc8c0e8, 5) }
@@ -354,14 +354,14 @@ func registerPainters1() {
         t.rect(0, 0, 16, 2, 0xe8e4dc)                      // pillow edge
         t.hline(6, 0, 15, shade(c, 0.7))
     }
-    rp("^(\\w+?)_shulker_box$") { t, m in
+    rp("^(\\w+?)_lurker_box$") { t, m in
         let c = colorRGB(m[1], 0x976797)
         t.blotch(c, 0.06, 4)
         t.border(shade(c, 0.78))
         t.hline(7, 1, 14, shade(c, 0.85))
         t.hline(8, 1, 14, shade(c, 1.12))
     }
-    p("shulker_box") { t in t.blotch(0x976797, 0.06, 4); t.border(shade(0x976797, 0.78)); t.hline(7, 1, 14, shade(0x976797, 0.85)) }
+    p("lurker_box") { t in t.blotch(0x976797, 0.06, 4); t.border(shade(0x976797, 0.78)); t.hline(7, 1, 14, shade(0x976797, 0.85)) }
 
     // --- woods ---
     rp("^(?:stripped_)?(\\w+?)_(?:log|stem|hyphae|wood)(_top)?$") { t, m in
@@ -438,8 +438,8 @@ func registerPainters1() {
             t.oreBlobs(oc, many ? 6 : 4)
         }
     }
-    p("nether_gold_ore") { t in paintInto(t, "netherrack"); t.oreBlobs(0xfcee4b, 5) }
-    p("nether_quartz_ore") { t in paintInto(t, "netherrack"); t.oreBlobs(0xe8e0d8, 5) }
+    p("nether_gold_ore") { t in paintInto(t, "ashrock"); t.oreBlobs(0xfcee4b, 5) }
+    p("nether_quartz_ore") { t in paintInto(t, "ashrock"); t.oreBlobs(0xe8e0d8, 5) }
     rp("^raw_(\\w+?)_block$") { t, m in
         let c = m[1] == "iron" ? 0xa88a72 : m[1] == "copper" ? 0xa05a3c : 0xddaa3e
         t.blotch(c, 0.13, 3)
@@ -450,9 +450,9 @@ func registerPainters1() {
     p("gold_block") { t in metalBlock(t, 0xf6cf3c) }
     p("diamond_block") { t in metalBlock(t, 0x62e5dc) }
     p("emerald_block") { t in metalBlock(t, 0x2cc24e) }
-    p("netherite_block") { t in t.blotch(0x42383b, 0.09, 3); t.border(shade(0x42383b, 0.8)) }
+    p("darksteel_block") { t in t.blotch(0x42383b, 0.09, 3); t.border(shade(0x42383b, 0.8)) }
     p("lapis_block") { t in t.blotch(0x1f4ba8, 0.1, 3); t.speckle(0x2c5fc4, 10); t.speckle(0xc4a73c, 4) }
-    p("redstone_block") { t in t.blotch(0xa50d0d, 0.12, 3); t.speckle(0xd42020, 10) }
+    p("sparkstone_block") { t in t.blotch(0xa50d0d, 0.12, 3); t.speckle(0xd42020, 10) }
     p("amethyst_block") { t in t.blotch(0x8662bf, 0.1, 3); t.speckle(0xa886d8, 12); t.speckle(0x6a4a9e, 8) }
     p("budding_amethyst") { t in
         t.blotch(0x8662bf, 0.1, 3)
@@ -482,8 +482,8 @@ func registerPainters1() {
     }
     p("lightning_rod") { t in t.clearAlpha(); t.vline(7, 2, 15, 0xc06843); t.vline(8, 2, 15, 0xa05a3c); t.rect(6, 0, 9, 2, 0xc87a52) }
 
-    // --- prismarine / ocean ---
-    p("prismarine") { t in
+    // --- seaglass / ocean ---
+    p("seaglass") { t in
         t.blotch(0x6fa495, 0.1, 3)
         var y = 0
         while y < 16 {
@@ -495,8 +495,8 @@ func registerPainters1() {
             y += 4
         }
     }
-    p("prismarine_bricks") { t in t.bricks(0x84c0b0, shade(0x84c0b0, 0.75), 4, 4) }
-    p("dark_prismarine") { t in t.bricks(0x356456, shade(0x356456, 0.7), 4, 4) }
+    p("seaglass_bricks") { t in t.bricks(0x84c0b0, shade(0x84c0b0, 0.75), 4, 4) }
+    p("dark_seaglass") { t in t.bricks(0x356456, shade(0x356456, 0.7), 4, 4) }
     p("sea_lantern") { t in t.blotch(0xcdebe2, 0.06, 3); t.border(0xa8cfc5); t.rect(5, 5, 10, 10, 0xe8fffa); t.rect(7, 7, 8, 8, 0xf8fffe) }
     p("sponge") { t in t.blotch(0xc4c14b, 0.1, 2); t.speckle(0x8f8d36, 18); t.set(4, 4, 0x6e6c2a); t.set(10, 7, 0x6e6c2a); t.set(6, 12, 0x6e6c2a) }
     p("wet_sponge") { t in t.blotch(0xa8a73e, 0.1, 2); t.speckle(0x7a7830, 18); t.speckle(0x5a6ab0, 6) }

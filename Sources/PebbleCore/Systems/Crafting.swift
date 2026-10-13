@@ -196,7 +196,7 @@ public struct AnvilResult {
 
 private let REPAIR_MATS: [String: String] = [
     "leather": "leather", "chainmail": "iron_ingot", "iron": "iron_ingot", "golden": "gold_ingot",
-    "diamond": "diamond", "netherite": "netherite_ingot", "turtle": "scute", "elytra": "phantom_membrane",
+    "diamond": "diamond", "darksteel": "darksteel_ingot", "turtle": "scute", "wingsuit": "phantom_membrane",
     "wooden": "oak_planks", "stone": "cobblestone",
 ]
 

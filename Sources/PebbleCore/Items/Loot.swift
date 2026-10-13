@@ -1,4 +1,4 @@
-// Loot tables — Structure chests, fishing, piglin
+// Loot tables — Structure chests, fishing, snouter
 // bartering, archaeology, sniffer digging. Mob drops live with mob defs.
 //
 // RNG order is contract: pickWeighted consumes one float even for 'nothing';
@@ -129,7 +129,7 @@ private let registerAllLootTablesOnce: Void = {
         ]),
         pool(1, 4, [
             E("iron_ingot", 10, 1, 4), E("gold_ingot", 5, 1, 4), E("bread", 20), E("wheat", 20, 1, 4),
-            E("bucket", 10), E("redstone", 15, 1, 4), E("coal", 15, 1, 4), E("melon_seeds", 10, 2, 4),
+            E("bucket", 10), E("sparkstone", 15, 1, 4), E("coal", 15, 1, 4), E("melon_seeds", 10, 2, 4),
             E("pumpkin_seeds", 10, 2, 4), E("beetroot_seeds", 10, 2, 4),
         ]),
         pool(3, 3, [E("bone", 10, 1, 8), E("gunpowder", 10, 1, 8), E("rotten_flesh", 10, 1, 8), E("string", 10, 1, 8)])
@@ -141,7 +141,7 @@ private let registerAllLootTablesOnce: Void = {
             E("nothing", 5),
         ]),
         pool(2, 4, [
-            E("iron_ingot", 10, 1, 5), E("gold_ingot", 5, 1, 3), E("redstone", 5, 4, 9), E("lapis_lazuli", 5, 4, 9),
+            E("iron_ingot", 10, 1, 5), E("gold_ingot", 5, 1, 3), E("sparkstone", 5, 4, 9), E("lapis_lazuli", 5, 4, 9),
             E("diamond", 3, 1, 2), E("coal", 10, 3, 8), E("bread", 15, 1, 3), E("melon_seeds", 10, 2, 4),
             E("pumpkin_seeds", 10, 2, 4), E("beetroot_seeds", 10, 2, 4),
         ]),
@@ -149,14 +149,14 @@ private let registerAllLootTablesOnce: Void = {
     )
     table("stronghold_corridor",
         pool(2, 3, [
-            E("ender_pearl", 10), E("diamond", 3, 1, 3), E("iron_ingot", 10, 1, 5), E("gold_ingot", 5, 1, 3),
-            E("redstone", 5, 4, 9), E("bread", 15, 1, 3), E("apple", 15, 1, 3), E("iron_pickaxe", 5),
+            E("rift_pearl", 10), E("diamond", 3, 1, 3), E("iron_ingot", 10, 1, 5), E("gold_ingot", 5, 1, 3),
+            E("sparkstone", 5, 4, 9), E("bread", 15, 1, 3), E("apple", 15, 1, 3), E("iron_pickaxe", 5),
             E("book", 6, enchant: (20, 39)),
         ])
     )
     table("stronghold_library",
         pool(2, 10, [
-            E("book", 20, 1, 3), E("paper", 20, 2, 7), E("compass", 5), E("ender_pearl", 5),
+            E("book", 20, 1, 3), E("paper", 20, 2, 7), E("compass", 5), E("rift_pearl", 5),
             E("book", 10, enchant: (30, 39)),
         ])
     )
@@ -197,11 +197,11 @@ private let registerAllLootTablesOnce: Void = {
             E("enchanted_golden_apple", 2), E("music_disc_descent", 5),
             E("name_tag", 20), E("chainmail_chestplate", 10),
             E("diamond_hoe", 15), E("bucket", 10),
-            E("book", 10, enchant: (20, 39)), E("totem_of_undying", 3),
+            E("book", 10, enchant: (20, 39)), E("lifecharm", 3),
         ]),
         pool(1, 4, [
             E("iron_ingot", 10, 1, 4), E("gold_ingot", 5, 1, 4), E("bread", 20), E("wheat", 20, 1, 4),
-            E("redstone", 15, 1, 4), E("coal", 15, 1, 4), E("melon_seeds", 10, 2, 4), E("pumpkin_seeds", 10, 2, 4),
+            E("sparkstone", 15, 1, 4), E("coal", 15, 1, 4), E("melon_seeds", 10, 2, 4), E("pumpkin_seeds", 10, 2, 4),
         ])
     )
     table("shipwreck_treasure",
@@ -223,7 +223,7 @@ private let registerAllLootTablesOnce: Void = {
         pool(1, 1, [E("heart_of_the_sea", 1)]),
         pool(5, 8, [
             E("iron_ingot", 20, 1, 4), E("gold_ingot", 10, 1, 4), E("tnt", 5, 1, 2), E("emerald", 5, 4, 8),
-            E("diamond", 5, 1, 2), E("prismarine_crystals", 5, 1, 5), E("leather_chestplate", 1), E("iron_sword", 1),
+            E("diamond", 5, 1, 2), E("seaglass_crystals", 5, 1, 5), E("leather_chestplate", 1), E("iron_sword", 1),
             E("cooked_cod", 10, 2, 4), E("cooked_salmon", 10, 2, 4),
         ])
     )
@@ -261,19 +261,19 @@ private let registerAllLootTablesOnce: Void = {
     )
     table("bastion_treasure",
         pool(3, 4, [
-            E("netherite_ingot", 15), E("ancient_debris", 10, min: 1, max: 2),
-            E("netherite_scrap", 8), E("gold_block", 12, 2, 5), E("gold_ingot", 16, 3, 9),
+            E("darksteel_ingot", 15), E("ancient_debris", 10, min: 1, max: 2),
+            E("darksteel_scrap", 8), E("gold_block", 12, 2, 5), E("gold_ingot", 16, 3, 9),
             E("iron_block", 10, 2, 5), E("iron_ingot", 16, 3, 9), E("diamond", 10, 2, 6),
             E("diamond_sword", 6, enchant: (15, 35)), E("diamond_chestplate", 6, enchant: (15, 35)),
         ])
     )
     table("bastion_other",
         pool(2, 4, [
-            E("netherite_upgrade", 6), E("snout_armor_trim", 4),
+            E("darksteel_upgrade", 6), E("snout_armor_trim", 4),
             E("gold_ingot", 20, 1, 6), E("iron_ingot", 20, 1, 6), E("golden_sword", 10), E("golden_boots", 8, 1, 1),
             E("crossbow", 12), E("gold_nugget", 20, 2, 8), E("string", 15, 1, 6), E("arrow", 15, 5, 17),
             E("cooked_porkchop", 15, 1, 5), E("golden_carrot", 8, 6, 17), E("gilded_blackstone", 10, 1, 5),
-            E("ender_pearl", 10, 2, 4), E("obsidian", 10, 4, 6), E("chain", 12, 2, 10),
+            E("rift_pearl", 10, 2, 4), E("obsidian", 10, 4, 6), E("chain", 12, 2, 10),
             E("magma_cream", 10, 2, 6), E("golden_apple", 8), E("spectral_arrow", 12, 10, 22),
         ])
     )
@@ -298,11 +298,11 @@ private let registerAllLootTablesOnce: Void = {
             E("enchanted_golden_apple", 2), E("music_disc_descent", 4),
             E("echo_shard", 6, min: 1, max: 3), E("ward_armor_trim", 2),
             E("silence_armor_trim", 1), E("name_tag", 6),
-            E("book", 6, enchant: (30, 39)), E("sculk_sensor", 5, 1, 3), E("sculk_catalyst", 4, 1, 2),
+            E("book", 6, enchant: (30, 39)), E("hush_sensor", 5, 1, 3), E("hush_catalyst", 4, 1, 2),
             E("experience_bottle", 6, 1, 3), E("glow_berries", 5, 1, 15), E("ice", 5, 1, 6), E("soul_torch", 5, 1, 15),
             E("bone", 5, 1, 15), E("coal", 7, 6, 15), E("candle", 5, 1, 4), E("amethyst_shard", 7, 1, 15),
             E("diamond_hoe", 4, enchant: (30, 50)), E("diamond_leggings", 2, enchant: (30, 50)),
-            E("lead", 5, 1, 1), E("saddle", 5), E("compass", 5, 1, 2), E("sculk", 6, 4, 10),
+            E("lead", 5, 1, 1), E("saddle", 5), E("compass", 5, 1, 2), E("hush", 6, 4, 10),
             E("potion", 5, potion: "strong_regeneration"),
         ])
     )
@@ -389,7 +389,7 @@ private let registerAllLootTablesOnce: Void = {
     )
     table("village_temple",
         pool(3, 8, [
-            E("redstone", 2, 1, 4), E("bread", 7, 1, 4), E("rotten_flesh", 7, 1, 4), E("lapis_lazuli", 1, 1, 4),
+            E("sparkstone", 2, 1, 4), E("bread", 7, 1, 4), E("rotten_flesh", 7, 1, 4), E("lapis_lazuli", 1, 1, 4),
             E("gold_ingot", 1, 1, 4), E("emerald", 1, 1, 4),
         ])
     )
@@ -413,14 +413,14 @@ private let registerAllLootTablesOnce: Void = {
         ])
     )
 
-    // piglin bartering
-    table("piglin_bartering",
+    // snouter bartering
+    table("snouter_bartering",
         pool(1, 1, [
             E("book", 5, enchant: (21, 21)), E("iron_boots", 8),
             E("potion", 8, potion: "fire_resistance"),
             E("splash_potion", 8, potion: "fire_resistance"),
             E("potion", 10, potion: "water"),
-            E("iron_nugget", 10, 10, 36), E("ender_pearl", 10, 2, 4),
+            E("iron_nugget", 10, 10, 36), E("rift_pearl", 10, 2, 4),
             E("string", 20, 3, 9), E("quartz", 20, 5, 12), E("obsidian", 40), E("crying_obsidian", 40, 1, 3),
             E("fire_charge", 40), E("leather", 40, 2, 4), E("soul_sand", 40, 2, 8), E("nether_brick", 40, 2, 8),
             E("spectral_arrow", 40, 6, 12), E("gravel", 40, 8, 16), E("blackstone", 40, 8, 16),

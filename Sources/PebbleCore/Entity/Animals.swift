@@ -84,13 +84,13 @@ open class Cow: Animal {
     }
 }
 
-public final class Mooshroom: Cow {
-    public override var type: String { "mooshroom" }
+public final class Mushcow: Cow {
+    public override var type: String { "mushcow" }
     public override func interact(_ player: Entity, _ stack: ItemStack?) -> Bool {
         let name = stack.map { itemDef($0.id).name }
         if name == "bowl" && !baby {
             (player as? LivingEntity)?.replaceHeld(ItemStack(iid("mushroom_stew"), 1))
-            world.hooks.playSound("entity.mooshroom.milk", x, y, z, 1, 1)
+            world.hooks.playSound("entity.mushcow.milk", x, y, z, 1, 1)
             return true
         }
         if name == "shears" && !baby {
@@ -100,7 +100,7 @@ public final class Mooshroom: Cow {
                 remove()
                 for _ in 0..<5 { spawnItem(world, x, y + 1, z, ItemStack(iid("red_mushroom"), 1)) }
                 (player as? LivingEntity)?.damageHeld(1)
-                world.hooks.playSound("entity.mooshroom.shear", x, y, z, 1, 1)
+                world.hooks.playSound("entity.mushcow.shear", x, y, z, 1, 1)
             }
             return true
         }

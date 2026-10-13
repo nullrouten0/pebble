@@ -88,15 +88,15 @@ func registerAllModels() {
     // Equipped layer drawn over the third-person player model.  This remains a
     // separate model so first-person/entity rendering and saved entity types do
     // not change.
-    M2("elytra", MobModel(
+    M2("wingsuit", MobModel(
         texW: 64, texH: 32,
         parts: [
             part("wingR", (-2, 23, 2), box(-10, -20, 0, 10, 20, 2, 22, 0)),
             part("wingL", (2, 23, 2), box(0, -20, 0, 10, 20, 2, 22, 0)),
         ],
-        anim: "elytra", scale: 1,
+        anim: "wingsuit", scale: 1,
         paint: { s in
-            // The vanilla/Faithful elytra unwrap begins at U=22; U=0 is
+            // The vanilla/Faithful wingsuit unwrap begins at U=22; U=0 is
             // transparent padding, so using the generic box origin left the
             // equipped layer effectively invisible even with valid geometry.
             s.box(22, 0, 10, 20, 2, 0x7a6c74, 0.08)
@@ -200,7 +200,7 @@ func registerAllModels() {
         s.box(40, 16, 2, 12, 2, 0xb0c0c0)
         s.box(0, 16, 2, 12, 2, 0xb0c0c0)
     }, packTex: ["entity/skeleton/stray.png", "entity/skeleton/stray_overlay.png"]))
-    M2("wither_skeleton", skeletonModel({ s in
+    M2("blight_skeleton", skeletonModel({ s in
         s.box(0, 0, 8, 8, 8, 0x2c2c2c)
         s.eyes(0, 0, 8, 1, 4, 5, 2, 2, 0x0a0a0a, 0x000000)
         s.box(16, 16, 8, 12, 4, 0x222222)
@@ -208,8 +208,8 @@ func registerAllModels() {
         s.box(0, 16, 2, 12, 2, 0x2c2c2c)
     }, scale: 1.2, packTex: ["entity/skeleton/wither_skeleton.png"]))
 
-    // CREEPER
-    M2("creeper", MobModel(
+    // FIZZLER
+    M2("fizzler", MobModel(
         texW: 64, texH: 32,
         parts: [
             part("head", (0, 18, 0), box(-4, 0, -4, 8, 8, 8, 0, 0)),
@@ -219,7 +219,7 @@ func registerAllModels() {
             part("legBR", (-2, 6, 2), box(-2, -6, 0, 4, 6, 4, 0, 16)),
             part("legBL", (2, 6, 2), box(-2, -6, 0, 4, 6, 4, 0, 16)),
         ],
-        anim: "creeper", scale: 1,
+        anim: "fizzler", scale: 1,
         paint: { s in
             let green = 0x4eaa3c
             s.box(0, 0, 8, 8, 8, green, 0.25)
@@ -257,7 +257,7 @@ func registerAllModels() {
     M2("spider", spiderModel(0x352a24, 0xc83a3a, 1, ["entity/spider/spider.png", "entity/spider/spider_eyes.png"]))
     M2("cave_spider", spiderModel(0x0c4c44, 0xc83a3a, 0.7, ["entity/spider/cave_spider.png", "entity/spider/spider_eyes.png"]))
 
-    // FARM ANIMALS — pig/cow/mooshroom/sheep/chicken stay registered by
+    // FARM ANIMALS — pig/cow/mushcow/sheep/chicken stay registered by
     // ensureModels() (identical pixels); rabbit/goat and everything below are new
     M2("rabbit", MobModel(
         texW: 64, texH: 32,
@@ -529,8 +529,8 @@ func quadModel2(
 // the frozen baseline: nether, end, water, bosses, ambient mobs
 // ===========================================================================
 private func registerModels2() {
-    // ENDERMAN
-    M2("enderman", MobModel(
+    // RIFTWALKER
+    M2("riftwalker", MobModel(
         texW: 64, texH: 32,
         parts: [
             part("head", (0, 38, 0), box(-4, 0, -4, 8, 8, 8, 0, 0)),
@@ -549,7 +549,7 @@ private func registerModels2() {
             s.box(32, 16, 8, 12, 4, 0x101010, 0.15)
             s.box(56, 0, 2, 28, 2, 0x101010, 0.15)
         }, packTex: ["entity/enderman/enderman.png", "entity/enderman/enderman_eyes.png"]))
-    M2("endermite", MobModel(
+    M2("riftmite", MobModel(
         texW: 64, texH: 32,
         parts: [
             part("body", (0, 2, 0), box(-2, 0, -3, 4, 3, 2, 0, 0), box(-1.5, 0, -1, 3, 4, 4, 0, 5), box(-1, 0, 3, 2, 3, 2, 0, 14)),
@@ -572,14 +572,14 @@ private func registerModels2() {
             s.box(0, 12, 3, 2, 4, 0x9a9aa2, 0.15)
             s.box(0, 19, 2, 1, 2, 0x7a7a82, 0.15)
         }, packTex: ["entity/silverfish.png"]))
-    M2("shulker", MobModel(
+    M2("lurker", MobModel(
         texW: 64, texH: 64,
         parts: [
             part("lid", (0, 0, 0), box(-8, 4, -8, 16, 12, 16, 0, 0)),
             part("base", (0, 0, 0), box(-8, 0, -8, 16, 8, 16, 0, 28)),
             part("head", (0, 6, 0), box(-3, 0, -3, 6, 6, 6, 0, 52)),
         ],
-        anim: "shulker", scale: 1,
+        anim: "lurker", scale: 1,
         paint: { s in
             s.box(0, 0, 16, 12, 16, 0x976797, 0.1)
             s.box(0, 28, 16, 8, 16, 0x8a5c8a, 0.1)
@@ -619,8 +619,8 @@ private func registerModels2() {
         s.fill(16, 14, 8, 5, 0xc8e8f0, 0.08)
     }
 
-    // ILLAGERS
-    func illagerModel(_ robe: Int, _ skinTone: Int = 0x9a9a8a, _ packTex: [String] = []) -> MobModel {
+    // MARAUDERS
+    func marauderModel(_ robe: Int, _ skinTone: Int = 0x9a9a8a, _ packTex: [String] = []) -> MobModel {
         MobModel(
             texW: 64, texH: 64,
             parts: [
@@ -631,7 +631,7 @@ private func registerModels2() {
                 part("legR", (-2, 12, 0), box(-2, -12, -2, 4, 12, 4, 0, 22)),
                 part("legL", (2, 12, 0), box(-2, -12, -2, 4, 12, 4, 0, 22)),
             ],
-            anim: "illager", scale: 1,
+            anim: "marauder", scale: 1,
             paint: { s in
                 s.box(0, 0, 8, 10, 8, skinTone, 0.1)
                 s.eyes(0, 0, 8, 1, 4, 5, 2, 1, 0xffffff, 0x3c5a3c)
@@ -642,9 +642,9 @@ private func registerModels2() {
                 s.box(0, 22, 4, 12, 4, 0x3c3c44, 0.1)
             }, packTex: packTex)
     }
-    M2("pillager", illagerModel(0x4c4438, 0x9a9a8a, ["entity/illager/pillager.png"]))
-    M2("vindicator", illagerModel(0x3c4448, 0x9a9a8a, ["entity/illager/vindicator.png"]))
-    M2("evoker", illagerModel(0x3a3a44, 0xb8b8a8, ["entity/illager/evoker.png"]))
+    M2("pillager", marauderModel(0x4c4438, 0x9a9a8a, ["entity/illager/pillager.png"]))
+    M2("vindicator", marauderModel(0x3c4448, 0x9a9a8a, ["entity/illager/vindicator.png"]))
+    M2("conjurer", marauderModel(0x3a3a44, 0xb8b8a8, ["entity/illager/evoker.png"]))
     // vanilla ravager rig (128×128) — rotated two-cube body, mouth, neck, horns
     M2("ravager", MobModel(
         texW: 128, texH: 128,
@@ -676,13 +676,13 @@ private func registerModels2() {
         },
         packTex: ["entity/illager/ravager.png"]))
     M2("witch", {
-        let base = illagerModel(0x2c2438, 0xb89a8a)
+        let base = marauderModel(0x2c2438, 0xb89a8a)
         var parts = base.parts
         parts.append(ModelPart(name: "hat", pivot: (0, 34, 0), boxes: [
             box(-5, 0, -5, 10, 2, 10, 0, 64), box(-3.5, 2, -3, 7, 4, 7, 0, 76),
             box(-2, 6, -1.5, 4, 4, 4, 0, 87), box(-0.5, 10, 0, 1, 2, 1, 0, 95),
         ]))
-        return MobModel(texW: 64, texH: 128, parts: parts, anim: "illager", scale: 1,
+        return MobModel(texW: 64, texH: 128, parts: parts, anim: "marauder", scale: 1,
                         paint: { s in
                             s.box(0, 0, 8, 10, 8, 0xb89a8a, 0.1)
                             s.eyes(0, 0, 8, 1, 4, 5, 2, 1, 0xffffff, 0x3c5a3c)
@@ -743,9 +743,9 @@ private func registerModels2() {
         }, packTex: ["entity/snow_golem.png"]))
 
     // NETHER MOBS
-    // vanilla piglin rig (64×64): 10-wide head + snout + tilted ears + a
-    // grow-0.25 clothing layer; 1.20 zombified piglins use the same rig
-    func piglinModel(_ packTex: [String], _ skin: Int, _ cloth: Int) -> MobModel {
+    // vanilla snouter rig (64×64): 10-wide head + snout + tilted ears + a
+    // grow-0.25 clothing layer; 1.20 rotting snouters use the same rig
+    func snouterModel(_ packTex: [String], _ skin: Int, _ cloth: Int) -> MobModel {
         MobModel(
             texW: 64, texH: 64,
             parts: [
@@ -776,11 +776,11 @@ private func registerModels2() {
             },
             packTex: packTex)
     }
-    M2("piglin", piglinModel(["entity/piglin/piglin.png"], 0xe8a4a4, 0x5a4a3a))
-    M2("piglin_brute", piglinModel(["entity/piglin/piglin_brute.png"], 0xe8a4a4, 0x3a3026))
-    M2("zombified_piglin", piglinModel(["entity/piglin/zombified_piglin.png"], 0xd89494, 0x8a5c4c))
-    // vanilla hoglin rig (128×64) — tusked head pitched 50°, maned body
-    let hoglinModel = MobModel(
+    M2("snouter", snouterModel(["entity/piglin/piglin.png"], 0xe8a4a4, 0x5a4a3a))
+    M2("snouter_brute", snouterModel(["entity/piglin/piglin_brute.png"], 0xe8a4a4, 0x3a3026))
+    M2("rotting_snouter", snouterModel(["entity/piglin/zombified_piglin.png"], 0xd89494, 0x8a5c4c))
+    // vanilla tusker rig (128×64) — tusked head pitched 50°, maned body
+    let tuskerModel = MobModel(
         texW: 128, texH: 64,
         parts: [
             rpart("head", (0, 22, -5), (-0.8727, 0, 0),
@@ -796,10 +796,10 @@ private func registerModels2() {
             part("legBL", (5.5, 8, 15.5), box(-2.5, -8, -2.5, 5, 11, 5, 0, 45)),
         ],
         anim: "quad", scale: 1,
-        paint: hoglinPaint, packTex: ["entity/hoglin/hoglin.png"])
-    M2("hoglin", hoglinModel)
+        paint: tuskerPaint, packTex: ["entity/hoglin/hoglin.png"])
+    M2("tusker", tuskerModel)
 
-    M2("blaze", MobModel(
+    M2("cinder", MobModel(
         texW: 64, texH: 32,
         parts: {
             var parts: [ModelPart] = [part("head", (0, 12, 0), box(-4, 0, -4, 8, 8, 8, 0, 0))]
@@ -808,13 +808,13 @@ private func registerModels2() {
             }
             return parts
         }(),
-        anim: "blaze", scale: 1,
+        anim: "cinder", scale: 1,
         paint: { s in
             s.box(0, 0, 8, 8, 8, 0xd8a02c, 0.18)
             s.eyes(0, 0, 8, 1, 4, 5, 2, 1, 0x2c1c08, 0x000000)
             s.box(0, 16, 2, 8, 2, 0xe8c23c, 0.2)
         }, packTex: ["entity/blaze.png"]))
-    M2("ghast", MobModel(
+    M2("wailer", MobModel(
         texW: 64, texH: 32,
         parts: {
             // sized for render scale 4.5: body fills the 4-block hitbox from the feet
@@ -826,7 +826,7 @@ private func registerModels2() {
             }
             return parts
         }(),
-        anim: "ghast", scale: 4.5,
+        anim: "wailer", scale: 4.5,
         paint: { s in
             s.box(0, 0, 16, 16, 16, 0xe8e8e8, 0.06)
             // closed eyes + mouth on front
@@ -1308,11 +1308,11 @@ private func registerModels2() {
         },
         packTex: ["entity/warden/warden.png"]))
 
-    // DRAGON & WITHER
-    // vanilla ender dragon rig (256×256) — wing membranes are 56×56 planes
+    // DRAGON & BLIGHT
+    // vanilla rift dragon rig (256×256) — wing membranes are 56×56 planes
     // whose unwrap starts at negative u (cancelled by +d); tips are folded
     // into the wing parts so the whole 112-unit span flaps as one
-    M2("ender_dragon", MobModel(
+    M2("rift_dragon", MobModel(
         texW: 256, texH: 256,
         parts: [
             part("head", (0, 20, -34),
@@ -1367,7 +1367,7 @@ private func registerModels2() {
             s.box(48, 0, 2, 4, 6, 0x3a3442, 0.1)
         },
         packTex: ["entity/enderdragon/dragon.png"]))
-    M2("wither", MobModel(
+    M2("blight", MobModel(
         texW: 64, texH: 64,
         parts: [
             part("head", (0, 28, 0), box(-4, 0, -4, 8, 8, 8, 0, 0)),
@@ -1375,7 +1375,7 @@ private func registerModels2() {
             part("headL", (8, 26, 0), box(-3, 0, -3, 6, 6, 6, 32, 0)),
             part("body", (0, 28, 0), box(-10, -3, -1.5, 20, 3, 3, 0, 16), box(-1.5, -13, -1.5, 3, 10, 3, 0, 22), box(-1.5, -19, -1.5, 3, 6, 3, 12, 22)),
         ],
-        anim: "wither", scale: 1.55,
+        anim: "blight", scale: 1.55,
         paint: { s in
             let c = 0x181818
             s.box(0, 0, 8, 8, 8, c, 0.16)
@@ -1449,7 +1449,7 @@ private func registerModels2() {
     // vanilla end crystal art (32×32): glass shell (0,0), core (0,16); the
     // base samples the core region too (vanilla draws a real bedrock block
     // there, which entity art can't express)
-    M2("end_crystal_model", MobModel(
+    M2("rift_crystal_model", MobModel(
         texW: 64, texH: 32,
         parts: [
             part("base", (0, 0, 0), box(-4, 0, -4, 8, 3, 8, 0, 16)),
@@ -1478,14 +1478,14 @@ private func registerModels2() {
         },
         packTex: ["entity/minecart.png"]))
 
-    // clones that tweak a base model (ocelot, zoglin, elder_guardian, goat_kid)
+    // clones that tweak a base model (ocelot, ghoultusk, elder_guardian, goat_kid)
     let cat = MODELS["cat"]!
     M2("ocelot", MobModel(texW: cat.texW, texH: cat.texH, parts: cat.parts, anim: cat.anim, scale: cat.scale,
                           paint: { s in catPaint(s); s.fill(20, 0, 4, 4, 0xc8a23c, 0.3) },
                           packTex: ["entity/cat/ocelot.png"]))
-    let hog = MODELS["hoglin"]!
-    M2("zoglin", MobModel(texW: hog.texW, texH: hog.texH, parts: hog.parts, anim: hog.anim, scale: hog.scale,
-                          paint: { s in hoglinPaint(s); s.fill(0, 0, 23, 15, 0x7aa05c, 0.25) },
+    let hog = MODELS["tusker"]!
+    M2("ghoultusk", MobModel(texW: hog.texW, texH: hog.texH, parts: hog.parts, anim: hog.anim, scale: hog.scale,
+                          paint: { s in tuskerPaint(s); s.fill(0, 0, 23, 15, 0x7aa05c, 0.25) },
                           packTex: ["entity/hoglin/zoglin.png"]))
     let guardian = MODELS["guardian"]!
     M2("elder_guardian", MobModel(texW: guardian.texW, texH: guardian.texH, parts: guardian.parts, anim: guardian.anim, scale: 2.3,
@@ -1495,7 +1495,7 @@ private func registerModels2() {
     M2("goat_kid", MobModel(texW: goat.texW, texH: goat.texH, parts: goat.parts, anim: goat.anim, scale: 0.5, paint: goat.paint))
 }
 
-private func hoglinPaint(_ s: EntitySkin) {
+private func tuskerPaint(_ s: EntitySkin) {
     let c = 0xb87a5c
     s.box(0, 0, 14, 6, 9, c, 0.14)
     s.px(9 + 2, 9 + 2, 0x1c1c1c); s.px(9 + 11, 9 + 2, 0x1c1c1c)

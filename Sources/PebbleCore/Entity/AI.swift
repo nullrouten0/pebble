@@ -324,7 +324,7 @@ open class Mob: LivingEntity {
 
     open override func tick() { mobTick() }
 
-    /// the Mob-level tick body — exposed so PiglinBrute/Zoglin can mimic the
+    /// the Mob-level tick body — exposed so SnouterBrute/Ghoultusk can mimic the
     /// baseline `Monster.prototype.tick.call(this)` grandparent dispatch
     public final func mobTick() {
         baseLivingTick()

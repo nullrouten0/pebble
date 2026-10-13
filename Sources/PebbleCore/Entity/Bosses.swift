@@ -1,6 +1,6 @@
 // Bosses — the Warden (vibration-driven, sonic
-// boom, darkness), the Ender Dragon (phase machine, crystal healing, perch +
-// breath), and the Wither (summon charge-up, skull volleys, armor phase,
+// boom, darkness), the Rift Dragon (phase machine, crystal healing, perch +
+// breath), and the Blight (summon charge-up, skull volleys, armor phase,
 // block breaking).
 
 import Foundation
@@ -61,7 +61,7 @@ public final class Warden: Monster {
         if emerging {
             diggingOut -= 1
             if age % 5 == 0 {
-                world.hooks.addParticles("block", x, y + 0.5, z, 8, 0.8, Int(cell(B.sculk)))
+                world.hooks.addParticles("block", x, y + 0.5, z, 8, 0.8, Int(cell(B.hush)))
                 world.hooks.playSound("entity.warden.dig", x, y, z, 1, 1)
             }
             if diggingOut <= 0 {
@@ -108,7 +108,7 @@ public final class Warden: Monster {
                     let steps = 12
                     for i in 1...steps {
                         let f = Double(i) / Double(steps)
-                        world.hooks.addParticles("sculk_soul",
+                        world.hooks.addParticles("hush_soul",
                                                  x + (t.x - x) * f, y + 1.6 + (t.eyeY() - y - 1.6) * f, z + (t.z - z) * f, 1, 0.05, 0)
                     }
                     t.hurt(10, .sonic, self)
@@ -126,14 +126,14 @@ public final class Warden: Monster {
             }
         }
     }
-    public override func drops() -> [DropEntry] { [DropEntry("sculk_catalyst")] }
+    public override func drops() -> [DropEntry] { [DropEntry("hush_catalyst")] }
 }
 
 // =============================================================================
-// ENDER DRAGON
+// RIFT DRAGON
 // =============================================================================
-public final class EnderDragon: LivingEntity {
-    public override var type: String { "ender_dragon" }
+public final class RiftDragon: LivingEntity {
+    public override var type: String { "rift_dragon" }
     public var phase = "circling"   // circling | strafing | approach_perch | perched | takeoff | charging | dying
     public var phaseTime = 0
     public var pathAngle = 0.0
@@ -142,7 +142,7 @@ public final class EnderDragon: LivingEntity {
     public var deathAnimTime = 0
     public var breathTime = 0
     /// set by Game: callback when dragon dies (portal activation)
-    public var onDeath: ((EnderDragon) -> Void)? = nil
+    public var onDeath: ((RiftDragon) -> Void)? = nil
     public override init(world: World) {
         super.init(world: world)
         pathAngle = gameRng.nextFloat() * .pi * 2   // baseline field-init order
@@ -183,7 +183,7 @@ public final class EnderDragon: LivingEntity {
         // crystal healing
         if age % 10 == 0 {
             for e in world.entities {
-                guard let c = e as? EndCrystal, !c.dead else { continue }
+                guard let c = e as? RiftCrystal, !c.dead else { continue }
                 let dSq = distanceToSq(c)
                 if dSq < 32 * 32 {
                     heal(1)
@@ -220,7 +220,7 @@ public final class EnderDragon: LivingEntity {
                 fb.owner = self
                 fb.shoot(p.x - x, p.eyeY() - y + 1, p.z - z, 0.6, 2)
                 world.addEntity(fb)
-                world.hooks.playSound("entity.ender_dragon.shoot", x, y, z, 4, 1)
+                world.hooks.playSound("entity.rift_dragon.shoot", x, y, z, 4, 1)
                 setPhase("circling")
             }
             if phaseTime > 200 { setPhase("circling") }
@@ -230,7 +230,7 @@ public final class EnderDragon: LivingEntity {
                 setPhase("perched")
                 vx = 0; vy = 0; vz = 0
                 setPosToFountain()
-                world.hooks.playSound("entity.ender_dragon.growl", x, y, z, 5, 0.8)
+                world.hooks.playSound("entity.rift_dragon.growl", x, y, z, 5, 0.8)
             }
         case "perched":
             // breath attack at near players, vulnerable to melee
@@ -330,11 +330,11 @@ public final class EnderDragon: LivingEntity {
         health -= dmg
         hurtTime = 10
         invulnTicks = 10
-        world.hooks.playSound("entity.ender_dragon.hurt", x, y, z, 4, 1)
+        world.hooks.playSound("entity.rift_dragon.hurt", x, y, z, 4, 1)
         if health <= 0 {
             health = 0
             setPhase("dying")
-            world.hooks.playSound("entity.ender_dragon.death", x, y, z, 6, 1)
+            world.hooks.playSound("entity.rift_dragon.death", x, y, z, 6, 1)
         } else if phase == "perched" && gameRng.nextFloat() < 0.3 {
             setPhase("takeoff")
         }
@@ -343,10 +343,10 @@ public final class EnderDragon: LivingEntity {
 }
 
 // =============================================================================
-// WITHER
+// BLIGHT
 // =============================================================================
-public final class WitherBoss: Monster {
-    public override var type: String { "wither" }
+public final class BlightBoss: Monster {
+    public override var type: String { "blight" }
     public var chargeTime = 220
     public var shootCooldown = [0, 0, 0]
     public override init(world: World) {
@@ -372,11 +372,11 @@ public final class WitherBoss: Monster {
             chargeTime -= 1
             health = min(maxHealth, health + maxHealth / 220)
             if chargeTime % 20 == 0 {
-                world.hooks.playSound("entity.wither.ambient", x, y, z, 4, 0.7)
+                world.hooks.playSound("entity.blight.ambient", x, y, z, 4, 0.7)
             }
             if chargeTime == 0 {
                 explodeFn?(world, x, y + 1.7, z, 7, false, self)
-                world.hooks.playSound("entity.wither.spawn", x, y, z, 8, 1)
+                world.hooks.playSound("entity.blight.spawn", x, y, z, 8, 1)
             }
             return
         }
@@ -405,13 +405,13 @@ public final class WitherBoss: Monster {
                     shootCooldown[head] = 40 + rng.nextInt(40)
                     let hx = head == 0 ? x : x + (head == 1 ? -1.3 : 1.3) * detCos(yaw)
                     let hz = head == 0 ? z : z + (head == 1 ? -1.3 : 1.3) * detSin(yaw)
-                    let skull = WitherSkull(world: world)
+                    let skull = BlightSkull(world: world)
                     skull.blue = rng.nextFloat() < 0.1
                     skull.setPos(hx, y + 3, hz)
                     skull.owner = self
                     skull.shoot(t.x - hx, t.eyeY() - (y + 3), t.z - hz, skull.blue ? 0.45 : 0.9, 4)
                     world.addEntity(skull)
-                    world.hooks.playSound("entity.wither.shoot", x, y, z, 3, 1)
+                    world.hooks.playSound("entity.blight.shoot", x, y, z, 3, 1)
                 }
             }
         } else {
@@ -437,7 +437,7 @@ public final class WitherBoss: Monster {
                     }
                 }
             }
-            if broke { world.hooks.playSound("entity.wither.break_block", x, y, z, 2, 1) }
+            if broke { world.hooks.playSound("entity.blight.break_block", x, y, z, 2, 1) }
         }
         // regen
         if age % 20 == 0 { heal(1) }

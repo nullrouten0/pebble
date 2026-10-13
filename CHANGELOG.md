@@ -3,6 +3,21 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.5.1 — 2026-10-13 — Pebble's own names
+
+- **New names across the game.** A few creatures, blocks and items have
+  Pebble names now: fizzlers, riftwalkers and riftmites, the rift dragon,
+  the blight, wailers, cinders, lurkers (and lurker boxes), snouters,
+  tuskers and ghoultusks, mushcows, wingsuits, darksteel, sparkstone,
+  hush blocks, lumenstone, glowcaps, violite, seaglass, ashrock, conjurers,
+  marauders, lifecharms, the rift eye and the Bugbane enchantment. `/give`
+  and `/summon` use the new names.
+- **New wording** for death messages and all 55 advancements.
+- Existing worlds open with everything renamed in place: blocks, items,
+  creatures, effects, enchantments and earned advancements carry over.
+- Resource packs in the Java Edition layout still apply: their texture
+  names are translated on load.
+
 ## 1.5.0 — 2026-10-13 — worlds that survive updates
 
 Pebble now aims at vanilla Minecraft: Java Edition rather than the
@@ -39,7 +54,7 @@ regenerates snapshots and lists exactly what changed.
   limit). Renaming alone is held at 39, so you can always rename an item.
   Pebble used to cap every job at 39, so heavily reworked gear could be
   combined forever.
-- Mob data that nothing drew is gone: the brown mooshroom toggle from
+- Mob data that nothing drew is gone: the brown mushcow toggle from
   lightning, tropical fish patterns and panda genes. Spawns are unchanged
   (their random draws stay).
 
@@ -73,7 +88,7 @@ track destroyed blocks by exact position.
 
 - **Falls over 5 blocks follow the rules again.** Feather Falling now
   protects against them, armor no longer does (as in Minecraft), and
-  cats, chickens, bees, parrots, bats, shulkers and iron golems are immune
+  cats, chickens, bees, parrots, bats, lurkers and iron golems are immune
   at any height, not just short drops.
 - **Spiders are neutral in the light**, as in Minecraft: they only come
   for you in the dark, though they still fight back if you hit one.
@@ -81,12 +96,12 @@ track destroyed blocks by exact position.
   fast heal spends saturation and slows down as saturation runs below 6.
 - **Saved and reloaded correctly now:** a slime's size and health,
   saddles on striders and camels (which also drop their saddle),
-  vindicator captains, charged creepers, hanging bats, and bees that have
+  vindicator captains, charged fizzlers, hanging bats, and bees that have
   stung (they used to survive a reload).
-- **Death messages** for arrows, fireballs, wither skulls, thorns, stings
+- **Death messages** for arrows, fireballs, blight skulls, thorns, stings
   and fireworks ("was shot by Skeleton" instead of "died"); fire deaths
   say "burned to death".
-- **Lit creepers swell** before they blow, for you and for LAN guests.
+- **Lit fizzlers swell** before they blow, for you and for LAN guests.
 - **LAN guests see skeletons and pillagers aim.** Also on LAN: stacks of
   stone (item 0) no longer vanish when they're dropped, picked up or
   handed between host and guest.
@@ -149,7 +164,7 @@ notice:
   unknown items become empty slots.
 - **Saves:** stacks of items this build doesn't know (say, from a newer
   build's world) load as empty slots instead of crashing on the first draw.
-- **Shulkers open** when they shoot or peek (the lid never moved), and a
+- **Lurkers open** when they shoot or peek (the lid never moved), and a
   peek now lasts a second instead of one tick.
 - **Sound:** the audio thread no longer allocates memory while mixing,
   which could cause crackles under load.
@@ -159,7 +174,7 @@ notice:
   used to leave the action on no key.
 - Resource packs with several namespaces always load from `minecraft`
   first, instead of whichever one happened to come up first.
-- Redstone torch burnout is tracked per world, and its memory is trimmed.
+- Sparkstone torch burnout is tracked per world, and its memory is trimmed.
 - Every `B.<block>` name used in code is in the generated block-id cache
   (16 newer names fell back to a string lookup), and a missing one is now
   a compile error.
@@ -224,7 +239,7 @@ here ships to the Mac too unless it says touch, iPad or iPhone.
   terrain and mobs, shows as a lamp on your forehead to other players, and
   in LAN games you see everyone's beams (up to four at once). It's light
   only: mobs still spawn in the dark. Never wears out. Craft it from
-  glowstone dust over an iron ingot with leather either side, or take one
+  lumenstone dust over an iron ingot with leather either side, or take one
   from the creative Tools tab.
 - **Bigger touch targets on iPhone (1.3.4).** Menus need the full screen
   height, which pins an iPhone's GUI scale low (inventory slots about 5 mm
@@ -466,7 +481,7 @@ here ships to the Mac too unless it says touch, iPad or iPhone.
   end cities.
 - **Underground structures are easy to find.**
   - A ladder shaft leads down to each one. The shaft is lined with brick and lit
-    with glowstone.
+    with lumenstone.
   - The surface opening has a lantern-lit collar. Trees around it are cleared
     away.
   - A flag pole with red wool marks the spot and stands taller than the forest
@@ -542,8 +557,8 @@ All are tools-category items, given with `/give`.
 - **Slime and honey blocks now move their attached payloads with pistons.**
   Sticky-piston retraction preserves the full adhesion set, and retracted piston
   bases can move so basic flying machines work.
-- **Equipped elytra are visible in third person.** A textured wing layer now
-  follows the player and changes pose during elytra flight.
+- **Equipped wingsuit are visible in third person.** A textured wing layer now
+  follows the player and changes pose during wingsuit flight.
 - **Running no longer makes the third-person camera weave.** View bobbing is
   restricted to first person and its remaining motion is substantially milder.
 
@@ -640,12 +655,12 @@ The initial release. What ships:
   advancements, raids, and villager trading.
 - **Three dimensions** with working portals and full progression: overworld →
   nether (fortresses, bastions) → end (dragon fight, end cities, gateways),
-  plus the Wither and the Warden.
+  plus the Blight and the Warden.
 - **Worldgen**: multi-noise climate sampling, spline terrain, 3D density caves,
   ravines, aquifers, vanilla-1.20 ore tables, snow lines, cave biomes
   including the deep dark.
-- **Redstone**: wire networks, repeaters, comparators with container reading,
-  pistons with quasi-connectivity, observers, hoppers, rails, sculk sensors.
+- **Sparkstone**: wire networks, repeaters, comparators with container reading,
+  pistons with quasi-connectivity, observers, hoppers, rails, hush sensors.
 - **Vanilla-exact player physics**, verified by independent derivations in the
   test suite (walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks).
 - **Synthesized audio**: every sound and all music generated in real time
@@ -664,7 +679,7 @@ The initial release. What ships:
 ### Known limitations
 
 - Singleplayer only, for now — there is no networking code in 1.0.0.
-- Elytra flight omits vanilla's dive-redirect term (look-pitch speed transfer);
+- Wingsuit flight omits vanilla's dive-redirect term (look-pitch speed transfer);
   flight feel is otherwise vanilla-derived.
 - Armor trims show in tooltips but not yet on worn armor.
 - No resource-pack or shader-pack loading — the Faithful art and the ultra

@@ -13,12 +13,12 @@ public enum Shape: UInt8 {
     case cauldron, brewingStand, enchantTable, lantern, chain, flowerPot, endPortalFrame
     case dragonEgg, conduit, grindstone, stonecutter, bamboo, candle, seaPickle, turtleEgg
     case dripstone, amethystCluster, snifferEgg, decoratedPot, campfire, scaffolding
-    case tripwire, tripwireHook, redstoneWire, repeater, comparator, piston, pistonHead
+    case tripwire, tripwireHook, sparkstoneWire, repeater, comparator, piston, pistonHead
     case daylightSensor, chorus, chorusFlower, cocoa, vine, lilyPad, glowLichen
     case sporeBlossom, hangingRoots, bigDripleaf, smallDripleafShape, propagule, frogspawn
     case web, fire, portalShape, endPortalShape, bell, composter, pointedAttach, tallCross
     case bars, head, lectern, rootsShape, netherWart, sweetBerry, caveVinesShape, beacon
-    case structureVoid, bambooSapling, pitcherCropShape, muddyMangroveRoots, sculkVein, cactusShape, air
+    case structureVoid, bambooSapling, pitcherCropShape, muddyMangroveRoots, hushVein, cactusShape, air
 }
 
 /// what a tool is, and which tool a block wants (`none`: any or no tool)
@@ -176,7 +176,7 @@ public final class BlockDef {
 public var blockDefs: [BlockDef] = []
 private var byName: [String: Int] = [:]
 
-/// "wither_skeleton" → "Wither Skeleton" (block, item, biome and mob names)
+/// "blight_skeleton" → "Blight Skeleton" (block, item, biome and mob names)
 public func prettify(_ name: String) -> String {
     name.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
 }

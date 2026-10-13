@@ -294,7 +294,7 @@ func registerUndergroundStructures() {
             // grand central chamber + frame ("the portal")
             pieces.append(piece(cx - 20, y - 3, cz - 12, cx + 20, y + 22, cz + 12) { b in
                 b.fill(cx - 19, y, cz - 11, cx + 19, y + 18, cz + 11, AIR)
-                b.fillRandom(cx - 19, y - 1, cz - 11, cx + 19, y - 1, cz + 11, [(Int(cell(B.sculk)), 4), (Int(cell(B.deepslate)), 4), (Int(cell(B.deepslate_tiles)), 2)])
+                b.fillRandom(cx - 19, y - 1, cz - 11, cx + 19, y - 1, cz + 11, [(Int(cell(B.hush)), 4), (Int(cell(B.deepslate)), 4), (Int(cell(B.deepslate_tiles)), 2)])
                 // the frame structure
                 let fx = cx, fz = cz
                 b.fillRandom(fx - 7, y, fz - 1, fx + 7, y + 14, fz + 1, DS)
@@ -310,22 +310,22 @@ func registerUndergroundStructures() {
                     b.set(fx + sx, y + 1, fz - 2, Int(cell(B.soul_sand)))
                     b.set(fx + sx, y + 2, fz - 2, Int(cell(B.soul_fire)))
                 }
-                // sculk spread on floor (rng drawn before the chunk-relative
+                // hush spread on floor (rng drawn before the chunk-relative
                 // get() so the stream stays identical across bordering chunks)
                 for _ in 0..<200 {
                     let wx = cx - 19 + b.rng.nextInt(39), wz = cz - 11 + b.rng.nextInt(23)
                     let spread = b.rng.nextFloat() < 0.5
                     let cur = b.get(wx, y - 1, wz)
-                    if cur > 0 && spread { b.set(wx, y - 1, wz, Int(cell(B.sculk))) }
+                    if cur > 0 && spread { b.set(wx, y - 1, wz, Int(cell(B.hush))) }
                 }
                 // shriekers + sensors near center
-                b.set(cx - 9, y, cz + 4, Int(cell(B.sculk_shrieker)))
+                b.set(cx - 9, y, cz + 4, Int(cell(B.hush_shrieker)))
                 b.s.addBlockEntity(BESpec(x: cx - 9, y: y, z: cz + 4, kind: "shrieker", data: ["canSummon": .bool(true)]))
-                b.set(cx + 9, y, cz - 4, Int(cell(B.sculk_shrieker)))
+                b.set(cx + 9, y, cz - 4, Int(cell(B.hush_shrieker)))
                 b.s.addBlockEntity(BESpec(x: cx + 9, y: y, z: cz - 4, kind: "shrieker", data: ["canSummon": .bool(true)]))
-                b.set(cx - 6, y, cz - 6, Int(cell(B.sculk_sensor)))
-                b.set(cx + 6, y, cz + 6, Int(cell(B.sculk_sensor)))
-                b.set(cx, y, cz + 8, Int(cell(B.sculk_catalyst)))
+                b.set(cx - 6, y, cz - 6, Int(cell(B.hush_sensor)))
+                b.set(cx + 6, y, cz + 6, Int(cell(B.hush_sensor)))
+                b.set(cx, y, cz + 8, Int(cell(B.hush_catalyst)))
             })
 
             // boulevard east-west with ruins
@@ -364,10 +364,10 @@ func registerUndergroundStructures() {
                         } }
                         if b.rng.nextFloat() < 0.7 { b.chest(bx + 1 + b.rng.nextInt(max(1, w - 1)), y, bz + 1 + b.rng.nextInt(max(1, d - 1)), 0, "ancient_city") }
                         if b.rng.nextFloat() < 0.4 {
-                            b.set(bx + 2, y, bz + 2, Int(cell(B.sculk_sensor)))
+                            b.set(bx + 2, y, bz + 2, Int(cell(B.hush_sensor)))
                         }
                         if b.rng.nextFloat() < 0.25 {
-                            b.set(bx + w - 1, y, bz + d - 1, Int(cell(B.sculk_shrieker)))
+                            b.set(bx + w - 1, y, bz + d - 1, Int(cell(B.hush_shrieker)))
                             b.s.addBlockEntity(BESpec(x: bx + w - 1, y: y, z: bz + d - 1, kind: "shrieker", data: ["canSummon": .bool(true)]))
                         }
                         // candles + skulls flavor

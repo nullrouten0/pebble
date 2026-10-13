@@ -15,11 +15,11 @@ func registerSnowToEnd() {
     registerBlock("frosted_ice", opaque: false, lightOpacity: 1, hardness: 0.5, sound: "glass", randomTicks: true, translucent: true, cullSame: true, drops: .none)
 
     // ocean
-    stone2("prismarine", 1.5, resistance: 6)
-    stone2("prismarine_bricks", 1.5, resistance: 6)
-    stone2("dark_prismarine", 1.5, resistance: 6)
+    stone2("seaglass", 1.5, resistance: 6)
+    stone2("seaglass_bricks", 1.5, resistance: 6)
+    stone2("dark_seaglass", 1.5, resistance: 6)
     registerBlock("sea_lantern", light: 15, hardness: 0.3, sound: "glass",
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sea_lantern")] : [Drop("prismarine_crystals", 2, min(5, 3 + ctx.fortune))] })
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("sea_lantern")] : [Drop("seaglass_crystals", 2, min(5, 3 + ctx.fortune))] })
     registerBlock("sponge", hardness: 0.6, tool: .hoe, sound: "grass")
     registerBlock("wet_sponge", hardness: 0.6, tool: .hoe, sound: "grass")
     registerBlock("dried_kelp_block", hardness: 0.5, tool: .hoe, sound: "grass", flammable: 30, burnOdds: 60)
@@ -36,15 +36,15 @@ func registerSnowToEnd() {
     }
 
     // nether
-    registerBlock("netherrack", hardness: 0.4, tool: .pickaxe, requiresTool: true, sound: "netherrack")
-    registerBlock("crimson_nylium", tex: texTB("crimson_nylium", "netherrack", "crimson_nylium_side"), hardness: 0.4, tool: .pickaxe, requiresTool: true, sound: "nylium", randomTicks: true, drops: .item("netherrack"))
-    registerBlock("warped_nylium", tex: texTB("warped_nylium", "netherrack", "warped_nylium_side"), hardness: 0.4, tool: .pickaxe, requiresTool: true, sound: "nylium", randomTicks: true, drops: .item("netherrack"))
+    registerBlock("ashrock", hardness: 0.4, tool: .pickaxe, requiresTool: true, sound: "ashrock")
+    registerBlock("crimson_nylium", tex: texTB("crimson_nylium", "ashrock", "crimson_nylium_side"), hardness: 0.4, tool: .pickaxe, requiresTool: true, sound: "nylium", randomTicks: true, drops: .item("ashrock"))
+    registerBlock("warped_nylium", tex: texTB("warped_nylium", "ashrock", "warped_nylium_side"), hardness: 0.4, tool: .pickaxe, requiresTool: true, sound: "nylium", randomTicks: true, drops: .item("ashrock"))
     registerBlock("soul_sand", fullCube: false, hardness: 0.5, tool: .shovel, sound: "soulsand")
     registerBlock("soul_soil", hardness: 0.5, tool: .shovel, sound: "soulsand")
     registerBlock("magma_block", light: 3, hardness: 0.5, tool: .pickaxe, requiresTool: true, randomTicks: true, emissiveRender: true)
-    registerBlock("glowstone", light: 15, hardness: 0.3, sound: "glass",
-                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("glowstone")] : [Drop("glowstone_dust", 2, 4)] })
-    registerBlock("shroomlight", light: 15, hardness: 1, tool: .hoe, sound: "shroomlight")
+    registerBlock("lumenstone", light: 15, hardness: 0.3, sound: "glass",
+                  drops: .fn { _, ctx in ctx.silkTouch ? [Drop("lumenstone")] : [Drop("lumenstone_dust", 2, 4)] })
+    registerBlock("glowcap", light: 15, hardness: 1, tool: .hoe, sound: "glowcap")
     registerBlock("nether_wart_block", hardness: 1, tool: .hoe, sound: "wart")
     registerBlock("warped_wart_block", hardness: 1, tool: .hoe, sound: "wart")
     registerBlock("basalt", tex: texCol("basalt_top", "basalt_side"), hardness: 1.25, resistance: 4.2, tool: .pickaxe, requiresTool: true, sound: "basalt")
@@ -67,8 +67,8 @@ func registerSnowToEnd() {
     // end
     stone2("end_stone", 3, resistance: 9)
     stone2("end_stone_bricks", 3, resistance: 9)
-    stone2("purpur_block", 1.5, resistance: 6)
-    stone2("purpur_pillar", 1.5, resistance: 6, tex: texCol("purpur_pillar_top", "purpur_pillar"))
+    stone2("violite_block", 1.5, resistance: 6)
+    stone2("violite_pillar", 1.5, resistance: 6, tex: texCol("violite_pillar_top", "violite_pillar"))
     registerBlock("end_rod", shape: .torch, tex: .named("end_rod"), opaque: false, solid: false, fullCube: false, light: 14, hardness: 0, sound: "wood")
     registerBlock("chorus_plant", shape: .chorus, tex: .named("chorus_plant"), opaque: false, fullCube: false, hardness: 0.4, tool: .axe, sound: "wood", piston: .destroy,
                   drops: .fn { _, ctx in ctx.random() < 0.5 ? [Drop("chorus_fruit")] : [] })

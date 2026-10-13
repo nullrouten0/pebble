@@ -17,7 +17,7 @@ public struct EntityData: Codable, Equatable {
     public var variant: Int?
     public var color: Int?
     public var size: Int?
-    /// creeper fuse, 0…1 (drawn as the creeper swelling)
+    /// fizzler fuse, 0…1 (drawn as the fizzler swelling)
     public var swelling: Double?
     public var grazing: Bool?
     public var buckTimer: Int?

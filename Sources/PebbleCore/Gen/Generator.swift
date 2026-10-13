@@ -152,7 +152,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int, genV
                     runFeature(f, sink, &rng, ox, oz, seed, genVersion: genVersion, surfaceBiomeAt)
                 }
                 // cave biome features from the full 3×3 origins — running them
-                // only for the target chunk clipped dripstone/moss/sculk flat
+                // only for the target chunk clipped dripstone/moss/hush flat
                 // at every chunk face (their radius reaches up to 5 blocks)
                 for cb in [Biome.lushCaves, .dripstoneCaves, .deepDark] {
                     for (f, salt) in seededFeatures(biomeDef(cb.rawValue), genVersion, v1Base: UInt32(12000 + cb.rawValue * 100)) {

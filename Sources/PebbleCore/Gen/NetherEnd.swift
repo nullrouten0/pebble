@@ -48,7 +48,7 @@ public final class NetherGen {
 
     public func fillTerrain(_ cx: Int, _ cz: Int, _ blocks: inout [UInt16], _ biomes: inout [UInt8]) -> [UInt8] {
         let baseX = cx * 16, baseZ = cz * 16
-        let NETHERRACK = cell(B.netherrack)
+        let ASHROCK = cell(B.ashrock)
         let LAVA = cell(B.lava)
         let BEDROCK = cell(B.bedrock)
         var surfaceBiomes = [UInt8](repeating: 0, count: 256)
@@ -79,7 +79,7 @@ public final class NetherGen {
                         if y >= NETHER_H { break }
                         let d = b0 + (b1 - b0) * (Double(sy) / 4)
                         let idx = (y * 16 + z) * 16 + x
-                        if d > 0 { blocks[idx] = NETHERRACK }
+                        if d > 0 { blocks[idx] = ASHROCK }
                         else if y <= LAVA_SEA { blocks[idx] = LAVA }
                         else { blocks[idx] = UInt16(AIR) }
                     }
@@ -112,7 +112,7 @@ public final class NetherGen {
     }
 
     public func applySurface(_ cx: Int, _ cz: Int, _ blocks: inout [UInt16], _ surfaceBiomes: [UInt8]) {
-        let NETHERRACK = cell(B.netherrack)
+        let ASHROCK = cell(B.ashrock)
         let LAVAC = cell(B.lava)
         for z in 0..<16 {
             for x in 0..<16 {
@@ -127,13 +127,13 @@ public final class NetherGen {
                     let idx = (y * 16 + z) * 16 + x
                     let c = blocks[idx]
                     if c == UInt16(AIR) || c == LAVAC { below = 0; y -= 1; continue }
-                    if c != NETHERRACK { below += 1; y -= 1; continue }
+                    if c != ASHROCK { below += 1; y -= 1; continue }
                     if below == 0 {
                         blocks[idx] = def.top
                         var d = 1
                         while d < depth {
                             let idx2 = ((y - d) * 16 + z) * 16 + x
-                            if blocks[idx2] == NETHERRACK { blocks[idx2] = def.under }
+                            if blocks[idx2] == ASHROCK { blocks[idx2] = def.under }
                             d += 1
                         }
                     }
@@ -146,14 +146,14 @@ public final class NetherGen {
 
     public func placeOres(_ cx: Int, _ cz: Int, _ blocks: inout [UInt16]) {
         var rng = chunkRandom(seed, cx, cz, 777)
-        let NETHERRACK = cell(B.netherrack)
+        let ASHROCK = cell(B.ashrock)
         func blob(_ ore: UInt16, _ x: Int, _ y: Int, _ z: Int, _ size: Int) {
             var px = x, py = y, pz = z
             for _ in 0..<size {
                 px += rng.nextInt(3) - 1; py += rng.nextInt(3) - 1; pz += rng.nextInt(3) - 1
                 if px < 0 || px > 15 || pz < 0 || pz > 15 || py < 2 || py > NETHER_H - 3 { continue }
                 let idx = (py * 16 + pz) * 16 + px
-                if blocks[idx] == NETHERRACK { blocks[idx] = ore }
+                if blocks[idx] == ASHROCK { blocks[idx] = ore }
             }
         }
         for _ in 0..<16 { blob(cell(B.nether_quartz_ore), rng.nextInt(16), 10 + rng.nextInt(108), rng.nextInt(16), 10) }
@@ -170,7 +170,7 @@ public final class NetherGen {
                 px += rng.nextInt(3) - 1; py += rng.nextInt(3) - 1; pz += rng.nextInt(3) - 1
                 if px < 0 || px > 15 || pz < 0 || pz > 15 || py < 2 || py > NETHER_H - 3 { continue }
                 let idx = (py * 16 + pz) * 16 + px
-                if blocks[idx] != NETHERRACK { continue }
+                if blocks[idx] != ASHROCK { continue }
                 // require no air neighbors (vanilla "in air: 0")
                 var buried = true
                 for (dx, dy, dz) in [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)] {
@@ -340,7 +340,7 @@ public final class EndGen {
             }
             // crystal entity on top
             if inChunk(p.x, p.z) {
-                addEntity("end_crystal", Double(p.x) + 0.5, Double(p.height + 2), Double(p.z) + 0.5,
+                addEntity("rift_crystal", Double(p.x) + 0.5, Double(p.height + 2), Double(p.z) + 0.5,
                           ["pillar": .bool(true), "caged": .bool(p.caged), "showBottom": .bool(true)])
             }
         }

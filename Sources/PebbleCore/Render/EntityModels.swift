@@ -305,11 +305,11 @@ private let ensureModelsOnce: Void = {
         },
         packTex: ["entity/chicken.png"]))
 
-    M("mooshroom", {
+    M("mushcow", {
         let base = cowModel(0xa42c2c, packTex: ["entity/cow/red_mooshroom.png"])
         var parts = base.parts
         // back mushrooms — small caps sampling the red hide region of the
-        // mooshroom sheet (vanilla renders real mushroom blocks; this is a
+        // mushcow sheet (vanilla renders real mushroom blocks; this is a
         // textured approximation)
         parts.append(ModelPart(name: "shrooms", pivot: (0, 24, 2), boxes: [
             box(-1.5, 0, -7, 3, 3, 3, 20, 6), box(-1.5, 0, -1, 3, 3, 3, 20, 6),

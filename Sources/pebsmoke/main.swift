@@ -141,7 +141,7 @@ registerAllItems()
 check("item names are unique", Set(itemDefs.map(\.name)).count == itemDefs.count)
 check("blockToItem stone", blockToItem[Int(B.stone)] == Int32(iid("stone")))
 check("cake maxStack 1", itemDefs[iid("cake")].maxStack == 1)
-check("netherite sword dmg", itemDefs[iid("netherite_sword")].tool?.attackDamage == 7)
+check("darksteel sword dmg", itemDefs[iid("darksteel_sword")].tool?.attackDamage == 7)
 check("diamond chest durability", itemDefs[iid("diamond_chestplate")].armor?.durability == 529)
 check("steak hunger", itemDefs[iid("cooked_beef")].food?.hunger == 8)
 check("lava bucket burn", itemDefs[iid("lava_bucket")].burnTime == 20000)
@@ -297,7 +297,11 @@ if let g = loadJSON("biome-goldens.json") {
             // the spot-checked biomes' feature lists follow the code too
             obj["defChecks"] = defs.map { d -> [String: Any] in
                 var d = d
-                if let def = BIOMES[(d["b"] as! NSNumber).intValue] { d["features"] = def.features }
+                if let def = BIOMES[(d["b"] as! NSNumber).intValue] {
+                    d["features"] = def.features
+                    d["monsters"] = def.monsters.map { [$0.mob, $0.weight, $0.minPack, $0.maxPack] as [Any] }
+                    d["creatures"] = def.creatures.map { [$0.mob, $0.weight, $0.minPack, $0.maxPack] as [Any] }
+                }
                 return d
             }
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
@@ -584,7 +588,10 @@ if let g = loadJSON("feature-goldens.json") {
         }
         var entHash: UInt32 = 2166136261
         for e in out.entities {
-            entHash = fnvStr(entHash, e.mob)
+            // the contract was recorded before mobs were renamed: hash their
+            // names as they were then (FormatNames), so it still proves the
+            // same mobs generate in the same places
+            entHash = fnvStr(entHash, version == 1 ? packName(e.mob) : e.mob)
             entHash = fnvInt(entHash, Int((e.x * 2).rounded())); entHash = fnvInt(entHash, Int((e.y * 2).rounded())); entHash = fnvInt(entHash, Int((e.z * 2).rounded()))
         }
         var refHash: UInt32 = 2166136261
@@ -986,7 +993,7 @@ if let g = loadJSON("worldsim-goldens.json") {
 
     checkStage("adopted")
 
-    let TORCH = Int(cell(B.torch)), GLOW = Int(cell(B.glowstone)), STONE = Int(cell(B.stone))
+    let TORCH = Int(cell(B.torch)), GLOW = Int(cell(B.lumenstone)), STONE = Int(cell(B.stone))
     let WATERC = Int(cell(B.water, 0)), LAVAC = Int(cell(B.lava, 0))
 
     for y in 70...74 { for z in 2...6 { for x in 2...6 { world.setBlock(x, y, z, 0) } } }
@@ -1194,13 +1201,13 @@ if let g = loadJSON("fmath-goldens.json") {
 // ---------------------------------------------------------------------------
 section("entities: zoo/combat/physics/trades/pathfinding/spawning (vs goldens)")
 registerAllEntities()
-let elytraGeometry = buildEntityGeometry("elytra")
-let elytraU = stride(from: 6, to: elytraGeometry.verts.count, by: 9).map { elytraGeometry.verts[$0] }
-check("third-person elytra layer has two rendered wings",
-      hasModel("elytra") && elytraGeometry.partNames == ["wingR", "wingL"] &&
-      elytraGeometry.vertexCount > 0 &&
-      (elytraU.min() ?? 0) >= 22.0 / 64.0 &&
-      elytraGeometry.model.packTex == ["entity/elytra.png"])
+let wingsuitGeometry = buildEntityGeometry("wingsuit")
+let wingsuitU = stride(from: 6, to: wingsuitGeometry.verts.count, by: 9).map { wingsuitGeometry.verts[$0] }
+check("third-person wingsuit layer has two rendered wings",
+      hasModel("wingsuit") && wingsuitGeometry.partNames == ["wingR", "wingL"] &&
+      wingsuitGeometry.vertexCount > 0 &&
+      (wingsuitU.min() ?? 0) >= 22.0 / 64.0 &&
+      wingsuitGeometry.model.packTex == ["entity/elytra.png"])
 
 if let g = loadJSON("entity-goldens.json") {
     func hex(_ x: Double) -> String {
@@ -1211,8 +1218,17 @@ if let g = loadJSON("entity-goldens.json") {
 
     check("entity type count", entityTypes().count == num("entityTypeCount"),
           "got \(entityTypes().count) want \(num("entityTypeCount"))")
-    check("entity registration order", hashString(entityTypes().joined(separator: ",")) == hash32("entityTypesH"))
-    check("spawnable mob list", hashString(spawnableMobs().joined(separator: ",")) == hash32("spawnableH"))
+    let typesH = hashString(entityTypes().joined(separator: ",")), spawnH = hashString(spawnableMobs().joined(separator: ","))
+    if regolding("entity"), let path = goldenPaths("entity-goldens.json").first(where: { FileManager.default.fileExists(atPath: $0) }),
+       let d = FileManager.default.contents(atPath: path), var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] {
+        obj["entityTypeCount"] = entityTypes().count
+        obj["entityTypesH"] = NSNumber(value: typesH)
+        obj["spawnableH"] = NSNumber(value: spawnH)
+        if let out = try? JSONSerialization.data(withJSONObject: obj) { writeGolden(path, out) }
+    } else {
+        check("entity registration order", typesH == hash32("entityTypesH"))
+        check("spawnable mob list", spawnH == hash32("spawnableH"))
+    }
 
     func buildWorld() -> World {
         let world = World(dim: .overworld, seed: 12345)
@@ -1271,16 +1287,16 @@ if let g = loadJSON("entity-goldens.json") {
         if let h = e as? HorseBase { h.jumpStrength = 0.7; h.speed = 0.2; h.maxHealth = 26; h.health = 26 }
         if let l = e as? Llama { l.maxHealth = 22; l.health = 22; l.data.variant = i % 4 }
         if let v = e as? Vex { v.lifeTicks = 99999 }
-        if let d = e as? EnderDragon { d.pathAngle = 1.25 }
+        if let d = e as? RiftDragon { d.pathAngle = 1.25 }
     }
 
     // --- A) zoo
-    let ZOO = ["cow", "mooshroom", "pig", "sheep", "chicken", "rabbit", "wolf", "cat", "fox", "parrot",
+    let ZOO = ["cow", "mushcow", "pig", "sheep", "chicken", "rabbit", "wolf", "cat", "fox", "parrot",
                "bee", "axolotl", "frog", "goat", "turtle", "dolphin", "squid", "bat", "polar_bear", "panda",
                "strider", "camel", "sniffer", "allay", "cod", "villager", "iron_golem", "snow_golem", "horse", "llama",
-               "zombie", "skeleton", "creeper", "spider", "slime", "witch", "enderman", "silverfish", "phantom", "guardian",
-               "shulker", "pillager", "vindicator", "evoker", "vex", "blaze", "ghast", "magma_cube", "zombified_piglin", "piglin",
-               "hoglin", "wither_skeleton", "warden", "wither", "ender_dragon"]
+               "zombie", "skeleton", "fizzler", "spider", "slime", "witch", "riftwalker", "silverfish", "phantom", "guardian",
+               "lurker", "pillager", "vindicator", "conjurer", "vex", "cinder", "wailer", "magma_cube", "rotting_snouter", "snouter",
+               "tusker", "blight_skeleton", "warden", "blight", "rift_dragon"]
     resetGameRng(hashString("zoo"))
     let zooWorld = buildWorld()
     zooWorld.dayTime = 13000
@@ -1565,10 +1581,9 @@ if let g = loadJSON("entity-goldens.json") {
 }
 
 // ---------------------------------------------------------------------------
-section("systems: crafting/BEs/redstone/explosion/interact/portals (vs goldens)")
+section("systems: crafting/BEs/sparkstone/explosion/interact/portals (vs goldens)")
 // terrain-dependent systems goldens re-baseline under PEBBLE_REGOLD
 let sysRegold = regolding("systems")
-var sysCaptured: [String: Any] = [:]
 registerAllSystems()
 
 if let g = loadJSON("systems-goldens.json") {
@@ -1635,7 +1650,11 @@ if let g = loadJSON("systems-goldens.json") {
         for e in world.entities { (e as? Entity)?.tick() }
         for e in world.entities where e.dead { world.removeEntity(e) }
     }
-    func cmpList(_ label: String, _ got: [String], _ want: [String]) {
+    var sysCaptured: [String: Any] = [:]
+    /// a probe list: compared with goldens key `key`, or captured under --regold systems
+    func cmpList(_ label: String, _ got: [String], _ key: String) {
+        if sysRegold { sysCaptured[key] = got; return }
+        let want = g[key] as! [String]
         var ok = got.count == want.count
         if ok {
             for (i, w) in want.enumerated() where got[i] != w {
@@ -1668,13 +1687,13 @@ if let g = loadJSON("systems-goldens.json") {
         let m = matchCrafting(grid, w, h)
         craftGot.append("\(label)=\(m != nil ? serStack(m!.out) : "null")")
     }
-    cmpList("crafting grid probes", craftGot, g["craftProbes"] as! [String])
+    cmpList("crafting grid probes", craftGot, "craftProbes")
 
     var smithGot: [String] = []
-    smithGot.append("netherite=\(serStack(matchSmithing(st("netherite_upgrade"), st("diamond_sword"), st("netherite_ingot"))))")
+    smithGot.append("darksteel=\(serStack(matchSmithing(st("darksteel_upgrade"), st("diamond_sword"), st("darksteel_ingot"))))")
     smithGot.append("trim=\(serStack(matchSmithing(st("coast_armor_trim"), st("iron_chestplate"), st("emerald"))))")
-    smithGot.append("bad=\(serStack(matchSmithing(st("netherite_upgrade"), st("stone"), st("netherite_ingot"))))")
-    cmpList("smithing probes", smithGot, g["smithProbes"] as! [String])
+    smithGot.append("bad=\(serStack(matchSmithing(st("darksteel_upgrade"), st("stone"), st("darksteel_ingot"))))")
+    cmpList("smithing probes", smithGot, "smithProbes")
 
     // --- B) enchanting / anvil / grindstone
     var enchGot: [String] = []
@@ -1684,7 +1703,7 @@ if let g = loadJSON("systems-goldens.json") {
             "L\(o.level):\(o.enchants.map { "\($0.id):\($0.lvl)" }.joined(separator: ","))"
         }.joined(separator: ";"))
     }
-    cmpList("enchanting options", enchGot, g["enchProbes"] as! [String])
+    cmpList("enchanting options", enchGot, "enchProbes")
 
     var anvilGot: [String] = []
     let sword = ItemStack(iid("diamond_sword"), 1, damage: 100)
@@ -1700,7 +1719,7 @@ if let g = loadJSON("systems-goldens.json") {
     anvilGot.append("rename=\(r4 != nil ? serStack(r4!.out) + "$\(r4!.cost)" : "null")")
     let g1 = grindstoneResult(sword2, nil)
     anvilGot.append("grind=\(g1 != nil ? serStack(g1!.out) + "$\(g1!.xp)" : "null")")
-    cmpList("anvil/grindstone probes", anvilGot, g["anvilProbes"] as! [String])
+    cmpList("anvil/grindstone probes", anvilGot, "anvilProbes")
 
     // --- C) BE timelines
     resetGameRng(hashString("be"))
@@ -1726,8 +1745,8 @@ if let g = loadJSON("systems-goldens.json") {
     var bitems = bbe.items!
     var pd = StackData(); pd.potion = "awkward"
     bitems[0] = ItemStack(iid("potion"), 1, data: pd)
-    bitems[3] = ItemStack(iid("blaze_powder"), 2)
-    bitems[4] = ItemStack(iid("blaze_powder"), 2)
+    bitems[3] = ItemStack(iid("cinder_powder"), 2)
+    bitems[4] = ItemStack(iid("cinder_powder"), 2)
     bbe.items = bitems
     beWorld.setBlockEntity(bbe)
     var beGot: [String] = []
@@ -1740,18 +1759,18 @@ if let g = loadJSON("systems-goldens.json") {
             beGot.append([f, h, p].joined(separator: "|"))
         }
     }
-    cmpList("BE timelines (furnace/hopper/brewing)", beGot, g["beStages"] as! [String])
+    cmpList("BE timelines (furnace/hopper/brewing)", beGot, "beStages")
 
-    // --- D) redstone contraption
-    resetGameRng(hashString("redstone"))
+    // --- D) sparkstone contraption
+    resetGameRng(hashString("sparkstone"))
     let rsWorld = buildWorld()
     let rsBase = rsWorld.surfaceY(8, 8) + 20
     for dz in 0...8 { for dx in 0...12 { rsWorld.setBlock(8 + dx, rsBase - 1, 8 + dz, Int(cell(B.stone))) } }
     rsWorld.setBlock(8, rsBase, 8, Int(cell(B.lever, 0)))
-    for i in 1...5 { rsWorld.setBlock(8 + i, rsBase, 8, Int(cell(B.redstone_wire, 0))) }
+    for i in 1...5 { rsWorld.setBlock(8 + i, rsBase, 8, Int(cell(B.sparkstone_wire, 0))) }
     rsWorld.setBlock(14, rsBase, 8, Int(cell(B.repeater, 3)))
-    rsWorld.setBlock(15, rsBase, 8, Int(cell(B.redstone_wire, 0)))
-    rsWorld.setBlock(16, rsBase, 8, Int(cell(B.redstone_lamp)))
+    rsWorld.setBlock(15, rsBase, 8, Int(cell(B.sparkstone_wire, 0)))
+    rsWorld.setBlock(16, rsBase, 8, Int(cell(B.sparkstone_lamp)))
     rsWorld.setBlock(11, rsBase, 9, Int(cell(B.piston, 3)))
     rsWorld.setBlock(11, rsBase, 10, Int(cell(B.stone)))
     rsWorld.setBlock(12, rsBase, 10, Int(cell(B.observer, 4)))
@@ -1771,8 +1790,8 @@ if let g = loadJSON("systems-goldens.json") {
     flip(true)
     for _ in 1...4 { stepWorld(rsWorld) }
     rsGot.append(regionHash(rsWorld, 6, rsBase - 2, 6, 20, rsBase + 2, 14))
-    let rsWant = (g["redstoneStages"] as! [NSNumber]).map { UInt32(truncating: $0) }
-    check("redstone contraption (lever/wire/repeater/piston/lamp/observer)", rsGot == rsWant,
+    let rsWant = (g["sparkstoneStages"] as! [NSNumber]).map { UInt32(truncating: $0) }
+    check("sparkstone contraption (lever/wire/repeater/piston/lamp/observer)", rsGot == rsWant,
           "got \(rsGot) want \(rsWant)")
 
     // Sticky retraction must move the entire slime adhesion set, not just the
@@ -1783,7 +1802,7 @@ if let g = loadJSON("systems-goldens.json") {
     adhesionWorld.setBlock(ax, ay, az, Int(cell(B.sticky_piston, Dir.east)))
     adhesionWorld.setBlock(ax + 1, ay, az, Int(cell(B.slime_block)))
     adhesionWorld.setBlock(ax + 1, ay + 1, az, Int(cell(B.stone)))
-    adhesionWorld.setBlock(ax, ay - 1, az, Int(cell(B.redstone_block)))
+    adhesionWorld.setBlock(ax, ay - 1, az, Int(cell(B.sparkstone_block)))
     for _ in 0..<4 { stepWorld(adhesionWorld) }
     let adhesionExtended =
         adhesionWorld.getBlock(ax, ay, az) == Int(cell(B.sticky_piston, Dir.east | 8)) &&
@@ -1911,7 +1930,7 @@ if let g = loadJSON("systems-goldens.json") {
         check("interact ents: goldens regenerated", true)
         check("interact region: goldens regenerated", true)
     } else {
-        cmpList("interact probes (place/use/break/bonemeal/eat)", iGot, g["interactProbes"] as! [String])
+        cmpList("interact probes (place/use/break/bonemeal/eat)", iGot, "interactProbes")
         check("interact entity drops", iEnts == UInt32(truncating: g["interactEnts"] as! NSNumber),
               "got \(iEnts) want \(g["interactEnts"]!)")
         check("interact region blocks", iRegion == UInt32(truncating: g["interactRegion"] as! NSNumber),
@@ -2562,9 +2581,9 @@ do {
 section("headlamp")
 do {
     func st(_ n: String) -> ItemStack? { n.isEmpty ? nil : ItemStack(iid(n), 1) }
-    let grid = ["", "glowstone_dust", "", "leather", "iron_ingot", "leather", "", "", ""].map(st)
+    let grid = ["", "lumenstone_dust", "", "leather", "iron_ingot", "leather", "", "", ""].map(st)
     let out = matchCrafting(grid, 3, 3)?.out
-    check("glowstone over iron, leather either side crafts a headlamp", out.map { itemDefs[$0.id].name } == "headlamp")
+    check("lumenstone over iron, leather either side crafts a headlamp", out.map { itemDefs[$0.id].name } == "headlamp")
     check("it's worn on the head", itemDefs[iid("headlamp")].armor?.slot == 0)
     let home = NSTemporaryDirectory() + "pebsmoke-lamp-\(getpid())"
     setenv("PEBBLE_HOME", home, 1)
@@ -2614,8 +2633,8 @@ do {
     check("Feather Falling IV cuts a 12-block fall", before - p.health > 0 && before - p.health < 5,
           "took \(before - p.health)")
     p.armor[3] = nil
-    check("death text: high fall", deathCauseText("fall_high") == "fell from a high place")
-    check("death text: arrows", deathCauseText("projectile", "Skeleton") == "was shot by Skeleton")
+    check("death text: a long fall reads differently from a short one", deathCauseText("fall_high") == "took a long fall" && deathCauseText("fall") == "landed badly")
+    check("death text names the attacker", deathCauseText("projectile", "Skeleton") == "took an arrow from Skeleton")
     // state that used to be lost on save and reload
     func reload(_ e: Entity) -> Entity { loadEntity(w, e.save())! }
     let slime = mob("slime") as! Slime
@@ -2635,9 +2654,9 @@ do {
     let bee = mob("bee") as! Bee
     bee.doMeleeAttack(zombie)
     check("a bee that stung is still doomed after a reload", (reload(bee) as! Bee).hasStung)
-    let creeper = mob("creeper") as! Creeper
-    creeper.charged = true
-    check("a charged creeper stays charged", (reload(creeper) as! Creeper).charged)
+    let fizzler = mob("fizzler") as! Fizzler
+    fizzler.charged = true
+    check("a charged fizzler stays charged", (reload(fizzler) as! Fizzler).charged)
     // trees: leaves out of a log's reach (7+ steps) are never generated
     let treeSink = ArraySink(cx: 0, cz: 0, blocks: [UInt16](repeating: 0, count: 16 * 16 * WORLD_H),
                              minY: GEN_MIN_Y, maxY: GEN_MIN_Y + WORLD_H, heightFallback: { _, _ in 64 })
@@ -2684,7 +2703,7 @@ do {
     p.invulnTicks = 0   // the Feather Falling check above just hurt it
     p.fallDistance = 20
     p.onLand(20)
-    check("dying from a long fall reads \"fell from a high place\"", p.data.deathCause == "fall_high")
+    check("dying from a long fall records the long-fall cause", p.data.deathCause == "fall_high")
     // a world saved before 1.5 has no genVersion: it keeps generator 1
     var old = g.worldRec!
     g.exitToTitle()
@@ -2784,7 +2803,13 @@ do {
     let guestInv = (db.getPlayer("old#guest:Bob")?["data"] as? [String: Any])?["inventory"] as? [Any]
     check("LAN guests' saved players are migrated too", ((guestInv?[0] as? [String: Any])?["id"] as? NSNumber)?.intValue == diamondI)
     check("a second open changes nothing", db.migratePalette("old") == nil)
-    check("a world saved before palettes gets this build's", db.migratePalette("prepalette") == nil && db.getPalette("prepalette") == Palette.current())
+    // names in Java-format resource packs and in worlds saved before the renames
+    check("pack names: Pebble names map to the format's texture names",
+          packName("sparkstone_torch") == "red" + "stone_torch" && packName("stone") == "stone")
+    check("older saves' names map to Pebble's", pebbleName("nether" + "ite_sword") == "darksteel_sword"
+          && pebbleName("eye_of_" + "ender") == "rift_eye" && pebbleName("oak_log") == "oak_log")
+    check("a world saved before palettes is translated to this build's names",
+          db.migratePalette("prepalette") != nil && db.getPalette("prepalette") == Palette.current())
 }
 
 print("\n\(passed) passed, \(failed) failed")

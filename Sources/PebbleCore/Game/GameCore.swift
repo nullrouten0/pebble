@@ -28,13 +28,13 @@ let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge
 let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder", "infinity_wipe"]
 
 public let SPRITE_TYPES: Set<String> = [
-    "snowball", "egg", "ender_pearl", "xp_bottle", "thrown_potion", "firework",
-    "eye_of_ender", "fishing_bobber", "wither_skull", "dragon_fireball", "fireball",
-    "shulker_bullet", "llama_spit", "rocket", "void_bomb",
+    "snowball", "egg", "rift_pearl", "xp_bottle", "thrown_potion", "firework",
+    "rift_eye", "fishing_bobber", "blight_skull", "dragon_fireball", "fireball",
+    "lurker_bullet", "llama_spit", "rocket", "void_bomb",
 ]
 /// entities that tick regardless of sim distance (bosses roam the whole arena;
 /// rockets and void bombs outfly it and would hang in the air)
-let ALWAYS_TICK: Set<String> = ["ender_dragon", "wither", "warden", "end_crystal", "eye_of_ender", "lightning",
+let ALWAYS_TICK: Set<String> = ["rift_dragon", "blight", "warden", "rift_crystal", "rift_eye", "lightning",
                                 "rocket", "void_bomb"]
 
 // =============================================================================
@@ -76,7 +76,7 @@ public final class LoadProf {
 }
 
 // =============================================================================
-// Construction-pattern detection (golems, wither)
+// Construction-pattern detection (golems, blight)
 // =============================================================================
 func tryBuildGolem(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     // snow golem: pumpkin on 2 snow blocks
@@ -105,9 +105,9 @@ func tryBuildGolem(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     }
 }
 
-func tryBuildWither(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
+func tryBuildBlight(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
     func isSoul(_ id: Int) -> Bool { id == Int(B.soul_sand) || id == Int(B.soul_soil) }
-    func isSkull(_ bx: Int, _ by: Int, _ bz: Int) -> Bool { world.getBlockId(bx, by, bz) == Int(B.wither_skeleton_skull) }
+    func isSkull(_ bx: Int, _ by: Int, _ bz: Int) -> Bool { world.getBlockId(bx, by, bz) == Int(B.blight_skeleton_skull) }
     for (ax, az) in [(1, 0), (0, 1)] {
         // the skull just placed can be any of the three top positions
         for off in -1...1 {
@@ -119,8 +119,8 @@ func tryBuildWither(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
             for (dx, dy, dz) in [(-ax, 0, -az), (0, 0, 0), (ax, 0, az), (-ax, -1, -az), (0, -1, 0), (ax, -1, az), (0, -2, 0)] {
                 world.setBlock(cx + dx, y + dy, cz + dz, 0)
             }
-            let w = spawnMob(world, "wither", Double(cx) + 0.5, Double(y - 2), Double(cz) + 0.5, nil)
-            if w != nil { world.hooks.playSound("entity.wither.spawn", Double(cx), Double(y), Double(cz), 8, 1) }
+            let w = spawnMob(world, "blight", Double(cx) + 0.5, Double(y - 2), Double(cz) + 0.5, nil)
+            if w != nil { world.hooks.playSound("entity.blight.spawn", Double(cx), Double(y), Double(cz), 8, 1) }
             return
         }
     }
@@ -345,11 +345,11 @@ public final class GameCore {
             lightQueue[d] = []
         }
         onPlacedHandlers[Int(B.carved_pumpkin)] = { w, x, y, z, _ in tryBuildGolem(w, x, y, z) }
-        onPlacedHandlers[Int(B.wither_skeleton_skull)] = { w, x, y, z, _ in tryBuildWither(w, x, y, z) }
+        onPlacedHandlers[Int(B.blight_skeleton_skull)] = { w, x, y, z, _ in tryBuildBlight(w, x, y, z) }
         bindCrystalDestroyed { crystal, _ in
             let dragon = crystal.world.entities.first {
-                ($0 as? Entity)?.type == "ender_dragon" && !$0.dead
-            } as? EnderDragon
+                ($0 as? Entity)?.type == "rift_dragon" && !$0.dead
+            } as? RiftDragon
             if let dragon {
                 _ = dragon.hurt(10, .explosion)
                 dragon.pathAngle += 1.5
@@ -641,7 +641,7 @@ public final class GameCore {
         }
         // if loading into the End with a living fight, re-arm the dragon hook
         for e in w.entities {
-            if let d = e as? EnderDragon { armDragon(d) }
+            if let d = e as? RiftDragon { armDragon(d) }
         }
 
         inWorld = true
@@ -916,7 +916,7 @@ public final class GameCore {
             for ed in saved.entities {
                 if let e = loadEntity(w, ed) {
                     w.addEntity(e)
-                    if let dragon = e as? EnderDragon { armDragon(dragon) }
+                    if let dragon = e as? RiftDragon { armDragon(dragon) }
                 }
             }
         } else if let entitySpecs {
@@ -981,9 +981,9 @@ public final class GameCore {
                 be.items![slot] = ItemStack(id, max(1, min(n, itemDef(id).maxStack)))
             }
             put(be)
-        case "elytra_chest":
+        case "wingsuit_chest":
             let be = makeContainerBE(x, y, z, 27)
-            be.items![13] = ItemStack(iid("elytra"), 1)
+            be.items![13] = ItemStack(iid("wingsuit"), 1)
             let extra = rollLoot("end_city_treasure", &rng, luck: 0)
             for s in extra.prefix(4) {
                 let slot = rng.nextInt(27)
@@ -1161,7 +1161,7 @@ public final class GameCore {
             put(x, sy, z, sy <= top ? ladder : 0)
             // a light in the west wall every 6 blocks
             if sy < top - 1 && (top - sy) % 6 == 0 && !isTreeOrPlant(w.getBlockId(x - 1, sy, z)) {
-                put(x - 1, sy, z, Int(cell(B.glowstone)))
+                put(x - 1, sy, z, Int(cell(B.lumenstone)))
             }
         }
         // clear the canopy over the entrance so the flag shows
@@ -1195,7 +1195,7 @@ public final class GameCore {
         for fy in (poleTop - 3)..<poleTop {
             for fx in 1...4 { put(px + fx, fy, pz, Int(cell(B.red_wool))) }
         }
-        put(px, poleTop, pz, Int(cell(B.glowstone)))
+        put(px, poleTop, pz, Int(cell(B.lumenstone)))
         return (x, top, z)
     }
 
@@ -1688,7 +1688,7 @@ public final class GameCore {
             // first visit: the fight begins
             if !(worldRec?.dragonKilled ?? false) && !dragonSpawned {
                 ensureChunksLoaded(end, 0, 0, 2)
-                let dragon = spawnMob(end, "ender_dragon", 0.5, 90, 0.5, nil) as? EnderDragon
+                let dragon = spawnMob(end, "rift_dragon", 0.5, 90, 0.5, nil) as? RiftDragon
                 if let dragon { armDragon(dragon) }
                 dragonSpawned = true
             }
@@ -1704,7 +1704,7 @@ public final class GameCore {
         }
     }
 
-    private func armDragon(_ dragon: EnderDragon) {
+    private func armDragon(_ dragon: RiftDragon) {
         dragonSpawned = true
         dragon.onDeath = { [weak self] _ in
             guard let self, let end = self.worlds[.end] else { return }
@@ -1714,7 +1714,7 @@ public final class GameCore {
             spawnEndGateway(end, n)
             self.worldRec?.dragonKilled = true
             self.advance("kill_dragon")
-            self.host?.pushChat("§dThe Ender Dragon has been defeated!")
+            self.host?.pushChat("§dThe Rift Dragon has been defeated!")
         }
     }
 
@@ -1820,10 +1820,10 @@ public final class GameCore {
             if p.flying {
                 p.vy = (k("jump") ? 0.35 : 0) + (k("sneak") ? -0.35 : 0)
             }
-            // elytra start: jump while airborne
-            if k("jump") && !p.onGround && !p.elytraFlying && p.vy < 0 && !p.flying {
-                if p.startElytra() {
-                    host?.playSound("item.armor.equip_elytra", p.x, p.y, p.z, 1, 1)
+            // wingsuit start: jump while airborne
+            if k("jump") && !p.onGround && !p.wingsuitFlying && p.vy < 0 && !p.flying {
+                if p.startWingsuit() {
+                    host?.playSound("item.armor.equip_wingsuit", p.x, p.y, p.z, 1, 1)
                 }
             }
         } else {
@@ -1873,7 +1873,7 @@ public final class GameCore {
                 p.vx *= 0.85; p.vy *= 0.6; p.vz *= 0.85
                 p.fallDistance = 0
                 if p.onGround { p.flying = false }
-            } else if p.elytraFlying {
+            } else if p.wingsuitFlying {
                 p.move(p.vx, p.vy, p.vz)
             } else if p.sleepTicks <= 0 {
                 p.travel()
@@ -1916,7 +1916,7 @@ public final class GameCore {
                 }
                 if !near { continue }
                 ent.tick()
-                // sculk catalyst blooms on death
+                // hush catalyst blooms on death
                 if let liv = ent as? LivingEntity, liv.deathTime == 1 {
                     tryCatalystBloom(w, ent.x, ent.y, ent.z, liv.xpReward)
                 }
@@ -2021,8 +2021,8 @@ public final class GameCore {
         for dy in -4...4 {
             for dz in -4...4 {
                 for dx in -4...4 {
-                    if w.getBlockId(bx + dx, by + dy, bz + dz) == Int(B.sculk_catalyst) {
-                        sculkBloom(w, bx + dx, by + dy, bz + dz, xp)
+                    if w.getBlockId(bx + dx, by + dy, bz + dz) == Int(B.hush_catalyst) {
+                        hushBloom(w, bx + dx, by + dy, bz + dz, xp)
                         advance("avoid_warden")
                         return
                     }
@@ -2086,7 +2086,7 @@ public final class GameCore {
         }
         // smoothed FOV kick (vanilla eases toward the speed-scaled FOV)
         prevFovScale = fovScale
-        let target = p.elytraFlying ? 1.12 : (p.sprinting ? 1.15 : (p.usingItem && itemUseSlows() ? 0.9 : 1.0))
+        let target = p.wingsuitFlying ? 1.12 : (p.sprinting ? 1.15 : (p.usingItem && itemUseSlows() ? 0.9 : 1.0))
         fovScale += (target - fovScale) * 0.5
     }
 
@@ -2287,13 +2287,13 @@ public final class GameCore {
         if has("iron_chestplate") || has("iron_helmet") || has("iron_leggings") || has("iron_boots") { advance("iron_armor") }
         if has("diamond") { advance("mine_diamond") }
         if has("diamond_chestplate") && has("diamond_helmet") && has("diamond_leggings") && has("diamond_boots") { advance("diamond_armor") }
-        if has("blaze_rod") { advance("obtain_blaze_rod") }
-        if has("ender_eye") { advance("ender_eye") }
+        if has("cinder_rod") { advance("obtain_cinder_rod") }
+        if has("rift_eye") { advance("rift_eye") }
         if has("dragon_egg") { advance("dragon_egg") }
-        if has("elytra") { advance("elytra") }
+        if has("wingsuit") { advance("wingsuit") }
         if has("ancient_debris") { advance("obtain_ancient_debris") }
-        if has("netherite_helmet") && has("netherite_chestplate") && has("netherite_leggings") && has("netherite_boots") { advance("netherite_armor") }
-        if has("nether_star") { advance("kill_wither") }
+        if has("darksteel_helmet") && has("darksteel_chestplate") && has("darksteel_leggings") && has("darksteel_boots") { advance("darksteel_armor") }
+        if has("nether_star") { advance("kill_blight") }
         if has("dragon_breath") { advance("dragon_breath") }
         if has("sniffer_egg") { advance("sniffer_egg") }
         if has("emerald") { advance("adventure_root") }
@@ -2311,10 +2311,10 @@ public final class GameCore {
         var bars: [BossBarInfo] = []
         for e in w.entities {
             guard let ent = e as? Entity else { continue }
-            if let d = ent as? EnderDragon {
-                bars.append(BossBarInfo(name: "Ender Dragon", progress: d.health / d.maxHealth, color: "#e864e8"))
-            } else if let d = ent as? WitherBoss {
-                bars.append(BossBarInfo(name: "Wither", progress: d.health / d.maxHealth, color: "#7a7ab8"))
+            if let d = ent as? RiftDragon {
+                bars.append(BossBarInfo(name: "Rift Dragon", progress: d.health / d.maxHealth, color: "#e864e8"))
+            } else if let d = ent as? BlightBoss {
+                bars.append(BossBarInfo(name: "Blight", progress: d.health / d.maxHealth, color: "#7a7ab8"))
             }
         }
         for r in raidManager.raids {
@@ -2402,7 +2402,7 @@ public final class GameCore {
         for e in world.getEntitiesNear(ox, oy, oz, maxDist + 2) {
             if e === p || e.dead { continue }
             guard let ent = e as? Entity else { continue }
-            if !(ent is LivingEntity) && !["boat", "minecart", "item_frame", "end_crystal"].contains(ent.type) { continue }
+            if !(ent is LivingEntity) && !["boat", "minecart", "item_frame", "rift_crystal"].contains(ent.type) { continue }
             let bb = ent.bb()
             if let t = rayBoxT(ox, oy, oz, dx, dy, dz,
                                bb.x0 - 0.1, bb.y0 - 0.1, bb.z0 - 0.1,
@@ -2433,7 +2433,7 @@ public final class GameCore {
             return
         }
         if let target {
-            if target is LivingEntity || target.type == "end_crystal" {
+            if target is LivingEntity || target.type == "rift_crystal" {
                 playerAttack(p, target)
             } else if target.type == "boat" || target.type == "minecart" {
                 _ = target.hurt(2, .player, p)

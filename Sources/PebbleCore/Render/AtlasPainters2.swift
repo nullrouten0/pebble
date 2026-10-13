@@ -1,5 +1,5 @@
 // Atlas painters part 2 — plants, crops, mushroom blocks, functional blocks,
-// torches/lanterns, redstone, rails, doors/trapdoors, misc, saplings,
+// torches/lanterns, sparkstone, rails, doors/trapdoors, misc, saplings,
 // destroy stages, particle sprites.
 
 import Foundation
@@ -75,7 +75,7 @@ func registerPainters2() {
         for (x, y) in [(5, 7), (6, 9), (5, 11), (6, 13)] { t.disc(Double(x), Double(y), 1.2, 0xf4f8f4) }
     }
     p("torchflower") { t in flower(t, 0xe8742c, 0xf8c83c); t.set(7, 4, 0xf8c83c) }
-    p("wither_rose") { t in flower(t, 0x1c1c1c, 0x080808) }
+    p("blight_rose") { t in flower(t, 0x1c1c1c, 0x080808) }
     p("sunflower_bottom") { t in t.cross(0x8e8e8e) }
     p("sunflower_top") { t in t.clearAlpha(); t.vline(7, 8, 15, 0x4f8f2e); t.disc(7.5, 5, 4, 0xe8b820); t.disc(7.5, 5, 2, 0x6a4a1a) }
     p("lilac_bottom") { t in t.cross(0x8e8e8e) }
@@ -173,7 +173,7 @@ func registerPainters2() {
         }
         t.speckle(0xc8e8dc, 8)
     }
-    p("sculk_vein") { t in
+    p("hush_vein") { t in
         t.clearAlpha()
         for i in 0..<20 {
             let x = Int(t.rand(i, 0) * 16), y = Int(t.rand(i, 1) * 16)
@@ -389,7 +389,7 @@ func registerPainters2() {
         t.rect(5, 5, 10, 7, 0x38302a)
     }
     p("chest_side") { t in t.planks(0x9a6b35); t.border(0x5c3c1c); t.rect(6, 7, 9, 10, 0x6a6a6a); t.rect(7, 7, 8, 9, 0x8a8a8a) }
-    p("ender_chest_side") { t in t.blotch(0x10211e, 0.1, 3); t.border(0x081210); t.rect(6, 7, 9, 10, 0x1c5c50); t.set(7, 8, 0x39e8c8); t.set(8, 8, 0x39e8c8) }
+    p("rift_chest_side") { t in t.blotch(0x10211e, 0.1, 3); t.border(0x081210); t.rect(6, 7, 9, 10, 0x1c5c50); t.set(7, 8, 0x39e8c8); t.set(8, 8, 0x39e8c8) }
     p("barrel_side") { t in t.planks(0x8a6234); for y in [2, 13] { t.hline(y, 0, 15, 0x4c3418) } }
     p("barrel_top") { t in t.blotch(0x9a7040, 0.08); t.border(0x4c3418); t.rect(4, 4, 11, 11, shade(0x9a7040, 0.88)); t.hline(7, 2, 13, 0x6a4c24) }
     p("barrel_top_open") { t in paintInto(t, "barrel_top"); t.rect(3, 3, 12, 12, 0x241808) }
@@ -535,8 +535,8 @@ func registerPainters2() {
     // --- torches / lanterns ---
     p("torch") { t in t.clearAlpha(); t.vline(7, 6, 15, 0x7a5c34); t.vline(8, 6, 15, 0x6a4c2a); t.rect(7, 4, 8, 5, 0xffd75c); t.set(7, 3, 0xffaa2c); t.set(8, 3, 0xff8a1c) }
     p("soul_torch") { t in t.clearAlpha(); t.vline(7, 6, 15, 0x7a5c34); t.vline(8, 6, 15, 0x6a4c2a); t.rect(7, 4, 8, 5, 0x5ce8e8); t.set(7, 3, 0x2cb8c8); t.set(8, 3, 0x1c98b0) }
-    p("redstone_torch") { t in t.clearAlpha(); t.vline(7, 6, 15, 0x7a5c34); t.vline(8, 6, 15, 0x6a4c2a); t.rect(7, 4, 8, 5, 0xff3c2c); t.set(7, 3, 0xffa89c) }
-    p("redstone_torch_off") { t in t.clearAlpha(); t.vline(7, 6, 15, 0x7a5c34); t.vline(8, 6, 15, 0x6a4c2a); t.rect(7, 4, 8, 5, 0x6a1410) }
+    p("sparkstone_torch") { t in t.clearAlpha(); t.vline(7, 6, 15, 0x7a5c34); t.vline(8, 6, 15, 0x6a4c2a); t.rect(7, 4, 8, 5, 0xff3c2c); t.set(7, 3, 0xffa89c) }
+    p("sparkstone_torch_off") { t in t.clearAlpha(); t.vline(7, 6, 15, 0x7a5c34); t.vline(8, 6, 15, 0x6a4c2a); t.rect(7, 4, 8, 5, 0x6a1410) }
     p("lantern") { t in
         t.clearAlpha()
         t.rect(5, 6, 10, 13, 0x4a4a52); t.rect(6, 7, 9, 12, 0xffc84c); t.rect(6, 4, 9, 5, 0x3a3a42)
@@ -595,9 +595,9 @@ func registerPainters2() {
         }
     }
 
-    // --- redstone ---
-    p("redstone_dust_dot") { t in t.clearAlpha(); t.disc(7.5, 7.5, 2.4, 0xff2200); t.set(7, 7, 0xff6644) }
-    p("redstone_dust_line") { t in t.clearAlpha(); t.rect(0, 7, 15, 8, 0xff2200); t.hline(7, 0, 15, 0xdd1c00) }
+    // --- sparkstone ---
+    p("sparkstone_dust_dot") { t in t.clearAlpha(); t.disc(7.5, 7.5, 2.4, 0xff2200); t.set(7, 7, 0xff6644) }
+    p("sparkstone_dust_line") { t in t.clearAlpha(); t.rect(0, 7, 15, 8, 0xff2200); t.hline(7, 0, 15, 0xdd1c00) }
     p("repeater") { t in t.blotch(0x8a8a92, 0.06); t.border(0x6a6a72); t.rect(7, 2, 8, 3, 0x6a1410); t.rect(7, 9, 8, 10, 0x6a1410); t.hline(7, 2, 13, 0x3c3c44) }
     p("repeater_on") { t in t.blotch(0x9a9aa2, 0.06); t.border(0x6a6a72); t.rect(7, 2, 8, 3, 0xff3c2c); t.rect(7, 9, 8, 10, 0xff3c2c); t.hline(7, 2, 13, 0x3c3c44) }
     p("comparator") { t in
@@ -622,8 +622,8 @@ func registerPainters2() {
     p("dropper_front_vertical") { t in paintInto(t, "furnace_top"); t.rect(4, 4, 11, 11, 0x202020); t.rect(6, 6, 9, 9, 0x3c3c3c) }
     p("hopper_outside") { t in t.blotch(0x3a3a3a, 0.06); t.rect(0, 10, 15, 15, 0x2c2c2c) }
     p("hopper_top") { t in t.blotch(0x3a3a3a, 0.06); t.rect(2, 2, 13, 13, 0x1c1c1c) }
-    p("redstone_lamp") { t in t.blotch(0x46280e, 0.1, 2); t.rect(3, 3, 12, 12, 0x6a3c1c); t.rect(5, 5, 10, 10, 0x8a5424); t.border(0x33200c) }
-    p("redstone_lamp_on") { t in t.blotch(0xa86420, 0.08, 2); t.rect(3, 3, 12, 12, 0xe8a04c); t.rect(5, 5, 10, 10, 0xffd88c); t.border(0x7a4818) }
+    p("sparkstone_lamp") { t in t.blotch(0x46280e, 0.1, 2); t.rect(3, 3, 12, 12, 0x6a3c1c); t.rect(5, 5, 10, 10, 0x8a5424); t.border(0x33200c) }
+    p("sparkstone_lamp_on") { t in t.blotch(0xa86420, 0.08, 2); t.rect(3, 3, 12, 12, 0xe8a04c); t.rect(5, 5, 10, 10, 0xffd88c); t.border(0x7a4818) }
     p("daylight_detector_top") { t in
         t.fill(0x1c2c4c); t.border(0x6a5c3c)
         var y = 2
@@ -643,18 +643,18 @@ func registerPainters2() {
         }
     }
     p("daylight_detector_side") { t in t.planks(0x9a7444); t.rect(0, 0, 15, 3, 0xd8d0b8) }
-    p("sculk") { t in t.blotch(0x0c2330, 0.14, 2); t.speckle(0x16424e, 16); t.speckle(0x2ce8e8, 3) }
-    p("sculk_catalyst_top") { t in t.blotch(0x16424e, 0.1, 2); t.speckle(0x52e8d8, 10); t.rect(5, 5, 10, 10, 0xe8f8e0); t.rect(6, 6, 9, 9, 0xc8f0d0) }
-    p("sculk_catalyst_side") { t in t.blotch(0x0c2330, 0.12, 2); t.rect(0, 0, 15, 4, 0x16424e); t.speckle(0x9cf0dc, 8) }
-    p("sculk_catalyst_bottom") { t in paintInto(t, "sculk") }
-    p("sculk_sensor_top") { t in t.blotch(0x0c3340, 0.1, 2); t.disc(4, 4, 1.4, 0x2ce8e8); t.disc(11, 4, 1.4, 0x2ce8e8); t.disc(4, 11, 1.4, 0x2ce8e8); t.disc(11, 11, 1.4, 0x2ce8e8) }
-    p("sculk_sensor_side") { t in t.blotch(0x0c2c38, 0.1, 2); t.rect(0, 8, 15, 15, 0x0a2430) }
-    p("sculk_sensor_bottom") { t in paintInto(t, "sculk") }
-    p("calibrated_sculk_sensor_top") { t in paintInto(t, "sculk_sensor_top"); t.rect(6, 2, 9, 7, 0x8a62c8) }
-    p("calibrated_sculk_sensor_side") { t in paintInto(t, "sculk_sensor_side"); t.rect(6, 0, 9, 4, 0x8a62c8) }
-    p("sculk_shrieker_top") { t in t.blotch(0x0c2330, 0.1, 2); t.border(0xc8d0c8); t.disc(7.5, 7.5, 4, 0x041018); t.disc(7.5, 7.5, 1.8, 0x16424e) }
-    p("sculk_shrieker_side") { t in t.blotch(0x10303c, 0.1, 2); t.hline(0, 0, 15, 0xc8d0c8) }
-    p("sculk_shrieker_bottom") { t in paintInto(t, "sculk") }
+    p("hush") { t in t.blotch(0x0c2330, 0.14, 2); t.speckle(0x16424e, 16); t.speckle(0x2ce8e8, 3) }
+    p("hush_catalyst_top") { t in t.blotch(0x16424e, 0.1, 2); t.speckle(0x52e8d8, 10); t.rect(5, 5, 10, 10, 0xe8f8e0); t.rect(6, 6, 9, 9, 0xc8f0d0) }
+    p("hush_catalyst_side") { t in t.blotch(0x0c2330, 0.12, 2); t.rect(0, 0, 15, 4, 0x16424e); t.speckle(0x9cf0dc, 8) }
+    p("hush_catalyst_bottom") { t in paintInto(t, "hush") }
+    p("hush_sensor_top") { t in t.blotch(0x0c3340, 0.1, 2); t.disc(4, 4, 1.4, 0x2ce8e8); t.disc(11, 4, 1.4, 0x2ce8e8); t.disc(4, 11, 1.4, 0x2ce8e8); t.disc(11, 11, 1.4, 0x2ce8e8) }
+    p("hush_sensor_side") { t in t.blotch(0x0c2c38, 0.1, 2); t.rect(0, 8, 15, 15, 0x0a2430) }
+    p("hush_sensor_bottom") { t in paintInto(t, "hush") }
+    p("calibrated_hush_sensor_top") { t in paintInto(t, "hush_sensor_top"); t.rect(6, 2, 9, 7, 0x8a62c8) }
+    p("calibrated_hush_sensor_side") { t in paintInto(t, "hush_sensor_side"); t.rect(6, 0, 9, 4, 0x8a62c8) }
+    p("hush_shrieker_top") { t in t.blotch(0x0c2330, 0.1, 2); t.border(0xc8d0c8); t.disc(7.5, 7.5, 4, 0x041018); t.disc(7.5, 7.5, 1.8, 0x16424e) }
+    p("hush_shrieker_side") { t in t.blotch(0x10303c, 0.1, 2); t.hline(0, 0, 15, 0xc8d0c8) }
+    p("hush_shrieker_bottom") { t in paintInto(t, "hush") }
     rp("^(rail|powered_rail|detector_rail|activator_rail)(_on)?$") { t, m in
         t.clearAlpha()
         let tie = 0x7a5c34
@@ -855,7 +855,7 @@ func registerPainters2() {
         t.clearAlpha()
         t.px(["..##", "..##", "..#.", "..#.", "###.", "###."], ["#": 0xffffff], 6, 4)
     }
-    p("redstone_particle") { t in t.clearAlpha(); t.disc(7.5, 7.5, 2.6, 0xffffff) }
+    p("sparkstone_particle") { t in t.clearAlpha(); t.disc(7.5, 7.5, 2.6, 0xffffff) }
     p("soul_particle") { t in t.clearAlpha(); t.disc(7.5, 6.5, 3, 0xffffff); t.rect(5, 8, 10, 11, 0xffffff); t.set(6, 6, 0x80f0f0); t.set(9, 6, 0x80f0f0) }
     p("enchant_particle") { t in
         t.clearAlpha()

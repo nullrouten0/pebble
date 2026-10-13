@@ -432,7 +432,7 @@ final class BrewingScreen: ContainerScreen {
         containerSlots.append(SlotDef(
             x: px + 16, y: py + 16,
             get: { be.items![4] }, set: { be.items![4] = $0 },
-            canPlace: { itemDef($0.id).name == "blaze_powder" }))
+            canPlace: { itemDef($0.id).name == "cinder_powder" }))
     }
     override func drawExtra(_ ui: UIManager, _ game: GameCore) {
         let cv = ui.cv
@@ -673,7 +673,7 @@ final class AnvilScreen: ContainerScreen {
             let creative = game.player.gameMode == GameMode.creative
             let tooExpensive = cost >= ANVIL_TOO_EXPENSIVE && !creative
             let ok = creative || (!tooExpensive && game.player.xpLevel >= cost)
-            ui.cv.drawText(tooExpensive ? "Too Expensive!" : "Enchantment Cost: \(cost)",
+            ui.cv.drawText(tooExpensive ? "Too costly" : "Cost: \(cost) levels",
                            panelX + 8, panelY + 71, 1, ok ? "#80ff20" : "#ff5050")
         }
         if !textured {
@@ -937,7 +937,7 @@ final class BeaconScreen: Screen {
             x: panelX + 160, y: panelY + 90,
             get: { [weak self] in self?.payment },
             set: { [weak self] in self?.payment = $0 },
-            canPlace: { ["iron_ingot", "gold_ingot", "diamond", "emerald", "netherite_ingot"].contains(itemDef($0.id).name) }))
+            canPlace: { ["iron_ingot", "gold_ingot", "diamond", "emerald", "darksteel_ingot"].contains(itemDef($0.id).name) }))
         pendingPrimary = be.primary
     }
     override func draw(_ ui: UIManager, _ game: GameCore) {
@@ -1113,7 +1113,7 @@ final class TradingScreen: ContainerScreen {
 /// crafting), as in vanilla
 private let CREATIVE_TABS: [(String, String, String)] = [
     ("building", "Building", "bricks"), ("colored", "Colored", "cyan_wool"), ("natural", "Natural", "grass_block"),
-    ("functional", "Functional", "crafting_table"), ("redstone", "Redstone", "redstone"), ("tools", "Tools", "iron_pickaxe"),
+    ("functional", "Functional", "crafting_table"), ("sparkstone", "Sparkstone", "sparkstone"), ("tools", "Tools", "iron_pickaxe"),
     ("combat", "Combat", "golden_sword"), ("food", "Food", "apple"), ("ingredients", "Ingredients", "iron_ingot"),
     ("spawn_eggs", "Spawn Eggs", "pig_spawn_egg"), ("inventory", "Inventory", "chest"),
 ]

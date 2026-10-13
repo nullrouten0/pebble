@@ -135,7 +135,7 @@ private let registerBlockEntityHandlersOnce: Void = {
         defer { be.items = items }
         // refuel
         if (be.fuel ?? 0) <= 0, let f = items[4] {
-            if itemDef(f.id).name == "blaze_powder" {
+            if itemDef(f.id).name == "cinder_powder" {
                 be.fuel = 20
                 f.count -= 1
                 if f.count <= 0 { items[4] = nil }
@@ -189,7 +189,7 @@ private let registerBlockEntityHandlersOnce: Void = {
         if (be.cooldown ?? 0) > 0 { be.cooldown = (be.cooldown ?? 0) - 1; return }
         let c = world.getBlock(be.x, be.y, be.z)
         if (c >> 4) != Int(B.hopper) { return }
-        if (c & 8) != 0 { return } // locked by redstone
+        if (c & 8) != 0 { return } // locked by sparkstone
         let facing = c & 7
         var acted = false
 
@@ -208,7 +208,7 @@ private let registerBlockEntityHandlersOnce: Void = {
                 } else if target.type == "brewing" {
                     let name = itemDef(s.id).name
                     filter = { idx in
-                        (idx == 4 && name == "blaze_powder") || (idx == 3 && name != "potion") || (idx < 3 && (name == "potion" || name == "splash_potion" || name == "glass_bottle"))
+                        (idx == 4 && name == "cinder_powder") || (idx == 3 && name != "potion") || (idx < 3 && (name == "potion" || name == "splash_potion" || name == "glass_bottle"))
                     }
                 }
                 if insertInto(target, s, filter) {
@@ -313,7 +313,7 @@ private let registerBlockEntityHandlersOnce: Void = {
         if world.time % 80 != 0 { return }
         // pyramid check
         var levels = 0
-        let valid: Set<Int> = [Int(B.iron_block), Int(B.gold_block), Int(B.diamond_block), Int(B.emerald_block), Int(B.netherite_block)]
+        let valid: Set<Int> = [Int(B.iron_block), Int(B.gold_block), Int(B.diamond_block), Int(B.emerald_block), Int(B.darksteel_block)]
         for layer in 1...4 {
             var complete = true
             for dz in -layer...layer where complete {
@@ -345,9 +345,9 @@ private let registerBlockEntityHandlersOnce: Void = {
 
     beTickHandlers["conduit"] = { world, be in
         if world.time % 80 != 0 { return }
-        // count prismarine frame blocks in 5×5×5 shell
+        // count seaglass frame blocks in 5×5×5 shell
         var frame = 0
-        let valid: Set<Int> = [Int(B.prismarine), Int(B.prismarine_bricks), Int(B.dark_prismarine), Int(B.sea_lantern)]
+        let valid: Set<Int> = [Int(B.seaglass), Int(B.seaglass_bricks), Int(B.dark_seaglass), Int(B.sea_lantern)]
         for dy in -2...2 {
             for dz in -2...2 {
                 for dx in -2...2 {

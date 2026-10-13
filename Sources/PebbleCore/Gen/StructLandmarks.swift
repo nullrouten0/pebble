@@ -165,8 +165,8 @@ func starterPyramid(_ b: Builder, _ x: Int, _ y: Int, _ z: Int) {
     // King's chamber: sarcophagus and treasure
     b.fill(P(5), kingF, Q(k0 + 2), P(7), kingF, Q(k0 + 4), granite)
     b.set(P(6), kingF, Q(k0 + 3), C(B.gold_block))
-    kitChest(b, P(-2), kingF, Q(k1), 0, "diamond*16,gold_block*8,emerald_block*2,totem_of_undying")
-    kitChest(b, P(10), kingF, Q(k1), 0, "golden_apple*8,enchanted_golden_apple*2,netherite_scrap*4,music_disc_wander")
+    kitChest(b, P(-2), kingF, Q(k1), 0, "diamond*16,gold_block*8,emerald_block*2,lifecharm")
+    kitChest(b, P(10), kingF, Q(k1), 0, "golden_apple*8,enchanted_golden_apple*2,darksteel_scrap*4,music_disc_wander")
     for (u, v) in [(-2, k0), (10, k0), (-2, k1 - 1), (10, k1 - 1)] { b.set(P(u), kingF, Q(v), C(B.lantern)) }
     b.set(P(4), kingF + 5, Q(k0 + 3), C(B.lantern, 1))
 }
@@ -326,7 +326,7 @@ func starterLighthouse(_ b: Builder, _ x: Int, _ y: Int, _ z: Int) {
     // lamp room
     for h in 1...4 { ring(dy + h, 2, wall: C(B.glass), inner: AIR) }
     b.fill(cx - 1, dy + 1, cz - 1, cx + 1, dy + 3, cz + 1, C(B.sea_lantern))
-    b.set(cx, dy + 4, cz, C(B.glowstone))
+    b.set(cx, dy + 4, cz, C(B.lumenstone))
     // red cap
     for (i, r) in [3.0, 2.0, 1.0, 0.0].enumerated() { ring(dy + 5 + i, r, wall: C(B.red_concrete), inner: C(B.red_concrete)) }
     b.set(cx, dy + 9, cz, C(B.lightning_rod))

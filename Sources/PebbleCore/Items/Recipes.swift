@@ -40,7 +40,7 @@ public func tagMatches(_ tag: String, _ itemNm: String) -> Bool {
     TAGS[tag]?.contains(itemNm) ?? false
 }
 
-public let TRIM_MATERIALS = ["iron_ingot", "copper_ingot", "gold_ingot", "lapis_lazuli", "emerald", "diamond", "netherite_ingot", "redstone", "amethyst_shard", "quartz"]
+public let TRIM_MATERIALS = ["iron_ingot", "copper_ingot", "gold_ingot", "lapis_lazuli", "emerald", "diamond", "darksteel_ingot", "sparkstone", "amethyst_shard", "quartz"]
 
 private func shaped(_ pattern: String, _ key: [Character: String], _ out: String, _ count: Int = 1) {
     let rows = pattern.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
@@ -177,16 +177,16 @@ private let registerAllRecipesOnce: Void = {
     stoneSet("red_sandstone", "red_sandstone")
     stoneSet("smooth_red_sandstone", "smooth_red_sandstone", wall: false)
     stoneSet("cut_red_sandstone", "cut_red_sandstone", stairs: false, wall: false)
-    stoneSet("prismarine", "prismarine")
-    stoneSet("prismarine_brick", "prismarine_bricks", wall: false)
-    stoneSet("dark_prismarine", "dark_prismarine", wall: false)
+    stoneSet("seaglass", "seaglass")
+    stoneSet("seaglass_brick", "seaglass_bricks", wall: false)
+    stoneSet("dark_seaglass", "dark_seaglass", wall: false)
     stoneSet("nether_brick", "nether_bricks")
     stoneSet("red_nether_brick", "red_nether_bricks")
     stoneSet("blackstone", "blackstone")
     stoneSet("polished_blackstone", "polished_blackstone")
     stoneSet("polished_blackstone_brick", "polished_blackstone_bricks")
     stoneSet("end_stone_brick", "end_stone_bricks")
-    stoneSet("purpur", "purpur_block", wall: false)
+    stoneSet("violite", "violite_block", wall: false)
     stoneSet("quartz", "quartz_block", wall: false)
     stoneSet("smooth_quartz", "smooth_quartz", wall: false)
     stoneSet("tuff", "tuff")
@@ -214,7 +214,7 @@ private let registerAllRecipesOnce: Void = {
     shaped("S/S", ["S": "nether_brick_slab"], "chiseled_nether_bricks")
     shaped("S/S", ["S": "polished_blackstone_slab"], "chiseled_polished_blackstone")
     shaped("S/S", ["S": "quartz_slab"], "chiseled_quartz_block")
-    shaped("S/S", ["S": "purpur_slab"], "purpur_pillar")
+    shaped("S/S", ["S": "violite_slab"], "violite_pillar")
     shaped("XX/XX", ["X": "sand"], "sandstone")
     shaped("XX/XX", ["X": "red_sand"], "red_sandstone")
     shaped("XX/XX", ["X": "sandstone"], "cut_sandstone", 4)
@@ -229,7 +229,7 @@ private let registerAllRecipesOnce: Void = {
     shaped("XX/XX", ["X": "quartz_block"], "quartz_bricks", 4)
     shaped("X/X", ["X": "quartz_block"], "quartz_pillar", 2)
     shaped("XX/XX", ["X": "end_stone"], "end_stone_bricks", 4)
-    shaped("XX/XX", ["X": "popped_chorus_fruit"], "purpur_block", 4)
+    shaped("XX/XX", ["X": "popped_chorus_fruit"], "violite_block", 4)
     shaped("X/X", ["X": "basalt"], "polished_basalt", 2)
     shaped("DG/GD", ["D": "dirt", "G": "gravel"], "coarse_dirt", 4)
     shaped("XXX/XXX/XXX", ["X": "melon_slice"], "melon")
@@ -240,7 +240,7 @@ private let registerAllRecipesOnce: Void = {
     shaped("XX/XX", ["X": "snowball"], "snow_block")
     shaped("XXX", ["X": "snow_block"], "snow", 6)
     shaped("XX/XX", ["X": "clay_ball"], "clay")
-    shaped("XX/XX", ["X": "glowstone_dust"], "glowstone")
+    shaped("XX/XX", ["X": "lumenstone_dust"], "lumenstone")
     shaped("XXX/XXX/XXX", ["X": "wheat"], "hay_block")
     shapeless(["hay_block"], "wheat", 9)
     shaped("XXX/XXX/XXX", ["X": "bone_meal"], "bone_block")
@@ -265,13 +265,13 @@ private let registerAllRecipesOnce: Void = {
         shapeless([ingot], nugget, 9)
     }
     for (item, blockNm) in [("diamond", "diamond_block"), ("emerald", "emerald_block"), ("coal", "coal_block"),
-                            ("lapis_lazuli", "lapis_block"), ("redstone", "redstone_block"),
-                            ("copper_ingot", "copper_block"), ("netherite_ingot", "netherite_block"),
+                            ("lapis_lazuli", "lapis_block"), ("sparkstone", "sparkstone_block"),
+                            ("copper_ingot", "copper_block"), ("darksteel_ingot", "darksteel_block"),
                             ("raw_iron", "raw_iron_block"), ("raw_copper", "raw_copper_block"), ("raw_gold", "raw_gold_block")] {
         shaped("XXX/XXX/XXX", ["X": item], blockNm)
         shapeless([blockNm], item, 9)
     }
-    shapeless(["gold_ingot", "gold_ingot", "gold_ingot", "gold_ingot", "netherite_scrap", "netherite_scrap", "netherite_scrap", "netherite_scrap"], "netherite_ingot")
+    shapeless(["gold_ingot", "gold_ingot", "gold_ingot", "gold_ingot", "darksteel_scrap", "darksteel_scrap", "darksteel_scrap", "darksteel_scrap"], "darksteel_ingot")
 
     // copper family
     for stage in 0..<4 {
@@ -310,7 +310,7 @@ private let registerAllRecipesOnce: Void = {
     shaped("SIS/XTX/ S ", ["S": "stick", "I": "iron_ingot", "T": "tripwire_hook", "X": "string"], "crossbow")
     shaped(" SX/S X/ SX", ["S": "stick", "X": "string"], "bow")
     shaped("F/S/E", ["F": "flint", "S": "stick", "E": "feather"], "arrow", 4)
-    shapeless(["arrow", "glowstone_dust", "glowstone_dust", "glowstone_dust", "glowstone_dust"], "spectral_arrow", 2)
+    shapeless(["arrow", "lumenstone_dust", "lumenstone_dust", "lumenstone_dust", "lumenstone_dust"], "spectral_arrow", 2)
     shaped("  S/ SX/S X", ["S": "stick", "X": "string"], "fishing_rod")
     shapeless(["iron_ingot", "flint"], "flint_and_steel")
     shaped("SS /SE /  S", ["S": "string", "E": "slime_ball"], "lead", 2)
@@ -334,37 +334,37 @@ private let registerAllRecipesOnce: Void = {
     shapeless(["sugar_cane"], "sugar")
     shapeless(["honey_bottle"], "sugar", 3)
 
-    // --- redstone ---
+    // --- sparkstone ---
     shaped("C/S", ["C": "#coals", "S": "stick"], "torch", 4)
     shaped("C/S/B", ["C": "#coals", "S": "stick", "B": "#soul_fire_base"], "soul_torch", 4)
-    shaped("R/S", ["R": "redstone", "S": "stick"], "redstone_torch")
+    shaped("R/S", ["R": "sparkstone", "S": "stick"], "sparkstone_torch")
     shaped("S/C", ["S": "stick", "C": "cobblestone"], "lever")
-    shaped("TRT/SSS", ["T": "redstone_torch", "R": "redstone", "S": "stone"], "repeater")
-    shaped(" T /TQT/SSS", ["T": "redstone_torch", "Q": "quartz", "S": "stone"], "comparator")
+    shaped("TRT/SSS", ["T": "sparkstone_torch", "R": "sparkstone", "S": "stone"], "repeater")
+    shaped(" T /TQT/SSS", ["T": "sparkstone_torch", "Q": "quartz", "S": "stone"], "comparator")
     shapeless(["stone"], "stone_button")
     shapeless(["polished_blackstone"], "polished_blackstone_button")
     shaped("SS", ["S": "stone"], "stone_pressure_plate")
     shaped("SS", ["S": "polished_blackstone"], "polished_blackstone_pressure_plate")
     shaped("GG", ["G": "gold_ingot"], "light_weighted_pressure_plate")
     shaped("II", ["I": "iron_ingot"], "heavy_weighted_pressure_plate")
-    shaped("WWW/CIC/CRC", ["W": "#planks", "C": "cobblestone", "I": "iron_ingot", "R": "redstone"], "piston")
+    shaped("WWW/CIC/CRC", ["W": "#planks", "C": "cobblestone", "I": "iron_ingot", "R": "sparkstone"], "piston")
     shapeless(["piston", "slime_ball"], "sticky_piston")
-    shaped("CCC/RRQ/CCC", ["C": "cobblestone", "R": "redstone", "Q": "quartz"], "observer")
-    shaped("CCC/CBC/CRC", ["C": "cobblestone", "B": "bow", "R": "redstone"], "dispenser")
-    shaped("CCC/C C/CRC", ["C": "cobblestone", "R": "redstone"], "dropper")
+    shaped("CCC/RRQ/CCC", ["C": "cobblestone", "R": "sparkstone", "Q": "quartz"], "observer")
+    shaped("CCC/CBC/CRC", ["C": "cobblestone", "B": "bow", "R": "sparkstone"], "dispenser")
+    shaped("CCC/C C/CRC", ["C": "cobblestone", "R": "sparkstone"], "dropper")
     shaped("I I/ICI/ I ", ["I": "iron_ingot", "C": "chest"], "hopper")
-    shaped(" G /GRG/ G ", ["G": "glowstone", "R": "redstone"], "redstone_lamp")
+    shaped(" G /GRG/ G ", ["G": "lumenstone", "R": "sparkstone"], "sparkstone_lamp")
     shaped("GGG/QQQ/SSS", ["G": "glass", "Q": "quartz", "S": "#wooden_slabs"], "daylight_detector")
-    shaped(" R /RHR/ R ", ["R": "redstone", "H": "hay_block"], "target")
+    shaped(" R /RHR/ R ", ["R": "sparkstone", "H": "hay_block"], "target")
     shaped("GSG/SGS/GSG", ["G": "gunpowder", "S": "sand"], "tnt")
     shaped("I/S", ["I": "iron_ingot", "S": "stick"], "tripwire_hook", 2)
-    shaped("PPP/PRP/PPP", ["P": "#planks", "R": "redstone"], "note_block")
+    shaped("PPP/PRP/PPP", ["P": "#planks", "R": "sparkstone"], "note_block")
     shaped("PPP/PDP/PPP", ["P": "#planks", "D": "diamond"], "jukebox")
-    shaped(" A /ASA", ["A": "amethyst_shard", "S": "sculk_sensor"], "calibrated_sculk_sensor")
+    shaped(" A /ASA", ["A": "amethyst_shard", "S": "hush_sensor"], "calibrated_hush_sensor")
     shaped("I I/ISI/I I", ["I": "iron_ingot", "S": "stick"], "rail", 16)
-    shaped("G G/GSG/GRG", ["G": "gold_ingot", "S": "stick", "R": "redstone"], "powered_rail", 6)
-    shaped("I I/IPI/IRI", ["I": "iron_ingot", "P": "stone_pressure_plate", "R": "redstone"], "detector_rail", 6)
-    shaped("ISI/IRI/ISI", ["I": "iron_ingot", "S": "stick", "R": "redstone_torch"], "activator_rail", 6)
+    shaped("G G/GSG/GRG", ["G": "gold_ingot", "S": "stick", "R": "sparkstone"], "powered_rail", 6)
+    shaped("I I/IPI/IRI", ["I": "iron_ingot", "P": "stone_pressure_plate", "R": "sparkstone"], "detector_rail", 6)
+    shaped("ISI/IRI/ISI", ["I": "iron_ingot", "S": "stick", "R": "sparkstone_torch"], "activator_rail", 6)
     shaped("I I/III", ["I": "iron_ingot"], "minecart")
     shapeless(["minecart", "chest"], "chest_minecart")
     shapeless(["minecart", "furnace"], "furnace_minecart")
@@ -390,35 +390,35 @@ private let registerAllRecipesOnce: Void = {
     shaped("SS/PP/PP", ["S": "string", "P": "#planks"], "loom")
     shaped("P P/P P/PPP", ["P": "#wooden_slabs"], "composter")
     shaped("I I/I I/III", ["I": "iron_ingot"], "cauldron")
-    shaped(" B /SSS", ["B": "blaze_rod", "S": "cobblestone"], "brewing_stand")
+    shaped(" B /SSS", ["B": "cinder_rod", "S": "cobblestone"], "brewing_stand")
     shaped("GGG/GNG/OOO", ["G": "glass", "N": "nether_star", "O": "obsidian"], "beacon")
     shaped("NNN/NHN/NNN", ["N": "nautilus_shell", "H": "heart_of_the_sea"], "conduit")
-    shaped("CCC/CNC/CCC", ["C": "chiseled_stone_bricks", "N": "netherite_ingot"], "lodestone")
-    shaped("OOO/GGG/OOO", ["O": "crying_obsidian", "G": "glowstone"], "respawn_anchor")
+    shaped("CCC/CNC/CCC", ["C": "chiseled_stone_bricks", "N": "darksteel_ingot"], "lodestone")
+    shaped("OOO/GGG/OOO", ["O": "crying_obsidian", "G": "lumenstone"], "respawn_anchor")
     shaped("I I/ I ", ["I": "iron_ingot"], "bucket")
     shapeless(["glass", "glass", "glass"], "glass_bottle", 3)
     shaped(" I/I ", ["I": "iron_ingot"], "shears")
-    shaped(" I /IRI/ I ", ["I": "iron_ingot", "R": "redstone"], "compass")
-    shaped(" G /GRG/ G ", ["G": "gold_ingot", "R": "redstone"], "clock")
+    shaped(" I /IRI/ I ", ["I": "iron_ingot", "R": "sparkstone"], "compass")
+    shaped(" G /GRG/ G ", ["G": "gold_ingot", "R": "sparkstone"], "clock")
     shaped("CCC/CEC/CCC", ["C": "echo_shard", "E": "compass"], "recovery_compass")
-    shaped("OOO/OEO/OOO", ["O": "obsidian", "E": "ender_eye"], "ender_chest")
-    shapeless(["ender_pearl", "blaze_powder"], "ender_eye")
-    shaped("S/C/S", ["S": "shulker_shell", "C": "chest"], "shulker_box")
-    shaped("GGG/GEG/GTG", ["G": "glass", "E": "ender_eye", "T": "ghast_tear"], "end_crystal")
-    shapeless(["blaze_rod"], "blaze_powder", 2)
-    shapeless(["blaze_powder", "slime_ball"], "magma_cream")
+    shaped("OOO/OEO/OOO", ["O": "obsidian", "E": "rift_eye"], "rift_chest")
+    shapeless(["rift_pearl", "cinder_powder"], "rift_eye")
+    shaped("S/C/S", ["S": "lurker_shell", "C": "chest"], "lurker_box")
+    shaped("GGG/GEG/GTG", ["G": "glass", "E": "rift_eye", "T": "wailer_tear"], "rift_crystal")
+    shapeless(["cinder_rod"], "cinder_powder", 2)
+    shapeless(["cinder_powder", "slime_ball"], "magma_cream")
     shapeless(["spider_eye", "brown_mushroom", "sugar"], "fermented_spider_eye")
-    shapeless(["gunpowder", "blaze_powder", "coal"], "fire_charge", 3)
+    shapeless(["gunpowder", "cinder_powder", "coal"], "fire_charge", 3)
     shaped("SSS", ["S": "sugar_cane"], "paper", 3)
     shapeless(["paper", "paper", "paper", "leather"], "book")
     shapeless(["book", "ink_sac", "feather"], "writable_book")
     shaped("GGG/GGG", ["G": "glass"], "glass_pane", 16)
     shaped("III/III", ["I": "iron_ingot"], "iron_bars", 16)
     shaped("H/S", ["H": "honeycomb", "S": "string"], "candle")
-    shaped("SCS/CCC/SCS", ["S": "prismarine_shard", "C": "prismarine_crystals"], "sea_lantern")
-    shaped("SS/SS", ["S": "prismarine_shard"], "prismarine")
-    shaped("SSS/SSS/SSS", ["S": "prismarine_shard"], "prismarine_bricks")
-    shaped("SSS/SIS/SSS", ["S": "prismarine_shard", "I": "black_dye"], "dark_prismarine")
+    shaped("SCS/CCC/SCS", ["S": "seaglass_shard", "C": "seaglass_crystals"], "sea_lantern")
+    shaped("SS/SS", ["S": "seaglass_shard"], "seaglass")
+    shaped("SSS/SSS/SSS", ["S": "seaglass_shard"], "seaglass_bricks")
+    shaped("SSS/SIS/SSS", ["S": "seaglass_shard", "I": "black_dye"], "dark_seaglass")
     shaped("PPP/HHH/PPP", ["P": "#planks", "H": "honeycomb"], "beehive")
     shaped("P/B", ["P": "pumpkin", "B": "torch"], "jack_o_lantern")
     shaped("BSB/B B/B B", ["B": "bamboo", "S": "string"], "scaffolding", 6)
@@ -434,7 +434,7 @@ private let registerAllRecipesOnce: Void = {
         ("allium", "magenta_dye"), ("azure_bluet", "light_gray_dye"), ("red_tulip", "red_dye"),
         ("orange_tulip", "orange_dye"), ("white_tulip", "light_gray_dye"), ("pink_tulip", "pink_dye"),
         ("oxeye_daisy", "light_gray_dye"), ("cornflower", "blue_dye"), ("lily_of_the_valley", "white_dye"),
-        ("wither_rose", "black_dye"), ("beetroot", "red_dye"),
+        ("blight_rose", "black_dye"), ("beetroot", "red_dye"),
         ("lapis_lazuli", "blue_dye"), ("cocoa_beans", "brown_dye"), ("ink_sac", "black_dye"),
         ("bone_meal", "white_dye"), ("torchflower", "orange_dye"),
     ]
@@ -460,7 +460,7 @@ private let registerAllRecipesOnce: Void = {
         shaped("TTT/TDT/TTT", ["T": "terracotta", "D": "\(c)_dye"], "\(c)_terracotta", 8)
         shapeless(["\(c)_dye", "sand", "sand", "sand", "sand", "gravel", "gravel", "gravel", "gravel"], "\(c)_concrete_powder", 8)
         shapeless(["candle", "\(c)_dye"], "\(c)_candle")
-        shapeless(["shulker_box", "\(c)_dye"], "\(c)_shulker_box")
+        shapeless(["lurker_box", "\(c)_dye"], "\(c)_lurker_box")
     }
 
     // --- smelting ---
@@ -472,9 +472,9 @@ private let registerAllRecipesOnce: Void = {
         ("diamond_ore", "diamond", 1), ("deepslate_diamond_ore", "diamond", 1),
         ("emerald_ore", "emerald", 1), ("deepslate_emerald_ore", "emerald", 1),
         ("lapis_ore", "lapis_lazuli", 0.2), ("deepslate_lapis_ore", "lapis_lazuli", 0.2),
-        ("redstone_ore", "redstone", 0.7), ("deepslate_redstone_ore", "redstone", 0.7),
+        ("sparkstone_ore", "sparkstone", 0.7), ("deepslate_sparkstone_ore", "sparkstone", 0.7),
         ("nether_gold_ore", "gold_ingot", 1), ("nether_quartz_ore", "quartz", 0.2),
-        ("ancient_debris", "netherite_scrap", 2),
+        ("ancient_debris", "darksteel_scrap", 2),
     ]
     for (i, o, xp) in ORE_SMELTS { smelt(i, o, xp, .ore) }
     let FOOD_SMELTS: [(String, String, Double)] = [
@@ -491,7 +491,7 @@ private let registerAllRecipesOnce: Void = {
         ("sandstone", "smooth_sandstone", 0.1), ("red_sandstone", "smooth_red_sandstone", 0.1),
         ("quartz_block", "smooth_quartz", 0.1), ("basalt", "smooth_basalt", 0.1),
         ("clay_ball", "brick", 0.3), ("clay", "terracotta", 0.35),
-        ("netherrack", "nether_brick", 0.1), ("cobbled_deepslate", "deepslate", 0.1),
+        ("ashrock", "nether_brick", 0.1), ("cobbled_deepslate", "deepslate", 0.1),
         ("cactus", "green_dye", 1), ("sea_pickle", "lime_dye", 0.1),
         ("chorus_fruit", "popped_chorus_fruit", 0.1), ("wet_sponge", "sponge", 0.15),
         ("stone_bricks", "cracked_stone_bricks", 0.1), ("deepslate_bricks", "cracked_deepslate_bricks", 0.1),
@@ -526,24 +526,24 @@ private let registerAllRecipesOnce: Void = {
     cut("quartz_block", "quartz_bricks")
     cut("quartz_block", "quartz_pillar")
     cut("quartz_block", "chiseled_quartz_block")
-    cut("purpur_block", "purpur_pillar")
+    cut("violite_block", "violite_pillar")
     cut("granite", "polished_granite")
     cut("diorite", "polished_diorite")
     cut("andesite", "polished_andesite")
 
     // --- smithing ---
     for t in ["sword", "pickaxe", "axe", "shovel", "hoe"] {
-        smithingRecipes.append(SmithRecipe(template: "netherite_upgrade", base: "diamond_\(t)", addition: "netherite_ingot", output: "netherite_\(t)"))
+        smithingRecipes.append(SmithRecipe(template: "darksteel_upgrade", base: "diamond_\(t)", addition: "darksteel_ingot", output: "darksteel_\(t)"))
     }
     for s in ["helmet", "chestplate", "leggings", "boots"] {
-        smithingRecipes.append(SmithRecipe(template: "netherite_upgrade", base: "diamond_\(s)", addition: "netherite_ingot", output: "netherite_\(s)"))
+        smithingRecipes.append(SmithRecipe(template: "darksteel_upgrade", base: "diamond_\(s)", addition: "darksteel_ingot", output: "darksteel_\(s)"))
     }
     for t in TRIM_PATTERNS {
         smithingRecipes.append(SmithRecipe(template: "\(t)_armor_trim", base: "#armor", addition: "#trim_material", output: "trim"))
         shaped("DTD/DMD/DDD", ["D": "diamond", "T": "\(t)_armor_trim", "M": "cobblestone"], "\(t)_armor_trim", 2)
     }
-    shaped("DTD/DMD/DDD", ["D": "diamond", "T": "netherite_upgrade", "M": "netherrack"], "netherite_upgrade", 2)
-    // appended: glowstone lamp on an iron mount, leather strap
-    shaped(" G /LIL", ["G": "glowstone_dust", "L": "leather", "I": "iron_ingot"], "headlamp")
+    shaped("DTD/DMD/DDD", ["D": "diamond", "T": "darksteel_upgrade", "M": "ashrock"], "darksteel_upgrade", 2)
+    // appended: lumenstone lamp on an iron mount, leather strap
+    shaped(" G /LIL", ["G": "lumenstone_dust", "L": "leather", "I": "iron_ingot"], "headlamp")
 }()
 public func registerAllRecipes() { _ = registerAllRecipesOnce }

@@ -1,11 +1,11 @@
-// Nether mobs — blazes, ghasts, magma cubes,
-// piglins (with bartering), piglin brutes, zombified piglins, hoglins,
-// zoglins, wither skeletons.
+// Nether mobs — cinders, wailers, magma cubes,
+// snouters (with bartering), snouter brutes, rotting snouters, tuskers,
+// ghoultusks, blight skeletons.
 
 import Foundation
 
-public final class Blaze: Monster {
-    public override var type: String { "blaze" }
+public final class Cinder: Monster {
+    public override var type: String { "cinder" }
     public override init(world: World) {
         super.init(world: world)
         width = 0.6; height = 1.8
@@ -26,7 +26,7 @@ public final class Blaze: Monster {
                     fb.owner = self
                     fb.shoot(dx, dy + (dx * dx + dz * dz).squareRoot() * 0.04, dz, 1.1, 6)
                     self.world.addEntity(fb)
-                    self.world.hooks.playSound("entity.blaze.shoot", self.x, self.y, self.z, 1, 1)
+                    self.world.hooks.playSound("entity.cinder.shoot", self.x, self.y, self.z, 1, 1)
                 }
             }
         }, false))
@@ -43,7 +43,7 @@ public final class Blaze: Monster {
         if inWater { hurt(1, .drown) }
     }
     public override func drops() -> [DropEntry] {
-        [DropEntry("blaze_rod", min: 0, max: 1, lootingBonus: 1)]
+        [DropEntry("cinder_rod", min: 0, max: 1, lootingBonus: 1)]
     }
 }
 
@@ -69,8 +69,8 @@ public func clearEntityTimeouts() {
     pendingTimeouts.removeAll()
 }
 
-public final class Ghast: Monster {
-    public override var type: String { "ghast" }
+public final class Wailer: Monster {
+    public override var type: String { "wailer" }
     public var shootCooldown = 0
     public override init(world: World) {
         super.init(world: world)
@@ -101,14 +101,14 @@ public final class Ghast: Monster {
             let dSq = distanceToSq(t)
             if dSq < 64 * 64 && canSee(t) {
                 shootCooldown = 60
-                world.hooks.playSound("entity.ghast.warn", x, y, z, 4, 1)
+                world.hooks.playSound("entity.wailer.warn", x, y, z, 4, 1)
                 let fb = Fireball(world: world)
                 fb.power = 1
                 fb.setPos(x, y + 2, z)
                 fb.owner = self
                 fb.shoot(t.x - x, t.eyeY() - (y + 2), t.z - z, 0.8, 0)
                 world.addEntity(fb)
-                world.hooks.playSound("entity.ghast.shoot", x, y, z, 4, 1)
+                world.hooks.playSound("entity.wailer.shoot", x, y, z, 4, 1)
             }
         }
         if let t = target, !t.dead {
@@ -117,7 +117,7 @@ public final class Ghast: Monster {
         }
     }
     public override func drops() -> [DropEntry] {
-        [DropEntry("ghast_tear", min: 0, max: 1, lootingBonus: 1), DropEntry("gunpowder", min: 0, max: 2)]
+        [DropEntry("wailer_tear", min: 0, max: 1, lootingBonus: 1), DropEntry("gunpowder", min: 0, max: 2)]
     }
 }
 
@@ -133,8 +133,8 @@ public final class MagmaCube: Slime {
     }
 }
 
-public final class ZombifiedPiglin: Monster {
-    public override var type: String { "zombified_piglin" }
+public final class RottingSnouter: Monster {
+    public override var type: String { "rotting_snouter" }
     public var angerTime = 0
     public override init(world: World) {
         super.init(world: world)
@@ -161,8 +161,8 @@ public final class ZombifiedPiglin: Monster {
         if r, let attacker, attacker.isPlayer {
             angerTime = 800
             // alert the pack!
-            for e in world.getEntitiesNear(x, y, z, 32, filter: { ($0 as? Entity)?.type == "zombified_piglin" }) {
-                guard let zp = e as? ZombifiedPiglin else { continue }
+            for e in world.getEntitiesNear(x, y, z, 32, filter: { ($0 as? Entity)?.type == "rotting_snouter" }) {
+                guard let zp = e as? RottingSnouter else { continue }
                 zp.setTarget(attacker as? LivingEntity)
                 zp.angerTime = 800
             }
@@ -178,8 +178,8 @@ public final class ZombifiedPiglin: Monster {
     }
 }
 
-open class Piglin: Monster {
-    open override var type: String { "piglin" }
+open class Snouter: Monster {
+    open override var type: String { "snouter" }
     public var admiring = 0
     public var admiredItem: ItemStack? = nil
     public var zombifyTime = 300
@@ -190,7 +190,7 @@ open class Piglin: Monster {
         speed = 0.11
         attackDamage = 5
         goals.add(FloatGoal(self, 0))
-        goals.add(AvoidEntityGoal(self, 1, { e in ["zombified_piglin", "zoglin"].contains(e.type) }, 8, 1.1))
+        goals.add(AvoidEntityGoal(self, 1, { e in ["rotting_snouter", "ghoultusk"].contains(e.type) }, 8, 1.1))
         goals.add(MeleeAttackGoal(self, 2, 1.15))
         goals.add(StrollGoal(self, 6, 0.8))
         goals.add(LookAtPlayerGoal(self, 7))
@@ -203,7 +203,7 @@ open class Piglin: Monster {
             }
             return true
         }, 16))
-        targetGoals.add(NearestTargetGoal(self, 3, { e in e.type == "wither_skeleton" }, 16))
+        targetGoals.add(NearestTargetGoal(self, 3, { e in e.type == "blight_skeleton" }, 16))
     }
     open override func tick() {
         super.tick()
@@ -211,9 +211,9 @@ open class Piglin: Monster {
         if world.dim == .overworld {
             zombifyTime -= 1
             if zombifyTime <= 0 {
-                let z = spawnMobFn?(world, "zombified_piglin", x, y, z, SpawnOpts())
+                let z = spawnMobFn?(world, "rotting_snouter", x, y, z, SpawnOpts())
                 if z != nil {
-                    world.hooks.playSound("entity.zombified_piglin.angry", x, y, self.z, 1, 1)
+                    world.hooks.playSound("entity.rotting_snouter.angry", x, y, self.z, 1, 1)
                     remove()
                     return
                 }
@@ -225,7 +225,7 @@ open class Piglin: Monster {
             nav.stop()
             if admiring == 0 && admiredItem != nil {
                 // barter!
-                let loot = rollLoot("piglin_bartering", &rng)
+                let loot = rollLoot("snouter_bartering", &rng)
                 for s in loot {
                     spawnItem(world, x, y + 0.8, z, s,
                               -detSin(yaw) * 0.2, 0.2, detCos(yaw) * 0.2)
@@ -240,7 +240,7 @@ open class Piglin: Monster {
                     if item.stack.count <= 0 { item.remove() }
                     admiring = 120
                     admiredItem = ItemStack(item.stack.id, 1)
-                    world.hooks.playSound("entity.piglin.admiring_item", x, y, z, 1, 1)
+                    world.hooks.playSound("entity.snouter.admiring_item", x, y, z, 1, 1)
                     break
                 }
             }
@@ -248,14 +248,14 @@ open class Piglin: Monster {
     }
     open override func drops() -> [DropEntry] { [] }
 }
-public final class PiglinBrute: Piglin {
-    public override var type: String { "piglin_brute" }
+public final class SnouterBrute: Snouter {
+    public override var type: String { "snouter_brute" }
     public override init(world: World) {
         super.init(world: world)
         maxHealth = 50; health = 50
         attackDamage = 13 // golden axe
         xpReward = 20
-        // brutes fear nothing — drop the avoid goal inherited from Piglin
+        // brutes fear nothing — drop the avoid goal inherited from Snouter
         goals.goals.removeAll { $0 is AvoidEntityGoal }
         // brutes attack regardless of gold — this priority-1 goal outranks
         // the inherited gold-check target goal
@@ -267,7 +267,7 @@ public final class PiglinBrute: Piglin {
         if world.dim == .overworld {
             zombifyTime -= 1
             if zombifyTime <= 0 {
-                let z = spawnMobFn?(world, "zombified_piglin", x, y, z, SpawnOpts())
+                let z = spawnMobFn?(world, "rotting_snouter", x, y, z, SpawnOpts())
                 if z != nil { remove() }
             }
         }
@@ -275,8 +275,8 @@ public final class PiglinBrute: Piglin {
     public override func drops() -> [DropEntry] { [DropEntry("golden_axe", chance: 0.085)] }
 }
 
-open class Hoglin: Monster {
-    open override var type: String { "hoglin" }
+open class Tusker: Monster {
+    open override var type: String { "tusker" }
     public var zombifyTime = 300
     public override init(world: World) {
         super.init(world: world)
@@ -306,7 +306,7 @@ open class Hoglin: Monster {
         if world.dim == .overworld {
             zombifyTime -= 1
             if zombifyTime <= 0 {
-                let z = spawnMobFn?(world, "zoglin", x, y, z, SpawnOpts())
+                let z = spawnMobFn?(world, "ghoultusk", x, y, z, SpawnOpts())
                 if z != nil { remove() }
             }
         }
@@ -319,13 +319,13 @@ open class Hoglin: Monster {
         [DropEntry(fireTicks > 0 ? "cooked_porkchop" : "porkchop", min: 2, max: 4, lootingBonus: 1), DropEntry("leather", min: 0, max: 1)]
     }
 }
-public final class Zoglin: Hoglin {
-    public override var type: String { "zoglin" }
+public final class Ghoultusk: Tusker {
+    public override var type: String { "ghoultusk" }
     public override init(world: World) {
         super.init(world: world)
         zombifyTime = Int.max   // baseline sets Infinity; the check never fires
         targetGoals.add(NearestTargetGoal(self, 1, { e in
-            !["zoglin", "creeper", "ghast"].contains(e.type)
+            !["ghoultusk", "fizzler", "wailer"].contains(e.type)
         }, 16))
     }
     public override func tick() {
@@ -334,8 +334,8 @@ public final class Zoglin: Hoglin {
     public override func drops() -> [DropEntry] { [DropEntry("rotten_flesh", min: 1, max: 3, lootingBonus: 1)] }
 }
 
-public final class WitherSkeletonMob: Monster {
-    public override var type: String { "wither_skeleton" }
+public final class BlightSkeletonMob: Monster {
+    public override var type: String { "blight_skeleton" }
     public override init(world: World) {
         super.init(world: world)
         width = 0.7; height = 2.4
@@ -347,7 +347,7 @@ public final class WitherSkeletonMob: Monster {
     }
     public override func doMeleeAttack(_ target: LivingEntity) {
         super.doMeleeAttack(target)
-        target.addEffect("wither", 200, 0)
+        target.addEffect("blight", 200, 0)
     }
     @discardableResult
     public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
@@ -358,7 +358,7 @@ public final class WitherSkeletonMob: Monster {
         [
             DropEntry("coal", min: 0, max: 1, lootingBonus: 1),
             DropEntry("bone", min: 0, max: 2, lootingBonus: 1),
-            DropEntry("wither_skeleton_skull", chance: 0.025, lootingBonus: 0.01),
+            DropEntry("blight_skeleton_skull", chance: 0.025, lootingBonus: 0.01),
         ]
     }
 }

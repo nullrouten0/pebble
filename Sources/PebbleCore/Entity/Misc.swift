@@ -1,9 +1,9 @@
 // Non-living entities — dropped items, XP orbs,
 // falling blocks, primed TNT, lightning bolts, end crystals, area effect
-// clouds, eyes of ender.
+// clouds, eyes of rift.
 //
 // cosmetic jitter (bob phase, drop velocities, anvil-degrade chance,
-// eye-of-ender survival) is deliberately nondeterministic; golden tests
+// eye-of-rift survival) is deliberately nondeterministic; golden tests
 // must not hash values derived from it.
 
 import Foundation
@@ -33,7 +33,7 @@ public final class ItemEntity: Entity {
             vx *= 0.95; vz *= 0.95
         } else if inLava {
             let nm = itemDef(stack.id).name
-            if nm == "netherite_ingot" || nm == "ancient_debris" || nm.contains("netherite") {
+            if nm == "darksteel_ingot" || nm == "ancient_debris" || nm.contains("darksteel") {
                 vy = min(vy + 0.05, 0.08)
             } else {
                 remove()
@@ -266,8 +266,8 @@ public final class LightningBolt: Entity {
     }
 }
 
-public final class EndCrystal: Entity {
-    public override var type: String { "end_crystal" }
+public final class RiftCrystal: Entity {
+    public override var type: String { "rift_crystal" }
     public var showBottom = true
     public var beamTarget: (Int, Int, Int)? = nil
     public override init(world: World) {
@@ -343,8 +343,8 @@ public final class AreaEffectCloud: Entity {
     }
 }
 
-public final class EyeOfEnderEntity: Entity {
-    public override var type: String { "eye_of_ender" }
+public final class RiftEyeEntity: Entity {
+    public override var type: String { "rift_eye" }
     public var targetX = 0.0, targetZ = 0.0
     public var life = 0
     public var surviveChance = 0.8
@@ -370,10 +370,10 @@ public final class EyeOfEnderEntity: Entity {
         if life > 60 {
             remove()
             if gameRng.nextFloat() < surviveChance {
-                spawnItem(world, x, y, z, ItemStack(iid("ender_eye"), 1))
+                spawnItem(world, x, y, z, ItemStack(iid("rift_eye"), 1))
             } else {
                 world.hooks.addParticles("crit", x, y, z, 12, 0.3, 0)
-                world.hooks.playSound("entity.ender_eye.death", x, y, z, 1, 1)
+                world.hooks.playSound("entity.rift_eye.death", x, y, z, 1, 1)
             }
         }
     }
@@ -419,5 +419,5 @@ public var explodeFn: ((World, Double, Double, Double, Double, Bool, Entity?) ->
 public func bindExplode(_ fn: ((World, Double, Double, Double, Double, Bool, Entity?) -> Void)?) { explodeFn = fn }
 public var struckByLightningFn: ((Entity) -> Void)?
 public func bindLightningConversion(_ fn: ((Entity) -> Void)?) { struckByLightningFn = fn }
-public var crystalDestroyedFn: ((EndCrystal, Entity?) -> Void)?
-public func bindCrystalDestroyed(_ fn: ((EndCrystal, Entity?) -> Void)?) { crystalDestroyedFn = fn }
+public var crystalDestroyedFn: ((RiftCrystal, Entity?) -> Void)?
+public func bindCrystalDestroyed(_ fn: ((RiftCrystal, Entity?) -> Void)?) { crystalDestroyedFn = fn }

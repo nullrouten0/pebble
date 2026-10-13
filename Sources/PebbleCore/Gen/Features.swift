@@ -1,5 +1,5 @@
 // Feature placement — Every tree, plant patch, geode,
-// iceberg, dripstone cluster, sculk patch, nether & ocean feature.
+// iceberg, dripstone cluster, hush patch, nether & ocean feature.
 // Deterministic per origin chunk; RNG call order mirrors baseline exactly (including
 // short-circuit evaluation), so features crossing chunk borders generate
 // identically from every side — and identically to the golden baselines.
@@ -378,7 +378,7 @@ public func genHugeMushroom(_ s: ChunkSink, _ rng: inout RandomX, _ x: Int, _ y:
 public func genHugeFungus(_ s: ChunkSink, _ rng: inout RandomX, _ x: Int, _ y: Int, _ z: Int, crimson: Bool) {
     let stem = cell(crimson ? B.crimson_stem : B.warped_stem)
     let wart = cell(crimson ? B.nether_wart_block : B.warped_wart_block)
-    let light = cell(B.shroomlight)
+    let light = cell(B.glowcap)
     let h = 5 + rng.nextInt(7)
     for i in 0..<h { s.set(x, y + i, z, stem) }
     for dy in -2...1 {
@@ -670,17 +670,17 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
             }
         }
 
-    case "glowstone_cluster":
+    case "lumenstone_cluster":
         let count = intArg(1)
         for _ in 0..<count {
             let (x, z) = randPos(&rng)
             let y = 30 + rng.nextInt(80)
             let ceil = s.get(x, y + 1, z)
-            if ceil > 0 && idOf(ceil) == B.netherrack && s.get(x, y, z) == 0 {
-                s.set(x, y, z, cell(B.glowstone))
+            if ceil > 0 && idOf(ceil) == B.ashrock && s.get(x, y, z) == 0 {
+                s.set(x, y, z, cell(B.lumenstone))
                 for _ in 0..<6 {
                     let gx = x + rng.nextInt(3) - 1, gy = y - rng.nextInt(2), gz = z + rng.nextInt(3) - 1
-                    if s.get(gx, gy, gz) == 0 && rng.nextFloat() < 0.7 { s.set(gx, gy, gz, cell(B.glowstone)) }
+                    if s.get(gx, gy, gz) == 0 && rng.nextFloat() < 0.7 { s.set(gx, gy, gz, cell(B.lumenstone)) }
                 }
             }
         }
@@ -708,7 +708,7 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
             let y = netherFloorY(s, x, z, &rng)
             if y < 0 { continue }
             let g = idOf(s.get(x, y - 1, z))
-            if soul ? (g == B.soul_sand || g == B.soul_soil) : g == B.netherrack {
+            if soul ? (g == B.soul_sand || g == B.soul_soil) : g == B.ashrock {
                 s.set(x, y, z, cell(soul ? B.soul_fire : B.fire))
             }
         }
@@ -721,7 +721,7 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
             for _ in 0..<8 {
                 let bx = x + rng.nextInt(3) - 1, by = y + rng.nextInt(2) - 1, bz = z + rng.nextInt(3) - 1
                 let c = s.get(bx, by, bz)
-                if c > 0 && (idOf(c) == B.netherrack || idOf(c) == B.basalt) { s.set(bx, by, bz, cell(B.magma_block)) }
+                if c > 0 && (idOf(c) == B.ashrock || idOf(c) == B.basalt) { s.set(bx, by, bz, cell(B.magma_block)) }
             }
         }
 
@@ -987,7 +987,7 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
     case "dripstone_cluster", "pointed_dripstone", "dripstone_pool",
          "moss_patch", "lush_vegetation", "glow_berries", "spore_blossom",
          "azalea_tree", "big_dripleaf", "small_dripleaf", "clay_pool",
-         "sculk_patch", "sculk_vein", "sculk_shrieker", "sculk_sensor":
+         "hush_patch", "hush_vein", "hush_shrieker", "hush_sensor":
         caveFeature(name, intArg(1), s, &rng, ocx, ocz, biomeAt)
 
     case "chorus":
@@ -1299,33 +1299,33 @@ private func caveFeature(_ name: String, _ count: Int, _ s: ChunkSink, _ rng: in
                 }
             }
 
-        case "sculk_patch":
+        case "hush_patch":
             if floor == -10000 || biomeAt(x, z) != Biome.deepDark.rawValue { break }
             let r = 2 + rng.nextInt(4)
             for dz in -r...r {
                 for dx in -r...r {
                     if dx * dx + dz * dz > r * r { continue }
                     let g = s.get(x + dx, floor - 1, z + dz)
-                    if g > 0 && isStoneLike(g) { s.set(x + dx, floor - 1, z + dz, cell(B.sculk)) }
+                    if g > 0 && isStoneLike(g) { s.set(x + dx, floor - 1, z + dz, cell(B.hush)) }
                 }
             }
 
-        case "sculk_vein":
+        case "hush_vein":
             if floor == -10000 || biomeAt(x, z) != Biome.deepDark.rawValue { break }
             let g = s.get(x, floor - 1, z)
-            if g > 0 && s.get(x, floor, z) == 0 { s.set(x, floor, z, cell(B.sculk_vein, 0)) }
+            if g > 0 && s.get(x, floor, z) == 0 { s.set(x, floor, z, cell(B.hush_vein, 0)) }
 
-        case "sculk_shrieker":
+        case "hush_shrieker":
             if floor == -10000 || biomeAt(x, z) != Biome.deepDark.rawValue || rng.nextFloat() < 0.7 { break }
-            if idOf(s.get(x, floor - 1, z)) == B.sculk && s.get(x, floor, z) == 0 {
-                s.set(x, floor, z, cell(B.sculk_shrieker))
+            if idOf(s.get(x, floor - 1, z)) == B.hush && s.get(x, floor, z) == 0 {
+                s.set(x, floor, z, cell(B.hush_shrieker))
                 s.addBlockEntity(BESpec(x: x, y: floor, z: z, kind: "shrieker", data: ["canSummon": .bool(true)]))
             }
 
-        case "sculk_sensor":
+        case "hush_sensor":
             if floor == -10000 || biomeAt(x, z) != Biome.deepDark.rawValue || rng.nextFloat() < 0.5 { break }
-            if idOf(s.get(x, floor - 1, z)) == B.sculk && s.get(x, floor, z) == 0 {
-                s.set(x, floor, z, cell(B.sculk_sensor))
+            if idOf(s.get(x, floor - 1, z)) == B.hush && s.get(x, floor, z) == 0 {
+                s.set(x, floor, z, cell(B.hush_sensor))
             }
 
         default:

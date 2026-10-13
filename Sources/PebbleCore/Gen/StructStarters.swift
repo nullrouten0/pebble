@@ -49,11 +49,11 @@ func bed(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ facing: Int) {
     b.set(x + [0, 0, -1, 1][facing], y, z + [-1, 1, 0, 0][facing], C(B.red_bed, facing | 4))
 }
 
-/// 10-tall fence pole with a red wool flag and a glowstone tip — easy to spot
+/// 10-tall fence pole with a red wool flag and a lumenstone tip — easy to spot
 func flag(_ b: Builder, _ x: Int, _ y: Int, _ z: Int) {
     for py in y...(y + 9) { b.set(x, py, z, C(B.oak_fence)) }
     for fy in (y + 7)...(y + 9) { for fx in 1...3 { b.set(x + fx, fy, z, C(B.red_wool)) } }
-    b.set(x, y + 10, z, C(B.glowstone))
+    b.set(x, y + 10, z, C(B.lumenstone))
 }
 
 // 9×9 spruce cabin: bed, crafting table, furnace, stocked chest, gable roof
@@ -143,7 +143,7 @@ private func starterBunker(_ b: Builder, _ x: Int, _ y: Int, _ z: Int) {
     // room shell + interior
     b.walls(x - 4, fy - 1, z - 3, x + 6, fy + 4, z + 7, brick, AIR)
     b.fill(x - 3, fy - 1, z - 2, x + 5, fy - 1, z + 6, C(B.smooth_stone))
-    for (gx, gz) in [(x - 1, z), (x + 3, z), (x - 1, z + 4), (x + 3, z + 4)] { b.set(gx, fy + 4, gz, C(B.glowstone)) }
+    for (gx, gz) in [(x - 1, z), (x + 3, z), (x - 1, z + 4), (x + 3, z + 4)] { b.set(gx, fy + 4, gz, C(B.lumenstone)) }
     // shaft from the room ceiling to the hut, ladder on its south wall
     for sy in (fy + 4)...(y - 1) {
         for dz in 0...2 { for dx in 0...2 { b.set(x + dx, sy, z + dz, dx == 1 && dz == 1 ? AIR : brick) } }

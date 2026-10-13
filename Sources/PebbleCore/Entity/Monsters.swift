@@ -1,6 +1,6 @@
-// Hostile mobs — undead, spiders, creepers,
-// slimes, witches, endermen, phantoms, guardians, shulkers, silverfish, and
-// the illager family.
+// Hostile mobs — undead, spiders, fizzlers,
+// slimes, witches, riftwalkers, phantoms, guardians, lurkers, silverfish, and
+// the marauder family.
 
 import Foundation
 
@@ -169,9 +169,9 @@ public final class Stray: Skeleton {
     }
 }
 
-// CREEPER ------------------------------------------------------------------------
-public final class Creeper: Monster {
-    public override var type: String { "creeper" }
+// FIZZLER ------------------------------------------------------------------------
+public final class Fizzler: Monster {
+    public override var type: String { "fizzler" }
     public var swellTicks = 0
     /// struck by lightning: a bigger blast. Lives in `data`, so it's saved
     public var charged: Bool {
@@ -193,12 +193,12 @@ public final class Creeper: Monster {
         targetGoals.add(HurtByTargetGoal(self, 1))
         targetGoals.add(NearestTargetGoal(self, 2, isPlayerTarget, 16))
     }
-    public override func doMeleeAttack(_ target: LivingEntity) {} // creepers don't melee
+    public override func doMeleeAttack(_ target: LivingEntity) {} // fizzlers don't melee
     public override func tick() {
         super.tick()
         if swellTicks > 0 {
             data.swelling = Double(swellTicks) / 30
-            if swellTicks == 1 { world.hooks.playSound("entity.creeper.primed", x, y, z, 1, 0.6) }
+            if swellTicks == 1 { world.hooks.playSound("entity.fizzler.primed", x, y, z, 1, 0.6) }
             swellTicks += 1
             if swellTicks > 30 {
                 remove()
@@ -214,11 +214,11 @@ public final class Creeper: Monster {
 }
 final class SwellGoal: Goal {
     override func canUse() -> Bool {
-        guard let c = mob as? Creeper, let t = c.target else { return false }
+        guard let c = mob as? Fizzler, let t = c.target else { return false }
         return !t.dead && c.distanceToSq(t) < 9
     }
     override func tick() {
-        guard let c = mob as? Creeper else { return }
+        guard let c = mob as? Fizzler else { return }
         if let t = c.target, c.distanceToSq(t) < 9, c.canSee(t) {
             if c.swellTicks == 0 { c.swellTicks = 1 }
             c.nav.stop()
@@ -226,7 +226,7 @@ final class SwellGoal: Goal {
             c.swellTicks = 0
         }
     }
-    override func stop() { (mob as? Creeper)?.swellTicks = 0 }
+    override func stop() { (mob as? Fizzler)?.swellTicks = 0 }
 }
 
 // SPIDERS -----------------------------------------------------------------------
@@ -390,9 +390,9 @@ public final class Witch: Monster {
     public override func drops() -> [DropEntry] {
         [
             DropEntry("glass_bottle", min: 0, max: 2, lootingBonus: 1),
-            DropEntry("glowstone_dust", min: 0, max: 2, lootingBonus: 1),
+            DropEntry("lumenstone_dust", min: 0, max: 2, lootingBonus: 1),
             DropEntry("gunpowder", min: 0, max: 2, lootingBonus: 1),
-            DropEntry("redstone", min: 0, max: 2, lootingBonus: 1),
+            DropEntry("sparkstone", min: 0, max: 2, lootingBonus: 1),
             DropEntry("spider_eye", min: 0, max: 2, chance: 0.5),
             DropEntry("sugar", min: 0, max: 2, chance: 0.5),
             DropEntry("stick", min: 0, max: 2, chance: 0.5),
@@ -400,9 +400,9 @@ public final class Witch: Monster {
     }
 }
 
-// ENDERMAN ------------------------------------------------------------------------
-public final class Enderman: Monster {
-    public override var type: String { "enderman" }
+// RIFTWALKER ------------------------------------------------------------------------
+public final class Riftwalker: Monster {
+    public override var type: String { "riftwalker" }
     public var carrying = 0 // block cell
     public override init(world: World) {
         super.init(world: world)
@@ -433,7 +433,7 @@ public final class Enderman: Monster {
                 let dot = (dx / dist) * lookX + (dy / dist) * lookY + (dz / dist) * lookZ
                 if dot > 0.99 && p.canSee(self) {
                     setTarget(p)
-                    world.hooks.playSound("entity.enderman.stare", p.x, p.y, p.z, 1, 1)
+                    world.hooks.playSound("entity.riftwalker.stare", p.x, p.y, p.z, 1, 1)
                 }
             }
         }
@@ -485,7 +485,7 @@ public final class Enderman: Monster {
             if ty > world.info.minY + 1 {
                 world.hooks.addParticles("portal", x, y + 1, z, 16, 0.5, 0)
                 setPos(tx, Double(ty), tz)
-                world.hooks.playSound("entity.enderman.teleport", tx, Double(ty), tz, 1, 1)
+                world.hooks.playSound("entity.riftwalker.teleport", tx, Double(ty), tz, 1, 1)
                 return
             }
         }
@@ -498,11 +498,11 @@ public final class Enderman: Monster {
         setPos(tx, Double(ty), tz)
     }
     public override func drops() -> [DropEntry] {
-        [DropEntry("ender_pearl", min: 0, max: 1, lootingBonus: 1)]
+        [DropEntry("rift_pearl", min: 0, max: 1, lootingBonus: 1)]
     }
 }
 
-// SILVERFISH / ENDERMITE -------------------------------------------------------------
+// SILVERFISH / RIFTMITE -------------------------------------------------------------
 public final class Silverfish: Monster {
     public override var type: String { "silverfish" }
     public override init(world: World) {
@@ -515,8 +515,8 @@ public final class Silverfish: Monster {
     }
     public override func drops() -> [DropEntry] { [] }
 }
-public final class Endermite: Monster {
-    public override var type: String { "endermite" }
+public final class Riftmite: Monster {
+    public override var type: String { "riftmite" }
     public var lifeTicks = 2400
     public override init(world: World) {
         super.init(world: world)
@@ -655,9 +655,9 @@ open class Guardian: Monster {
     }
     open override func drops() -> [DropEntry] {
         [
-            DropEntry("prismarine_shard", min: 0, max: 2, lootingBonus: 1),
+            DropEntry("seaglass_shard", min: 0, max: 2, lootingBonus: 1),
             DropEntry("cod", chance: 0.4, lootingBonus: 0.02),
-            DropEntry("prismarine_crystals", chance: 0.4, lootingBonus: 0.05),
+            DropEntry("seaglass_crystals", chance: 0.4, lootingBonus: 0.05),
         ]
     }
 }
@@ -691,9 +691,9 @@ public final class ElderGuardian: Guardian {
     }
 }
 
-// SHULKER --------------------------------------------------------------------------------
-public final class Shulker: Monster {
-    public override var type: String { "shulker" }
+// LURKER --------------------------------------------------------------------------------
+public final class Lurker: Monster {
+    public override var type: String { "lurker" }
     /// ticks left on a peek: a one-tick 0.3 would just twitch the lid
     private var peekTicks = 0
     public override init(world: World) {
@@ -713,13 +713,13 @@ public final class Shulker: Monster {
         if let t = target, !t.dead, canSee(t) {
             data.open = 0.7
             if age % 40 == 0 {
-                let bullet = ShulkerBullet(world: world)
+                let bullet = LurkerBullet(world: world)
                 bullet.setPos(x, y + 0.5, z)
                 bullet.owner = self
                 bullet.targetId = t.id
                 bullet.vx = 0.1
                 world.addEntity(bullet)
-                world.hooks.playSound("entity.shulker.shoot", x, y, z, 1, 1)
+                world.hooks.playSound("entity.lurker.shoot", x, y, z, 1, 1)
             }
         } else {
             if rng.nextFloat() < 0.05 { peekTicks = 20 }
@@ -740,7 +740,7 @@ public final class Shulker: Monster {
                 let ty = world.surfaceY(tx, tz)
                 if ty > world.info.minY {
                     setPos(Double(tx) + 0.5, Double(ty), Double(tz) + 0.5)
-                    world.hooks.playSound("entity.shulker.teleport", Double(tx), Double(ty), Double(tz), 1, 1)
+                    world.hooks.playSound("entity.lurker.teleport", Double(tx), Double(ty), Double(tz), 1, 1)
                     break
                 }
             }
@@ -748,11 +748,11 @@ public final class Shulker: Monster {
         return r
     }
     public override func drops() -> [DropEntry] {
-        [DropEntry("shulker_shell", chance: 0.5, lootingBonus: 0.0625)]
+        [DropEntry("lurker_shell", chance: 0.5, lootingBonus: 0.0625)]
     }
 }
 
-// ILLAGERS --------------------------------------------------------------------------------
+// MARAUDERS --------------------------------------------------------------------------------
 public final class Pillager: Monster {
     public override var type: String { "pillager" }
     public var isCaptain = false
@@ -833,8 +833,8 @@ public final class Vindicator: Monster {
     }
 }
 
-public final class Evoker: Monster {
-    public override var type: String { "evoker" }
+public final class Conjurer: Monster {
+    public override var type: String { "conjurer" }
     public var castCooldown = 100
     public override init(world: World) {
         super.init(world: world)
@@ -858,9 +858,9 @@ public final class Evoker: Monster {
             if castCooldown <= 0 {
                 let which = rng.nextFloat()
                 if which < 0.6 {
-                    // evoker fangs line
+                    // conjurer fangs line
                     castCooldown = 100
-                    world.hooks.playSound("entity.evoker.cast_spell", x, y, z, 1, 1)
+                    world.hooks.playSound("entity.conjurer.cast_spell", x, y, z, 1, 1)
                     let dx = t.x - x, dz = t.z - z
                     var d = (dx * dx + dz * dz).squareRoot()
                     if d == 0 { d = 1 }
@@ -872,7 +872,7 @@ public final class Evoker: Monster {
                 } else {
                     // summon vexes
                     castCooldown = 340
-                    world.hooks.playSound("entity.evoker.prepare_summon", x, y, z, 1, 1)
+                    world.hooks.playSound("entity.conjurer.prepare_summon", x, y, z, 1, 1)
                     for _ in 0..<3 {
                         let vex = spawnMobFn?(world, "vex", x + rng.nextFloat() * 2 - 1, y + 1, z + rng.nextFloat() * 2 - 1, SpawnOpts())
                         (vex as? Mob)?.setTarget(target)
@@ -882,7 +882,7 @@ public final class Evoker: Monster {
         }
     }
     public override func drops() -> [DropEntry] {
-        [DropEntry("totem_of_undying"), DropEntry("emerald", min: 0, max: 1, lootingBonus: 1)]
+        [DropEntry("lifecharm"), DropEntry("emerald", min: 0, max: 1, lootingBonus: 1)]
     }
 }
 public var spawnFangsFn: ((World, Double, Double, Double, Int, Entity) -> Void)?

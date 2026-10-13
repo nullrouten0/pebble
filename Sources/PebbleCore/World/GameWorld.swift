@@ -69,7 +69,7 @@ public let DAY_LENGTH = 24000
 
 private var tickOrderCounter = 0
 
-/// position key for transient redstone state on doors/trapdoors/gates
+/// position key for transient sparkstone state on doors/trapdoors/gates
 public struct OpenablePos: Hashable {
     public let x: Int, y: Int, z: Int
     public init(_ x: Int, _ y: Int, _ z: Int) { self.x = x; self.y = y; self.z = z }
@@ -101,7 +101,7 @@ public final class World {
     /// saplings around every forest); chopping a trunk wakes its leaves, and
     /// each one that decays wakes its neighbors.
     public var leafChecks = Set<BlockPos>()
-    /// recent toggle times of each redstone torch, for burnout (8 in 60 ticks)
+    /// recent toggle times of each sparkstone torch, for burnout (8 in 60 ticks)
     var torchBurnout: [BlockPos: [Int]] = [:]
     var torchBurnoutPruneAt = 64
     public let info: DimInfo
@@ -137,7 +137,7 @@ public final class World {
         if tickingBE.remove(ObjectIdentifier(be)) != nil { tickingBEList.removeAll { $0 === be } }
     }
     /// openables (doors/trapdoors/gates) that were powered on their last
-    /// neighbor update — lets redstone handlers act on power TRANSITIONS only,
+    /// neighbor update — lets sparkstone handlers act on power TRANSITIONS only,
     /// so a manual open isn't slammed shut by the next unrelated update.
     /// transient: after a reload the first power-on re-fires as a transition.
     public var poweredOpenables = Set<OpenablePos>()
@@ -581,7 +581,7 @@ public final class World {
         return out
     }
 
-    // MARK: - vibrations (sculk)
+    // MARK: - vibrations (hush)
     public func emitVibration(_ x: Double, _ y: Double, _ z: Double, _ freq: Int, _ src: EntityRef?) {
         hooks.onVibration?(x, y, z, freq, src)
     }

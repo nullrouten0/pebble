@@ -65,7 +65,7 @@ public final class Chunk {
     /// keyed by cell index
     public var blockEntities: [Int: BlockEntityData] = [:]
     public var portalBlocks = Set<Int>()
-    public var sculkSensors = Set<Int>()
+    public var hushSensors = Set<Int>()
 
     public enum ChunkStatus { case empty, generated, lit }
 
@@ -178,28 +178,28 @@ public final class Chunk {
         let idx = index(x, y, z)
         if id == B.nether_portal || id == B.end_portal || id == B.end_gateway { portalBlocks.insert(idx) }
         else { portalBlocks.remove(idx) }
-        if id == B.sculk_sensor || id == B.calibrated_sculk_sensor || id == B.sculk_shrieker { sculkSensors.insert(idx) }
-        else { sculkSensors.remove(idx) }
+        if id == B.hush_sensor || id == B.calibrated_hush_sensor || id == B.hush_shrieker { hushSensors.insert(idx) }
+        else { hushSensors.remove(idx) }
     }
     /// rebuild special-block sets after bulk generation
     public func scanSpecials() {
         portalBlocks.removeAll()
-        sculkSensors.removeAll()
+        hushSensors.removeAll()
         // hoisted globals + raw buffer: the naive loop pays a cross-module
         // retain/release per cell and dominated whole frames on the main thread
         let p1 = B.nether_portal, p2 = B.end_portal, p3 = B.end_gateway
-        let s1 = B.sculk_sensor, s2 = B.calibrated_sculk_sensor, s3 = B.sculk_shrieker
+        let s1 = B.hush_sensor, s2 = B.calibrated_hush_sensor, s3 = B.hush_shrieker
         var portals: [Int] = []
-        var sculks: [Int] = []
+        var hushs: [Int] = []
         blocks.withUnsafeBufferPointer { bp in
             for i in 0..<bp.count {
                 let id = bp[i] >> 4
                 if id == p1 || id == p2 || id == p3 { portals.append(i) }
-                else if id == s1 || id == s2 || id == s3 { sculks.append(i) }
+                else if id == s1 || id == s2 || id == s3 { hushs.append(i) }
             }
         }
         for i in portals { portalBlocks.insert(i) }
-        for i in sculks { sculkSensors.insert(i) }
+        for i in hushs { hushSensors.insert(i) }
     }
     public func idxToWorld(_ idx: Int) -> (Int, Int, Int) {
         let x = idx & 15

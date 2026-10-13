@@ -230,10 +230,10 @@ private func appendBoxQuads(_ out: inout [Float], _ outIdx: inout [UInt32],
 
 /// projectile entity type → the item its sprite shows (built once, not per frame)
 private let SPRITE_ITEMS: [String: String] = [
-    "snowball": "snowball", "egg": "egg", "ender_pearl": "ender_pearl", "xp_bottle": "experience_bottle",
-    "thrown_potion": "splash_potion", "firework": "firework_rocket", "eye_of_ender": "ender_eye",
-    "fishing_bobber": "string", "wither_skull": "wither_skeleton_skull_item", "dragon_fireball": "fire_charge",
-    "fireball": "fire_charge", "shulker_bullet": "shulker_shell", "llama_spit": "snowball",
+    "snowball": "snowball", "egg": "egg", "rift_pearl": "rift_pearl", "xp_bottle": "experience_bottle",
+    "thrown_potion": "splash_potion", "firework": "firework_rocket", "rift_eye": "rift_eye",
+    "fishing_bobber": "string", "blight_skull": "blight_skeleton_skull_item", "dragon_fireball": "fire_charge",
+    "fireball": "fire_charge", "lurker_bullet": "lurker_shell", "llama_spit": "snowball",
     "rocket": "firework_rocket", "void_bomb": "heart_of_the_sea",
 ]
 
@@ -1354,7 +1354,7 @@ final class WorldRenderer {
         }
         if hasModel(type) { return type }
         if type == "arrow" || type == "trident" { return "arrow_model" }
-        if type == "end_crystal" { return "end_crystal_model" }
+        if type == "rift_crystal" { return "rift_crystal_model" }
         if type == "boat" { return "boat_model" }
         if type == "minecart" { return "minecart_model" }
         return nil
@@ -1401,7 +1401,7 @@ final class WorldRenderer {
             pose.limbAmp = liv?.limbAmp ?? 0
             pose.attackSwing = liv?.attackAnim ?? 0
             pose.hurtFlash = (liv?.hurtTime ?? 0) > 0 ? Double(liv!.hurtTime) / 10 : deathFlip * 0.6
-            // a lit creeper swells toward its blast (vanilla grows it ~10-40%)
+            // a lit fizzler swells toward its blast (vanilla grows it ~10-40%)
             pose.scale = 1 + (ent.data.swelling ?? 0) * 0.2
             pose.baby = ent.data.baby ?? false
             pose.sky = w.getSkyLight(bx, by, bz)
@@ -1416,10 +1416,10 @@ final class WorldRenderer {
             pose.crossed = pose.aiming
             pose.grazing = ent.data.grazing ?? false
             pose.sitting = (ent as? Mob)?.sitting ?? false
-            pose.open = ent.data.open ?? 0  // shulker lid (synced to LAN guests)
+            pose.open = ent.data.open ?? 0  // lurker lid (synced to LAN guests)
             pose.hanging = ent.type == "bat" && (ent.data.hanging ?? false)
             pose.alpha = deathFlip > 0 ? 1 - deathFlip * 0.6 : 1
-            pose.elytraFlying = (ent as? Player)?.elytraFlying ?? false
+            pose.wingsuitFlying = (ent as? Player)?.wingsuitFlying ?? false
             // blob shadow under living entities (incl. the player in 3rd person);
             // fade out as the entity rises above the ground beneath it.
             if liv != nil, let gy = groundYUnder(ix, iy, iz), iy - gy <= 6 {
@@ -1443,15 +1443,15 @@ final class WorldRenderer {
                                     gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
             }
             if let player = ent as? Player, let chest = player.armor[1],
-               itemDef(chest.id).name == "elytra" {
+               itemDef(chest.id).name == "wingsuit" {
                 entityRenderer.draw(enc, pipeline: entityPipeline, sampler: atlasSampler,
-                                    viewProj: viewProj, camPos: camPos, name: "elytra", p: pose,
+                                    viewProj: viewProj, camPos: camPos, name: "wingsuit", p: pose,
                                     time: timeSec, dayLight: dayLight,
                                     fog: (fog.0, fog.1, fog.2),
                                     gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
             }
             // end crystal beams + lightning via line overlay
-            if let c = ent as? EndCrystal, let bt = c.beamTarget {
+            if let c = ent as? RiftCrystal, let bt = c.beamTarget {
                 drawBoxOutline(enc, viewProj, [(
                     ix - camPos.x, iy + 1 - camPos.y, iz - camPos.z,
                     Double(bt.0) - camPos.x, Double(bt.1) - camPos.y, Double(bt.2) - camPos.z)],
@@ -1577,7 +1577,7 @@ final class WorldRenderer {
                 let id = iidOpt(SPRITE_ITEMS[ent.type] ?? "snowball") ?? iid("snowball")
                 stack = ItemStack(id, 1)
                 size = 0.35
-                if ent.type == "fireball" || ent.type == "dragon_fireball" || ent.type == "wither_skull" || ent.type == "rocket" || ent.type == "void_bomb" { emissive = 1 }
+                if ent.type == "fireball" || ent.type == "dragon_fireball" || ent.type == "blight_skull" || ent.type == "rocket" || ent.type == "void_bomb" { emissive = 1 }
             }
             guard let stack else { continue }
             let dx = ent.x - camPos.x, dz = ent.z - camPos.z

@@ -23,7 +23,7 @@ struct GuestState {
     var vehicle = 0
     var attackTicker = 100.0
 
-    static let ON_GROUND = 1, SNEAKING = 2, SPRINTING = 4, FLYING = 8, ELYTRA = 16
+    static let ON_GROUND = 1, SNEAKING = 2, SPRINTING = 4, FLYING = 8, WINGSUIT = 16
     static let USING = 32, JUMPING = 64, DEAD = 128
 
     func has(_ f: Int) -> Bool { flags & f != 0 }
@@ -44,7 +44,7 @@ struct NetSnap: Equatable {
     var hurtTime = 0, deathTime = 0, flags = 0
     var health = 0.0
 
-    static let ON_GROUND = 1, AIMING = 2, SITTING = 4, SNEAKING = 8, ELYTRA = 16
+    static let ON_GROUND = 1, AIMING = 2, SITTING = 4, SNEAKING = 8, WINGSUIT = 16
 
     init() {}
     init(_ e: Entity) {
@@ -63,7 +63,7 @@ struct NetSnap: Equatable {
         }
         if let p = e as? Player {
             if p.sneaking { flags |= Self.SNEAKING }
-            if p.elytraFlying { flags |= Self.ELYTRA }
+            if p.wingsuitFlying { flags |= Self.WINGSUIT }
         }
     }
 
@@ -380,7 +380,7 @@ public final class NetHost {
             guard let target = p.world.entityById[targetId] as? Entity, !target.dead else { return }
             p.attackStrengthTicker = ticker
             replay(c, drops: true) {
-                if target is LivingEntity || target.type == "end_crystal" {
+                if target is LivingEntity || target.type == "rift_crystal" {
                     playerAttack(p, target)
                 } else if target.type == "boat" || target.type == "minecart" {
                     _ = target.hurt(2, .player, p)
@@ -648,7 +648,7 @@ public final class NetHost {
                 p.sneaking = s.has(GuestState.SNEAKING)
                 p.sprinting = s.has(GuestState.SPRINTING)
                 p.flying = s.has(GuestState.FLYING)
-                p.elytraFlying = s.has(GuestState.ELYTRA)
+                p.wingsuitFlying = s.has(GuestState.WINGSUIT)
                 p.usingItem = s.has(GuestState.USING)
                 p.jumping = s.has(GuestState.JUMPING)
                 p.limbSwing = s.limbSwing; p.limbAmp = s.limbAmp; p.attackAnim = s.attackAnim

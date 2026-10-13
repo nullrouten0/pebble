@@ -8,15 +8,15 @@ public let SHERDS = ["angler", "archer", "arms_up", "blade", "brewer", "burn", "
 public let TRIM_PATTERNS = ["sentry", "dune", "coast", "wild", "ward", "eye", "vex", "tide", "snout", "rib",
                             "spire", "wayfinder", "shaper", "silence", "raiser", "host"]
 public let SPAWN_EGG_MOBS = [
-    "allay", "axolotl", "bat", "bee", "blaze", "camel", "cat", "cave_spider", "chicken", "cod",
-    "cow", "creeper", "dolphin", "donkey", "drowned", "elder_guardian", "enderman", "endermite",
-    "evoker", "fox", "frog", "ghast", "glow_squid", "goat", "guardian", "hoglin", "horse", "husk",
-    "iron_golem", "llama", "magma_cube", "mooshroom", "mule", "ocelot", "panda", "parrot", "phantom",
-    "pig", "piglin", "piglin_brute", "pillager", "polar_bear", "pufferfish", "rabbit", "ravager",
-    "salmon", "sheep", "shulker", "silverfish", "skeleton", "skeleton_horse", "slime", "sniffer",
+    "allay", "axolotl", "bat", "bee", "cinder", "camel", "cat", "cave_spider", "chicken", "cod",
+    "cow", "fizzler", "dolphin", "donkey", "drowned", "elder_guardian", "riftwalker", "riftmite",
+    "conjurer", "fox", "frog", "wailer", "glow_squid", "goat", "guardian", "tusker", "horse", "husk",
+    "iron_golem", "llama", "magma_cube", "mushcow", "mule", "ocelot", "panda", "parrot", "phantom",
+    "pig", "snouter", "snouter_brute", "pillager", "polar_bear", "pufferfish", "rabbit", "ravager",
+    "salmon", "sheep", "lurker", "silverfish", "skeleton", "skeleton_horse", "slime", "sniffer",
     "snow_golem", "spider", "squid", "stray", "strider", "tadpole", "tropical_fish", "turtle",
-    "vex", "villager", "vindicator", "wandering_trader", "warden", "witch", "wither_skeleton",
-    "wolf", "zoglin", "zombie", "zombie_villager", "zombified_piglin",
+    "vex", "villager", "vindicator", "wandering_trader", "warden", "witch", "blight_skeleton",
+    "wolf", "ghoultusk", "zombie", "zombie_villager", "rotting_snouter",
 ]
 
 
@@ -34,9 +34,9 @@ private let registerAllItemsOnce: Void = {
         "tall_seagrass", "kelp", "kelp_plant", "cave_vines", "cave_vines_plant", "bamboo_sapling",
         "wheat", "carrots", "potatoes", "beetroots", "torchflower_crop", "pitcher_crop",
         "melon_stem", "pumpkin_stem", "cocoa", "sweet_berry_bush", "nether_wart",
-        "redstone_wire", "tripwire", "furnace_lit", "blast_furnace_lit", "smoker_lit",
-        "redstone_torch_off", "repeater", "repeater_on", "comparator", "comparator_on",
-        "redstone_lamp_on", "daylight_detector_inverted", "frosted_ice", "farmland", "dirt_path",
+        "sparkstone_wire", "tripwire", "furnace_lit", "blast_furnace_lit", "smoker_lit",
+        "sparkstone_torch_off", "repeater", "repeater_on", "comparator", "comparator_on",
+        "sparkstone_lamp_on", "daylight_detector_inverted", "frosted_ice", "farmland", "dirt_path",
         "weeping_vines", "twisting_vines", "frogspawn", "snow", "sugar_cane",
         "big_dripleaf_stem", "powder_snow", "suspicious_sand", "suspicious_gravel",
     ]
@@ -48,9 +48,9 @@ private let registerAllItemsOnce: Void = {
     skip.insert("flower_pot")
 
     func categoryForBlock(_ name: String) -> String {
-        if matches(name, "wool|carpet|concrete|terracotta|stained_glass|candle|shulker|_bed") { return "colored" }
-        if matches(name, "sapling|leaves|flower|grass|fern|bush|mushroom|fungus|roots|vine|lichen|sprouts|kelp|pickle|coral|dirt|sand|gravel|stone$|ore|log|stem$|pumpkin|melon|cactus|bamboo$|moss|petals|dripleaf|blossom|azalea|nylium|wart_block|shroomlight|froglight|sculk|egg|ice|snow") { return "natural" }
-        if matches(name, "piston|observer|dispenser|dropper|hopper|rail|redstone|lever|button|plate|tripwire|daylight|target|tnt|note_block|comparator|repeater|sensor") { return "redstone" }
+        if matches(name, "wool|carpet|concrete|terracotta|stained_glass|candle|lurker|_bed") { return "colored" }
+        if matches(name, "sapling|leaves|flower|grass|fern|bush|mushroom|fungus|roots|vine|lichen|sprouts|kelp|pickle|coral|dirt|sand|gravel|stone$|ore|log|stem$|pumpkin|melon|cactus|bamboo$|moss|petals|dripleaf|blossom|azalea|nylium|wart_block|glowcap|froglight|hush|egg|ice|snow") { return "natural" }
+        if matches(name, "piston|observer|dispenser|dropper|hopper|rail|sparkstone|lever|button|plate|tripwire|daylight|target|tnt|note_block|comparator|repeater|sensor") { return "sparkstone" }
         if matches(name, "table|furnace|smoker|chest|barrel|anvil|grindstone|stonecutter|composter|cauldron|brewing|jukebox|lectern|bell|ladder|scaffold|torch|lantern|campfire|beacon|conduit|lodestone|anchor|bookshelf|bee|sign|pot$") { return "functional" }
         return "building"
     }
@@ -92,11 +92,11 @@ private let registerAllItemsOnce: Void = {
     registerItem("cocoa_beans", block: B.cocoa, category: "natural", icon: "cocoa_beans", compostChance: 0.65)
     registerItem("sugar_cane", block: B.sugar_cane, category: "natural", icon: "sugar_cane", compostChance: 0.5)
     registerItem("kelp", block: B.kelp, category: "natural", icon: "kelp", burnTime: 200, compostChance: 0.3)
-    registerItem("redstone", block: B.redstone_wire, category: "redstone", icon: "redstone")
+    registerItem("sparkstone", block: B.sparkstone_wire, category: "sparkstone", icon: "sparkstone")
     registerItem("string", block: B.tripwire, category: "ingredients", icon: "string")
     registerItem("snowball", maxStack: 16, category: "natural", icon: "snowball")
-    registerItem("repeater", block: B.repeater, category: "redstone", icon: "repeater_item")
-    registerItem("comparator", block: B.comparator, category: "redstone", icon: "comparator_item")
+    registerItem("repeater", block: B.repeater, category: "sparkstone", icon: "repeater_item")
+    registerItem("comparator", block: B.comparator, category: "sparkstone", icon: "comparator_item")
     registerItem("glow_berries", block: B.cave_vines, food: FoodDef(hunger: 2, saturation: 0.4), category: "food", icon: "glow_berries", compostChance: 0.3)
     registerItem("sweet_berries", block: B.sweet_berry_bush, food: FoodDef(hunger: 2, saturation: 0.4), category: "food", icon: "sweet_berries", compostChance: 0.3)
     registerItem("flower_pot", block: B.flower_pot, category: "functional", icon: "flower_pot_item")
@@ -108,7 +108,7 @@ private let registerAllItemsOnce: Void = {
     for c in COLORS {
         registerItem("\(c)_bed", maxStack: 1, block: B["\(c)_bed"], category: "colored", icon: "\(c)_bed_item")
     }
-    registerItem("iron_door", block: B.iron_door, category: "redstone", icon: "iron_door_item")
+    registerItem("iron_door", block: B.iron_door, category: "sparkstone", icon: "iron_door_item")
     registerItem("snow", block: B.snow, category: "natural", icon: "block")
 
     // ---- tools ----
@@ -117,14 +117,14 @@ private let registerAllItemsOnce: Void = {
         let swordDmg: Double; let pickDmg: Double; let axeDmg: Double; let axeSpd: Double
         let shovelDmg: Double; let hoeSpd: Double
     }
-    let tierOrder = ["wooden", "stone", "iron", "golden", "diamond", "netherite"]
+    let tierOrder = ["wooden", "stone", "iron", "golden", "diamond", "darksteel"]
     let TIERS: [String: TierSpec] = [
         "wooden": TierSpec(tier: 0, speed: 2, dur: 59, ench: 15, swordDmg: 3, pickDmg: 1, axeDmg: 6, axeSpd: 0.8, shovelDmg: 1.5, hoeSpd: 1),
         "stone": TierSpec(tier: 1, speed: 4, dur: 131, ench: 5, swordDmg: 4, pickDmg: 2, axeDmg: 8, axeSpd: 0.8, shovelDmg: 2.5, hoeSpd: 2),
         "iron": TierSpec(tier: 2, speed: 6, dur: 250, ench: 14, swordDmg: 5, pickDmg: 3, axeDmg: 8, axeSpd: 0.9, shovelDmg: 3.5, hoeSpd: 3),
         "golden": TierSpec(tier: 0, speed: 12, dur: 32, ench: 22, swordDmg: 3, pickDmg: 1, axeDmg: 6, axeSpd: 1.0, shovelDmg: 1.5, hoeSpd: 1),
         "diamond": TierSpec(tier: 3, speed: 8, dur: 1561, ench: 10, swordDmg: 6, pickDmg: 4, axeDmg: 8, axeSpd: 1.0, shovelDmg: 4.5, hoeSpd: 4),
-        "netherite": TierSpec(tier: 4, speed: 9, dur: 2031, ench: 15, swordDmg: 7, pickDmg: 5, axeDmg: 9, axeSpd: 1.0, shovelDmg: 5.5, hoeSpd: 4),
+        "darksteel": TierSpec(tier: 4, speed: 9, dur: 2031, ench: 15, swordDmg: 7, pickDmg: 5, axeDmg: 9, axeSpd: 1.0, shovelDmg: 5.5, hoeSpd: 4),
     ]
     for mat in tierOrder {
         let t = TIERS[mat]!
@@ -153,7 +153,7 @@ private let registerAllItemsOnce: Void = {
         ArmorMat(name: "iron", def: [2, 6, 5, 2], tough: 0, kb: 0, dur: [166, 241, 226, 196], ench: 9),
         ArmorMat(name: "golden", def: [2, 5, 3, 1], tough: 0, kb: 0, dur: [78, 113, 106, 92], ench: 25),
         ArmorMat(name: "diamond", def: [3, 8, 6, 3], tough: 2, kb: 0, dur: [364, 529, 496, 430], ench: 10),
-        ArmorMat(name: "netherite", def: [3, 8, 6, 3], tough: 3, kb: 0.1, dur: [408, 593, 556, 482], ench: 15),
+        ArmorMat(name: "darksteel", def: [3, 8, 6, 3], tough: 3, kb: 0.1, dur: [408, 593, 556, 482], ench: 15),
     ]
     let SLOT_NAMES = ["helmet", "chestplate", "leggings", "boots"]
     for a in ARMORS {
@@ -164,7 +164,7 @@ private let registerAllItemsOnce: Void = {
         }
     }
     registerItem("turtle_helmet", armor: ArmorDef(slot: 0, defense: 2, toughness: 0, knockbackRes: 0, durability: 275, enchantability: 9, material: "turtle"), category: "combat")
-    registerItem("elytra", armor: ArmorDef(slot: 1, defense: 0, toughness: 0, knockbackRes: 0, durability: 432, enchantability: 1, material: "elytra"), category: "combat", rarity: 2)
+    registerItem("wingsuit", armor: ArmorDef(slot: 1, defense: 0, toughness: 0, knockbackRes: 0, durability: 432, enchantability: 1, material: "wingsuit"), category: "combat", rarity: 2)
     registerItem("shield", maxStack: 1, category: "combat", icon: "shield")
 
     // ---- food ----
@@ -225,8 +225,8 @@ private let registerAllItemsOnce: Void = {
               "diamond", "emerald", "lapis_lazuli", "quartz"] {
         registerItem(n, category: "ingredients")
     }
-    registerItem("netherite_scrap", category: "ingredients", rarity: 1)
-    registerItem("netherite_ingot", category: "ingredients", rarity: 1)
+    registerItem("darksteel_scrap", category: "ingredients", rarity: 1)
+    registerItem("darksteel_ingot", category: "ingredients", rarity: 1)
     registerItem("amethyst_shard", category: "ingredients")
     registerItem("echo_shard", category: "ingredients", rarity: 1)
     for n in ["flint", "clay_ball", "brick", "nether_brick", "bone", "bone_meal", "leather", "rabbit_hide", "feather"] {
@@ -234,18 +234,18 @@ private let registerAllItemsOnce: Void = {
     }
     registerItem("egg", maxStack: 16, category: "ingredients")
     registerItem("gunpowder", category: "ingredients")
-    registerItem("blaze_rod", category: "ingredients", burnTime: 2400)
-    registerItem("blaze_powder", category: "ingredients")
-    registerItem("ender_pearl", maxStack: 16, category: "ingredients")
-    registerItem("ender_eye", display: "Eye of Ender", maxStack: 64, category: "ingredients")
-    for n in ["ghast_tear", "slime_ball", "magma_cream", "fermented_spider_eye", "glistering_melon_slice",
-              "rabbit_foot", "phantom_membrane", "shulker_shell", "nautilus_shell"] {
+    registerItem("cinder_rod", category: "ingredients", burnTime: 2400)
+    registerItem("cinder_powder", category: "ingredients")
+    registerItem("rift_pearl", maxStack: 16, category: "ingredients")
+    registerItem("rift_eye", display: "Rift Eye", maxStack: 64, category: "ingredients")
+    for n in ["wailer_tear", "slime_ball", "magma_cream", "fermented_spider_eye", "glistering_melon_slice",
+              "rabbit_foot", "phantom_membrane", "lurker_shell", "nautilus_shell"] {
         registerItem(n, category: "ingredients")
     }
     registerItem("heart_of_the_sea", category: "ingredients", rarity: 1)
     registerItem("dragon_breath", maxStack: 64, category: "ingredients", rarity: 1)
     registerItem("nether_star", category: "ingredients", rarity: 1)
-    for n in ["prismarine_shard", "prismarine_crystals", "ink_sac", "glow_ink_sac", "scute", "honeycomb"] {
+    for n in ["seaglass_shard", "seaglass_crystals", "ink_sac", "glow_ink_sac", "scute", "honeycomb"] {
         registerItem(n, category: "ingredients")
     }
     registerItem("wheat", category: "ingredients", compostChance: 0.65)
@@ -253,14 +253,14 @@ private let registerAllItemsOnce: Void = {
     registerItem("writable_book", maxStack: 1, category: "ingredients")
     registerItem("glass_bottle", category: "ingredients")
     registerItem("experience_bottle", display: "Bottle o' Enchanting", category: "ingredients", rarity: 1)
-    registerItem("glowstone_dust", category: "ingredients")
+    registerItem("lumenstone_dust", category: "ingredients")
     registerItem("fire_charge", category: "ingredients")
     registerItem("bowl", category: "ingredients", burnTime: 100)
     for n in ["arrow", "spectral_arrow", "tipped_arrow"] { registerItem(n, category: "ingredients") }
     registerItem("saddle", maxStack: 1, category: "ingredients")
     registerItem("lead", category: "ingredients")
     registerItem("name_tag", category: "ingredients")
-    registerItem("totem_of_undying", maxStack: 1, category: "ingredients", rarity: 1)
+    registerItem("lifecharm", maxStack: 1, category: "ingredients", rarity: 1)
     registerItem("recovery_compass", category: "ingredients", rarity: 1)
     registerItem("compass", category: "ingredients")
     registerItem("clock", category: "ingredients")
@@ -281,7 +281,7 @@ private let registerAllItemsOnce: Void = {
 
     registerItem("nether_wart", block: B.nether_wart, category: "ingredients", icon: "nether_wart")
     registerItem("popped_chorus_fruit", category: "ingredients")
-    registerItem("end_crystal", category: "combat", icon: "end_crystal", rarity: 2)
+    registerItem("rift_crystal", category: "combat", icon: "rift_crystal", rarity: 2)
     registerItem("enchanted_book", maxStack: 1, category: "ingredients", rarity: 1)
     for n in ["leather_horse_armor", "iron_horse_armor", "golden_horse_armor", "diamond_horse_armor"] {
         registerItem(n, maxStack: 1, category: "combat")
@@ -319,7 +319,7 @@ private let registerAllItemsOnce: Void = {
     for t in TRIM_PATTERNS {
         registerItem("\(t)_armor_trim", display: prettify(t) + " Armor Trim Smithing Template", category: "ingredients", icon: "smithing_template", rarity: 1)
     }
-    registerItem("netherite_upgrade", display: "Netherite Upgrade Smithing Template", category: "ingredients", icon: "smithing_template", rarity: 1)
+    registerItem("darksteel_upgrade", display: "Darksteel Upgrade Smithing Template", category: "ingredients", icon: "smithing_template", rarity: 1)
 
     // spawn eggs
     for m in SPAWN_EGG_MOBS { registerItem("\(m)_spawn_egg", category: "spawn_eggs", icon: "spawn_egg") }
@@ -332,11 +332,11 @@ private let registerAllItemsOnce: Void = {
 
     // block destroyers (Systems/Destroyers.swift)
     registerItem("bazooka", display: "Bazooka", maxStack: 1, category: "tools", icon: "spyglass", rarity: 3)
-    registerItem("mining_laser", display: "Mining Laser", maxStack: 1, category: "tools", icon: "blaze_rod", rarity: 3)
+    registerItem("mining_laser", display: "Mining Laser", maxStack: 1, category: "tools", icon: "cinder_rod", rarity: 3)
     registerItem("void_bomb", display: "Void Bomb", maxStack: 16, category: "tools", icon: "heart_of_the_sea", rarity: 3)
     registerItem("quarry_charge", display: "Quarry Charge", maxStack: 16, category: "tools", icon: "tnt_minecart", rarity: 3)
     registerItem("wall_builder", display: "Wall Builder", maxStack: 1, category: "tools", icon: "brick", rarity: 3)
-    registerItem("box_builder", display: "Box Builder", maxStack: 1, category: "tools", icon: "shulker_shell", rarity: 3)
+    registerItem("box_builder", display: "Box Builder", maxStack: 1, category: "tools", icon: "lurker_shell", rarity: 3)
     registerItem("infinity_wipe", display: "Infinity Wipe", maxStack: 1, category: "tools", icon: "nether_star", rarity: 3)
 
     // worn in the helmet slot: a beam of light where you look (WorldRenderer

@@ -1,5 +1,5 @@
 // The player — inventory, hunger/saturation, XP,
-// mining state, abilities, elytra flight, sleeping, ender chest, and
+// mining state, abilities, wingsuit flight, sleeping, rift chest, and
 // interaction helpers.
 
 import Foundation
@@ -38,7 +38,7 @@ public final class Player: LivingEntity {
     public func setGameMode(_ m: Int) { _gameMode = m }
     /// inventory: 0-8 hotbar, 9-35 main
     public var inventory: [ItemStack?] = Array(repeating: nil, count: 36)
-    public var enderChest: [ItemStack?] = Array(repeating: nil, count: 27)
+    public var riftChest: [ItemStack?] = Array(repeating: nil, count: 27)
     public var selectedSlot = 0
     public var hunger = 20
     public var saturation = 5.0
@@ -48,7 +48,7 @@ public final class Player: LivingEntity {
     public var xpLevel = 0
     public var xpProgress = 0.0  // 0..1
     public var flying = false
-    public var elytraFlying = false
+    public var wingsuitFlying = false
     public var sleepTicks = 0
     public var bedPos: (Int, Int, Int)? = nil
     public var spawnPoint: (Int, Int, Int)? = nil
@@ -106,10 +106,10 @@ public final class Player: LivingEntity {
         if portalTicks > 0 && insidePortalKind == nil { portalTicks = max(0, portalTicks - 4) }
         // item magnet pickup (a LAN guest's pickups happen on the host)
         if age % 2 == 0 && !dead && !world.isRemote { pickUpNearby() }
-        // elytra
-        if elytraFlying {
-            tickElytra()
-            if onGround || inWater || !hasElytra() { elytraFlying = false }
+        // wingsuit
+        if wingsuitFlying {
+            tickWingsuit()
+            if onGround || inWater || !hasWingsuit() { wingsuitFlying = false }
         }
     }
 
@@ -135,10 +135,11 @@ public final class Player: LivingEntity {
     }
 
     // =========================================================================
-    // Vanilla-exact movement (Java 1.20). Overrides the shared LivingEntity
-    // travel(), which mobs keep (their physics is golden-locked). References:
-    // LocalPlayer.aiStep input shaping, LivingEntity.travel/handleRelative-
-    // FrictionAndCalculateMovement, Entity.getBlockSpeedFactor.
+    // Player movement tuned to match the reference game's measured feel
+    // (walk 4.317, sprint 5.612 blocks/s, jump apex 1.2522 — the numbers
+    // pebsmoke derives independently). Overrides the shared LivingEntity
+    // travel(), which mobs keep: input shaping, then ground/air friction and
+    // the per-block speed factors (soul sand, honey).
     // =========================================================================
     public var noJumpDelay = 0
 
@@ -197,7 +198,7 @@ public final class Player: LivingEntity {
     }
 
     public override func travel() {
-        // ---- input shaping (LocalPlayer.aiStep) ----
+        // ---- input shaping (sneak slowdown, 0.98 damping) ----
         var f = moveForward, s = moveStrafe
         if sneaking {
             // swift sneak raises the 0.3 sneak multiplier toward 1.0
@@ -224,7 +225,7 @@ public final class Player: LivingEntity {
         }
 
         if inWater {
-            // ---- water (LivingEntity.travel water branch) ----
+            // ---- swimming ----
             let yBefore = y
             var waterSlow = sprinting ? 0.9 : 0.8   // vanilla sprint-swim inertia
             var speed = 0.02
@@ -362,20 +363,20 @@ public final class Player: LivingEntity {
         attackStrengthTicker = 0
     }
 
-    public func hasElytra() -> Bool {
-        guard let chest = armor[1], itemDef(chest.id).name == "elytra" else { return false }
+    public func hasWingsuit() -> Bool {
+        guard let chest = armor[1], itemDef(chest.id).name == "wingsuit" else { return false }
         return chest.damage < (itemDef(chest.id).armor?.durability ?? 432) - 1
     }
     @discardableResult
-    public func startElytra() -> Bool {
-        if !onGround && !elytraFlying && !inWater && hasElytra() {
-            elytraFlying = true
+    public func startWingsuit() -> Bool {
+        if !onGround && !wingsuitFlying && !inWater && hasWingsuit() {
+            wingsuitFlying = true
             return true
         }
         return false
     }
-    private func tickElytra() {
-        // vanilla elytra physics
+    private func tickWingsuit() {
+        // vanilla wingsuit physics
         let pitch = self.pitch
         let lookX = -detSin(yaw) * detCos(pitch)
         let lookZ = detCos(yaw) * detCos(pitch)
@@ -653,10 +654,10 @@ public final class Player: LivingEntity {
         return r
     }
     public override func die(_ source: DamageSource, _ attacker: Entity? = nil) {
-        // totem of undying
+        // lifecharm: survive with half a heart
         for hand in 0..<2 {
             let s = hand == 0 ? mainHand : offHand
-            if let s, itemDef(s.id).name == "totem_of_undying" {
+            if let s, itemDef(s.id).name == "lifecharm" {
                 if hand == 0 { mainHand = nil } else { offHand = nil }
                 health = 1
                 clearEffects()
@@ -717,7 +718,7 @@ public final class Player: LivingEntity {
             return try? JSONSerialization.jsonObject(with: bytes, options: [.fragmentsAllowed])
         }
         d["inventory"] = enc(inventory)
-        d["enderChest"] = enc(enderChest)
+        d["riftChest"] = enc(riftChest)
         d["armor"] = enc(armor)
         if let oh = offHand { d["offHand"] = enc(oh) }
         d["selectedSlot"] = selectedSlot
@@ -741,17 +742,17 @@ public final class Player: LivingEntity {
             return try? JSONDecoder().decode(type, from: bytes)
         }
         inventory = dec(d["inventory"], [ItemStack?].self) ?? Array(repeating: nil, count: 36)
-        enderChest = dec(d["enderChest"], [ItemStack?].self) ?? Array(repeating: nil, count: 27)
+        riftChest = dec(d["riftChest"], [ItemStack?].self) ?? Array(repeating: nil, count: 27)
         armor = dec(d["armor"], [ItemStack?].self) ?? [nil, nil, nil, nil]
         offHand = dec(d["offHand"], ItemStack.self)
         // harden against corrupt/truncated saves: fix array sizes, clamp the
         // hotbar slot, drop stacks with out-of-range item ids (itemDefs is
         // indexed unchecked in hot paths)
         while inventory.count < 36 { inventory.append(nil) }
-        while enderChest.count < 27 { enderChest.append(nil) }
+        while riftChest.count < 27 { riftChest.append(nil) }
         while armor.count < 4 { armor.append(nil) }
         inventory = knownStacks(inventory)
-        enderChest = knownStacks(enderChest)
+        riftChest = knownStacks(riftChest)
         armor = knownStacks(armor)
         if offHand?.isKnown == false { offHand = nil }
         selectedSlot = min(8, max(0, inum(d["selectedSlot"])))

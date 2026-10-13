@@ -123,8 +123,8 @@ open class LivingEntity: Entity {
                 if age % max(1, 50 >> e.amplifier) == 0 { heal(1) }
             case "poison":
                 if age % max(1, 25 >> e.amplifier) == 0 && health > 1 { hurt(1, .magic) }
-            case "wither":
-                if age % max(1, 40 >> e.amplifier) == 0 { hurt(1, .wither) }
+            case "blight":
+                if age % max(1, 40 >> e.amplifier) == 0 { hurt(1, .blight) }
             case "hunger":
                 addExhaustion(0.005 * Double(e.amplifier + 1))
             case "levitation":
@@ -182,7 +182,7 @@ open class LivingEntity: Entity {
         }
         if invulnTicks > 0 { return false }
         if source.isFire && hasEffect("fire_resistance") { return false }
-        if source == .fall && (type == "cat" || type == "ocelot" || type == "chicken" || type == "bat" || type == "parrot" || type == "bee" || type == "shulker" || type == "iron_golem") { return false }
+        if source == .fall && (type == "cat" || type == "ocelot" || type == "chicken" || type == "bat" || type == "parrot" || type == "bee" || type == "lurker" || type == "iron_golem") { return false }
 
         // armor reduction (vanilla formula)
         let bypassesArmor = source.bypassesArmor
@@ -442,8 +442,8 @@ open class LivingEntity: Entity {
         pushEntities()
     }
 
-    /// vanilla Entity.push — overlapping living entities shove each other apart
-    /// (the missing piece that let the player walk straight through mobs)
+    /// overlapping living entities shove each other apart, as in the reference
+    /// game (without it the player walked straight through mobs)
     func pushEntities() {
         if dead || vehicle != nil { return }
         if let p = self as? Player, p.flying { return }

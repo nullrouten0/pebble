@@ -199,8 +199,8 @@ final class ParticleSystemM {
                 p.maxLife = 18
                 p.light = 1
                 p.size = 0.12
-            case "redstone":
-                p.tile = tileId("redstone_particle")
+            case "sparkstone":
+                p.tile = tileId("sparkstone_particle")
                 p.gravity = 0
                 p.vx = 0; p.vy = 0.005; p.vz = 0
                 p.r = 1; p.g = 0.15; p.b = 0.1
@@ -218,7 +218,7 @@ final class ParticleSystemM {
                 p.r = w; p.g = w * 0.95; p.b = w * 0.85
                 p.maxLife = 12 + rand() * 10
                 p.light = 1
-            case "sculk_soul", "soul":
+            case "hush_soul", "soul":
                 p.tile = tileId("soul_particle")
                 p.gravity = -0.006
                 p.r = 0.25; p.g = 0.8; p.b = 0.85

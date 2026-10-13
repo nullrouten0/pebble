@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// which items an enchantment can go on (vanilla's EnchantmentCategory)
+/// which items an enchantment can go on
 public enum EnchantTarget: String {
     case armor, armorHead = "armor_head", armorChest = "armor_chest", armorLegs = "armor_legs", armorFeet = "armor_feet"
     case sword, digger, axe, bow, crossbow, trident, fishingRod = "fishing_rod"
@@ -58,7 +58,7 @@ public let ENCHANTMENTS: [EnchantmentDef] = [
     // sword
     ench("sharpness", "Sharpness", 5, 10, .sword, { l in 1 + (l - 1) * 11 }, 20, group: "damage"),
     ench("smite", "Smite", 5, 5, .sword, { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
-    ench("bane_of_arthropods", "Bane of Arthropods", 5, 5, .sword, { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
+    ench("bugbane", "Bugbane", 5, 5, .sword, { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
     ench("knockback", "Knockback", 2, 5, .sword, { l in 5 + 20 * (l - 1) }, 50),
     ench("fire_aspect", "Fire Aspect", 2, 2, .sword, { l in 10 + 20 * (l - 1) }, 50),
     ench("looting", "Looting", 3, 2, .sword, { l in 15 + (l - 1) * 9 }, 50),
@@ -108,9 +108,9 @@ public func compatible(_ a: EnchantmentDef, _ b: EnchantmentDef) -> Bool {
 public func appliesTo(_ e: EnchantmentDef, _ item: ItemDef) -> Bool {
     let t = item.tool, a = item.armor
     switch e.target {
-    case .armor: return a != nil && a!.material != "elytra"
+    case .armor: return a != nil && a!.material != "wingsuit"
     case .armorHead: return a?.slot == 0
-    case .armorChest: return a?.slot == 1 && a?.material != "elytra"
+    case .armorChest: return a?.slot == 1 && a?.material != "wingsuit"
     case .armorLegs: return a?.slot == 2
     case .armorFeet: return a?.slot == 3
     case .sword: return t?.type == .sword
@@ -169,7 +169,7 @@ public let EFFECTS: [EffectDef] = [
     EffectDef("hunger", "Hunger", 0x587653, false),
     EffectDef("weakness", "Weakness", 0x484d48, false),
     EffectDef("poison", "Poison", 0x87a363, false),
-    EffectDef("wither", "Wither", 0x736156, false),
+    EffectDef("blight", "Blight", 0x736156, false),
     EffectDef("health_boost", "Health Boost", 0xf87d23, true),
     EffectDef("absorption", "Absorption", 0x2552a5, true),
     EffectDef("saturation", "Saturation", 0xf82423, true, true),
@@ -281,8 +281,8 @@ public let BREW_RECIPES: [BrewRecipe] = {
         out.append(BrewRecipe(base: base, ingredient: ingredient, result: result))
     }
     brew("water", "nether_wart", "awkward")
-    brew("water", "glowstone_dust", "thick")
-    brew("water", "redstone", "mundane")
+    brew("water", "lumenstone_dust", "thick")
+    brew("water", "sparkstone", "mundane")
     brew("water", "fermented_spider_eye", "weakness")
     brew("awkward", "golden_carrot", "night_vision")
     brew("awkward", "rabbit_foot", "leaping")
@@ -291,8 +291,8 @@ public let BREW_RECIPES: [BrewRecipe] = {
     brew("awkward", "pufferfish", "water_breathing")
     brew("awkward", "glistering_melon_slice", "healing")
     brew("awkward", "spider_eye", "poison")
-    brew("awkward", "ghast_tear", "regeneration")
-    brew("awkward", "blaze_powder", "strength")
+    brew("awkward", "wailer_tear", "regeneration")
+    brew("awkward", "cinder_powder", "strength")
     brew("awkward", "phantom_membrane", "slow_falling")
     brew("awkward", "turtle_helmet", "turtle_master")
     // corruptions
@@ -307,13 +307,13 @@ public let BREW_RECIPES: [BrewRecipe] = {
     brew("poison", "fermented_spider_eye", "harming")
     brew("long_poison", "fermented_spider_eye", "harming")
     brew("strong_poison", "fermented_spider_eye", "strong_harming")
-    // redstone extensions
+    // sparkstone extensions
     for p in ["night_vision", "invisibility", "leaping", "fire_resistance", "swiftness", "slowness", "water_breathing", "poison", "regeneration", "strength", "weakness", "slow_falling", "turtle_master"] {
-        brew(p, "redstone", "long_\(p)")
+        brew(p, "sparkstone", "long_\(p)")
     }
-    // glowstone strengthening
+    // lumenstone strengthening
     for p in ["leaping", "swiftness", "healing", "harming", "poison", "regeneration", "strength", "slowness", "turtle_master"] {
-        brew(p, "glowstone_dust", "strong_\(p)")
+        brew(p, "lumenstone_dust", "strong_\(p)")
     }
     return out
 }()
