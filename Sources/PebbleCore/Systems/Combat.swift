@@ -70,7 +70,7 @@ public func playerAttack(_ player: Player, _ target: Entity) {
             }
         }
         // sweeping (sword, full strength, on ground-ish)
-        if tool?.type == "sword" && strength > 0.9 && !crit && !wasSprinting && player.onGround {
+        if tool?.type == .sword && strength > 0.9 && !crit && !wasSprinting && player.onGround {
             let sweepLvl = held.map { enchLevel($0, "sweeping_edge") } ?? 0
             let sweepDmg = 1 + (sweepLvl > 0 ? dmg * Double(sweepLvl) / Double(sweepLvl + 1) : 0)
             for e in player.world.getEntitiesNear(target.x, target.y, target.z, 1.5) {
@@ -82,7 +82,7 @@ public func playerAttack(_ player: Player, _ target: Entity) {
         }
         // durability
         if held != nil, let tool {
-            player.damageHeld(tool.type == "sword" || tool.type == "trident" ? 1 : 2)
+            player.damageHeld(tool.type == .sword || tool.type == .trident ? 1 : 2)
         }
         player.addExhaustion(0.1)
     }
@@ -200,9 +200,9 @@ public func tickFangs(_ world: World) {
 /// leaves and wool fast.
 private func toolMatches(_ tool: ToolDef?, _ bid: Int, _ def: BlockDef) -> Bool {
     guard let tool else { return false }
-    return tool.type == def.tool.rawValue
-        || (tool.type == "sword" && (bid == Int(B.cobweb) || bid == Int(B.bamboo)))
-        || (tool.type == "shears" && (def.tool == .shears || def.name.contains("leaves") || def.name.contains("wool")))
+    return tool.type == def.tool
+        || (tool.type == .sword && (bid == Int(B.cobweb) || bid == Int(B.bamboo)))
+        || (tool.type == .shears && (def.tool == .shears || def.name.contains("leaves") || def.name.contains("wool")))
 }
 
 public func breakSpeed(_ player: Player, _ cellVal: Int) -> Double {

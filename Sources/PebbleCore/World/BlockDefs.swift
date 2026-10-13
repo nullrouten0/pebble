@@ -21,8 +21,11 @@ public enum Shape: UInt8 {
     case structureVoid, bambooSapling, pitcherCropShape, muddyMangroveRoots, sculkVein, cactusShape, air
 }
 
+/// what a tool is, and which tool a block wants (`none`: any or no tool)
 public enum ToolType: String {
-    case pickaxe, axe, shovel, hoe, sword, shears, none
+    case pickaxe, axe, shovel, hoe, sword, shears
+    case flintAndSteel = "flint_and_steel", fishingRod = "fishing_rod", bow, crossbow, trident, brush
+    case none
 }
 
 public enum PistonBehavior: UInt8 { case normal = 0, destroy, block, blockEntity }

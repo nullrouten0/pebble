@@ -23,7 +23,7 @@ public struct FoodDef {
 }
 
 public struct ToolDef {
-    public let type: String   // pickaxe/axe/shovel/hoe/sword/shears/flint_and_steel/fishing_rod/bow/crossbow/trident/brush
+    public let type: ToolType
     public let tier: Int
     public let speed: Double
     public let attackDamage: Double
@@ -31,7 +31,7 @@ public struct ToolDef {
     public let durability: Int
     public let enchantability: Int
 
-    public init(_ type: String, tier: Int, speed: Double, attackDamage: Double, attackSpeed: Double, durability: Int, enchantability: Int) {
+    public init(_ type: ToolType, tier: Int, speed: Double, attackDamage: Double, attackSpeed: Double, durability: Int, enchantability: Int) {
         self.type = type; self.tier = tier; self.speed = speed
         self.attackDamage = attackDamage; self.attackSpeed = attackSpeed
         self.durability = durability; self.enchantability = enchantability

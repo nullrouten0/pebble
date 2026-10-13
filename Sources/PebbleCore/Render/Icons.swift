@@ -200,7 +200,7 @@ private func drawTemplate(_ img: inout [UInt8], _ rows: [String], _ H: Int, _ Bc
 private func paintIcon(_ img: inout [UInt8], _ def: ItemDef, _ data: StackData?) {
     let name = def.name
     // tools
-    if let tool = def.tool, let tpl = TOOL_TEMPLATES[tool.type] {
+    if let tool = def.tool, let tpl = TOOL_TEMPLATES[tool.type.rawValue] {
         let (H, Bc, D) = materialColors(name)
         drawTemplate(&img, tpl, H, Bc, D)
         return

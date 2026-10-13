@@ -129,19 +129,19 @@ private let registerAllItemsOnce: Void = {
     for mat in tierOrder {
         let t = TIERS[mat]!
         let burn = mat == "wooden" ? 200 : 0
-        registerItem("\(mat)_sword", tool: ToolDef("sword", tier: t.tier, speed: 1.5, attackDamage: t.swordDmg, attackSpeed: 1.6, durability: t.dur, enchantability: t.ench), category: "combat", burnTime: burn)
-        registerItem("\(mat)_pickaxe", tool: ToolDef("pickaxe", tier: t.tier, speed: t.speed, attackDamage: t.pickDmg, attackSpeed: 1.2, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
-        registerItem("\(mat)_axe", tool: ToolDef("axe", tier: t.tier, speed: t.speed, attackDamage: t.axeDmg, attackSpeed: t.axeSpd, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
-        registerItem("\(mat)_shovel", tool: ToolDef("shovel", tier: t.tier, speed: t.speed, attackDamage: t.shovelDmg, attackSpeed: 1, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
-        registerItem("\(mat)_hoe", tool: ToolDef("hoe", tier: t.tier, speed: t.speed, attackDamage: 1, attackSpeed: t.hoeSpd, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
+        registerItem("\(mat)_sword", tool: ToolDef(.sword, tier: t.tier, speed: 1.5, attackDamage: t.swordDmg, attackSpeed: 1.6, durability: t.dur, enchantability: t.ench), category: "combat", burnTime: burn)
+        registerItem("\(mat)_pickaxe", tool: ToolDef(.pickaxe, tier: t.tier, speed: t.speed, attackDamage: t.pickDmg, attackSpeed: 1.2, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
+        registerItem("\(mat)_axe", tool: ToolDef(.axe, tier: t.tier, speed: t.speed, attackDamage: t.axeDmg, attackSpeed: t.axeSpd, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
+        registerItem("\(mat)_shovel", tool: ToolDef(.shovel, tier: t.tier, speed: t.speed, attackDamage: t.shovelDmg, attackSpeed: 1, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
+        registerItem("\(mat)_hoe", tool: ToolDef(.hoe, tier: t.tier, speed: t.speed, attackDamage: 1, attackSpeed: t.hoeSpd, durability: t.dur, enchantability: t.ench), category: "tools", burnTime: burn)
     }
-    registerItem("shears", tool: ToolDef("shears", tier: 0, speed: 1.5, attackDamage: 0, attackSpeed: 4, durability: 238, enchantability: 1), category: "tools")
-    registerItem("flint_and_steel", tool: ToolDef("flint_and_steel", tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 64, enchantability: 1), category: "tools")
-    registerItem("fishing_rod", tool: ToolDef("fishing_rod", tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 64, enchantability: 1), category: "tools", burnTime: 300)
-    registerItem("bow", tool: ToolDef("bow", tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 384, enchantability: 1), category: "combat", burnTime: 300)
-    registerItem("crossbow", tool: ToolDef("crossbow", tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 465, enchantability: 1), category: "combat", burnTime: 300)
-    registerItem("trident", tool: ToolDef("trident", tier: 0, speed: 1, attackDamage: 8, attackSpeed: 1.1, durability: 250, enchantability: 1), category: "combat")
-    registerItem("brush", tool: ToolDef("brush", tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 64, enchantability: 1), category: "tools")
+    registerItem("shears", tool: ToolDef(.shears, tier: 0, speed: 1.5, attackDamage: 0, attackSpeed: 4, durability: 238, enchantability: 1), category: "tools")
+    registerItem("flint_and_steel", tool: ToolDef(.flintAndSteel, tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 64, enchantability: 1), category: "tools")
+    registerItem("fishing_rod", tool: ToolDef(.fishingRod, tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 64, enchantability: 1), category: "tools", burnTime: 300)
+    registerItem("bow", tool: ToolDef(.bow, tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 384, enchantability: 1), category: "combat", burnTime: 300)
+    registerItem("crossbow", tool: ToolDef(.crossbow, tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 465, enchantability: 1), category: "combat", burnTime: 300)
+    registerItem("trident", tool: ToolDef(.trident, tier: 0, speed: 1, attackDamage: 8, attackSpeed: 1.1, durability: 250, enchantability: 1), category: "combat")
+    registerItem("brush", tool: ToolDef(.brush, tier: 0, speed: 1, attackDamage: 0, attackSpeed: 4, durability: 64, enchantability: 1), category: "tools")
 
     // ---- armor ----
     struct ArmorMat {

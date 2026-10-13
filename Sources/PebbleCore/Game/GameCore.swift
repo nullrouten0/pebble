@@ -717,7 +717,7 @@ public final class GameCore {
         // generation only reach land nobody has visited (CONTRIBUTING).
         var records: [ChunkRecord] = []
         for (d, w) in worlds where !w.isRemote {
-            for c in w.chunks.values where c.modified || !savedChunkKeys.contains(db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)) {
+            for c in w.chunks.values where c.modified || !savedFullKeys.contains(db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)) {
                 records.append(chunkRecord(rec.id, d, w, c))
             }
         }
@@ -781,12 +781,10 @@ public final class GameCore {
         }
         let key = db.chunkKey(worldId, d.rawValue, c.cx, c.cz)
         c.savedEntities = !ents.isEmpty
-        if !c.modified && !savedFullKeys.contains(key) {
-            // entity-only record (~KBs): the blocks regenerate from seed
-            return ChunkRecord(key: key, worldId: worldId, dim: d.rawValue, cx: c.cx, cz: c.cz, entities: ents)
-        }
-        // once a full record exists on disk, every rewrite must stay full —
-        // the autosave clears `modified` but the blocks no longer regenerate
+        // always a full record, blocks included: a chunk's blocks come from
+        // disk once it has been generated, so changes to world generation never
+        // reach land a player has seen (records written before 1.5 may be
+        // entity-only stubs; those chunks regenerate and get saved in full)
         savedFullKeys.insert(key)
         // deep-copy block entities — live BEs keep mutating while the save
         // queue serializes, and BlockEntityData is a reference type
@@ -1332,6 +1330,7 @@ public final class GameCore {
                 if let worldId, savedChunkKeys.contains(db.chunkKey(worldId, w.dim.rawValue, cx, cz)) {
                     saved = db.getChunk(worldId, w.dim.rawValue, cx, cz)
                     if let s = saved, Self.recordUsable(s, height: w.info.height) {
+                        savedFullKeys.insert(s.key)   // its blocks are already on disk
                         let light = computeLocalLight(blocks: s.blocks!, height: w.info.height, hasSky: w.info.hasSky)
                         adoptChunk(w, Self.makeChunk(cx, cz, w.info.minY, w.info.height, s.blocks!, s.biomes!, light.sky, light.blk),
                                    nil, nil, s)
@@ -1413,7 +1412,7 @@ public final class GameCore {
         if let rec = worldRec, !w.isRemote {   // a LAN guest's chunks are the host's to keep
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
             let stale = c.savedEntities || !c.blockEntities.isEmpty
-            if !savedChunkKeys.contains(dbKey) || c.modified || hasEntities || stale {
+            if !savedFullKeys.contains(dbKey) || c.modified || hasEntities || stale {
                 let record = chunkRecord(rec.id, w.dim, w, c)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record

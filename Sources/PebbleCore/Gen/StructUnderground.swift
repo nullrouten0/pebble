@@ -24,6 +24,8 @@ private func isStrongholdChunk(_ seed: UInt32, _ cx: Int, _ cz: Int) -> Bool {
     return strongholdCache?.set.contains(strongholdKey(cx, cz)) ?? false
 }
 
+private enum StrongholdRoom { case plain, library, fountain, storage, portal }
+
 func registerUndergroundStructures() {
     registerStructure(StructureDef(
         // radius must cover the worst-case corridor walk (~103 blocks ≈ 7
@@ -70,7 +72,7 @@ func registerUndergroundStructures() {
                             b.set(lx, y, lz, F); b.set(lx, y + 1, lz, F)
                             b.set(rx, y, rz, F); b.set(rx, y + 1, rz, F)
                             b.set(lx, y + 2, lz, P); b.set(px, y + 2, pz, P); b.set(rx, y + 2, rz, P)
-                            _ = b.rng.nextFloat()   // this draw used to re-place the beam set above; kept so worlds don't change
+                            _ = b.rng.nextFloat()   // unused, but generator-1 worlds (pre-1.5) must rebuild mineshafts identically
                             if b.rng.nextFloat() < 0.15 { b.set(px, y + 1, pz, Int(cell(B.torch, 0))) }
                         }
                         // rails
@@ -204,10 +206,10 @@ func registerUndergroundStructures() {
                 let dir = rng.nextInt(4)
                 let len = 8 + rng.nextInt(10)
                 (px, py, pz) = corridorPiece(px, py, pz, dir, len)
-                let kind = i == roomCount - 1 ? "portal" : rng.pick(["plain", "library", "fountain", "storage", "plain"])
-                if kind == "plain" {
+                let kind: StrongholdRoom = i == roomCount - 1 ? .portal : rng.pick([.plain, .library, .fountain, .storage, .plain])
+                if kind == .plain {
                     room(px - 3, py - 1, pz - 3, 7, 5, 7)
-                } else if kind == "library" {
+                } else if kind == .library {
                     room(px - 5, py - 1, pz - 5, 11, 7, 11) { b, x, y, z in
                         for bx in [1, 4, 7] {
                             for dz2 in 1..<10 {
@@ -225,18 +227,18 @@ func registerUndergroundStructures() {
                             if place && b.get(wx, wy, wz) == 0 { b.set(wx, wy, wz, Int(cell(B.cobweb))) }
                         }
                     }
-                } else if kind == "fountain" {
+                } else if kind == .fountain {
                     room(px - 3, py - 1, pz - 3, 7, 5, 7) { b, x, y, z in
                         b.fill(x + 2, y, z + 2, x + 4, y, z + 4, Int(cell(B.stone_brick_slab, 0)))
                         b.set(x + 3, y, z + 3, Int(cell(B.water, 0)))
                     }
-                } else if kind == "storage" {
+                } else if kind == .storage {
                     room(px - 3, py - 1, pz - 3, 7, 5, 7) { b, x, y, z in
                         b.chest(x + 1, y, z + 1, 1, "stronghold_corridor")
                         b.set(x + 5, y, z + 5, Int(cell(B.cobblestone)))
                         b.set(x + 5, y + 1, z + 5, Int(cell(B.torch, 0)))
                     }
-                } else if kind == "portal" {
+                } else if kind == .portal {
                     // PORTAL ROOM
                     room(px - 5, py - 1, pz - 5, 11, 8, 13) { b, x, y, z in
                         // lava pools

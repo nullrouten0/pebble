@@ -149,7 +149,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int, genV
                 let centerBiome = gen.surfaceBiomeAt(Double(ox * 16 + 8), Double(oz * 16 + 8))
                 for (f, salt) in seededFeatures(biomeDef(centerBiome.rawValue), genVersion, v1Base: 9000) {
                     var rng = chunkRandom(seed, ox, oz, salt)
-                    runFeature(f, sink, &rng, ox, oz, seed, surfaceBiomeAt)
+                    runFeature(f, sink, &rng, ox, oz, seed, genVersion: genVersion, surfaceBiomeAt)
                 }
                 // cave biome features from the full 3×3 origins — running them
                 // only for the target chunk clipped dripstone/moss/sculk flat
@@ -157,7 +157,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int, genV
                 for cb in [Biome.lushCaves, .dripstoneCaves, .deepDark] {
                     for (f, salt) in seededFeatures(biomeDef(cb.rawValue), genVersion, v1Base: UInt32(12000 + cb.rawValue * 100)) {
                         var rng = chunkRandom(seed, ox, oz, salt)
-                        runFeature(f, sink, &rng, ox, oz, seed, { x, z in
+                        runFeature(f, sink, &rng, ox, oz, seed, genVersion: genVersion, { x, z in
                             let cbb = gen.caveBiomeAt(Double(x), -10, Double(z), gen.heightEstimate(Double(x), Double(z)))
                             return cbb == -1 ? gen.surfaceBiomeAt(Double(x), Double(z)).rawValue : cbb
                         })
@@ -215,7 +215,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int, genV
                 let centerBiome = gen.biomeAt(Double(ox * 16 + 8), Double(oz * 16 + 8))
                 for (f, salt) in seededFeatures(biomeDef(centerBiome), genVersion, v1Base: 9500) {
                     var rng = chunkRandom(seed, ox, oz, salt)
-                    runFeature(f, sink, &rng, ox, oz, seed, biomeAt)
+                    runFeature(f, sink, &rng, ox, oz, seed, genVersion: genVersion, biomeAt)
                 }
             }
         }
@@ -247,7 +247,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int, genV
             let centerBiome = gen.biomeColumn(Double(ox * 16 + 8), Double(oz * 16 + 8))
             for (f, salt) in seededFeatures(biomeDef(centerBiome), genVersion, v1Base: 9900) {
                 var rng = chunkRandom(seed, ox, oz, salt)
-                runFeature(f, sink, &rng, ox, oz, seed, biomeColumnAt)
+                runFeature(f, sink, &rng, ox, oz, seed, genVersion: genVersion, biomeColumnAt)
             }
         }
     }

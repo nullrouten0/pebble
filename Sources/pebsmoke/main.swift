@@ -1076,7 +1076,7 @@ if let g = loadJSON("items-goldens.json") {
     snap("craftCount", craftingRecipes.count, "crafting recipe count")
     snap("craftH", h(craftSer), "crafting recipes hash")
     let smeltSer = smeltingRecipes.map {
-        "\($0.input)>\($0.output)|\(Int(($0.xp * 1000 + 0.5).rounded(.down)))|\($0.kind)"
+        "\($0.input)>\($0.output)|\(Int(($0.xp * 1000 + 0.5).rounded(.down)))|\($0.kind.rawValue)"
     }.joined(separator: ";")
     snap("smeltCount", smeltingRecipes.count, "smelting recipe count")
     snap("smeltH", h(smeltSer), "smelting recipes hash")
@@ -1090,7 +1090,7 @@ if let g = loadJSON("items-goldens.json") {
     // enchantments: definitions, power windows, and which items each applies to
     snap("enchCount", ENCHANTMENTS.count, "enchantment count")
     let enchEntries: [[String: Any]] = ENCHANTMENTS.map { e in
-        var s = "\(e.id)|\(e.maxLevel)|\(e.weight)|\(e.target)|\(e.treasure ? 1 : 0)|\(e.curse ? 1 : 0)|\(e.tradeable ? 1 : 0)|\(e.exclusiveGroup ?? "-")"
+        var s = "\(e.id)|\(e.maxLevel)|\(e.weight)|\(e.target.rawValue)|\(e.treasure ? 1 : 0)|\(e.curse ? 1 : 0)|\(e.tradeable ? 1 : 0)|\(e.exclusiveGroup ?? "-")"
         for l in 1...e.maxLevel { s += "|\(e.minPower(l))..\(e.maxPower(l))" }
         let applies = itemDefs.map { appliesTo(e, $0) ? "1" : "0" }.joined()
         return ["id": e.id, "h": h(s), "applies": h(applies)]
@@ -1263,7 +1263,6 @@ if let g = loadJSON("entity-goldens.json") {
         if e is Parrot { e.data.variant = i % 5 }
         if e is Frog { e.data.variant = i % 3 }
         if e is Axolotl { e.data.variant = i % 4 }
-        if let goat = e as? Goat { goat.screaming = false }
         if let z = e as? Zombie {
             z.baby = false; z.speed = 0.095
             if let d = z as? Drowned { d.hasTrident = false }
@@ -1710,7 +1709,7 @@ if let g = loadJSON("systems-goldens.json") {
     let beBase = bePy + 20
     for dz in -3...3 { for dx in -3...3 { beWorld.setBlock(dx, beBase - 1, dz, Int(cell(B.stone))) } }
     beWorld.setBlock(0, beBase, 0, Int(cell(B.furnace, 0)))
-    let fbe = makeFurnaceBE(0, beBase, 0, "furnace")
+    let fbe = makeFurnaceBE(0, beBase, 0, .furnace)
     var fitems = fbe.items!
     fitems[0] = ItemStack(iid("raw_iron"), 3)
     fitems[1] = ItemStack(iid("coal"), 2)
@@ -2437,8 +2436,13 @@ do {
         let away = go(home.0 + 3000) { w.chunks[key] == nil }
         for _ in 0..<40 { _ = g.frame(dtMs: 50) }   // the once-a-second unload batch
         g.waitForSaves()
+        let awayKey = chunkKey(floorDiv(Int(home.0) + 3000, 16), floorDiv(bz, 16))
+        let back = go(home.0) { w.chunks[key] != nil && w.chunks[awayKey] == nil }
+        // the land generated out there is saved in full as it unloads (every
+        // generated chunk is kept); let that land, then watch home alone
+        for _ in 0..<40 { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)) }
+        g.waitForSaves()
         let fullBefore = g.db.fullChunkWrites
-        let back = go(home.0) { w.chunks[key] != nil }
         for _ in 0..<60 { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)) }
         let kept: ItemStack? = w.getBlockEntity(bx, by, bz)?.items?[0] ?? nil
         check("chest edited in place survives unload + reload",
@@ -2634,6 +2638,20 @@ do {
     let creeper = mob("creeper") as! Creeper
     creeper.charged = true
     check("a charged creeper stays charged", (reload(creeper) as! Creeper).charged)
+    // trees: leaves out of a log's reach (7+ steps) are never generated
+    let treeSink = ArraySink(cx: 0, cz: 0, blocks: [UInt16](repeating: 0, count: 16 * 16 * WORLD_H),
+                             minY: GEN_MIN_Y, maxY: GEN_MIN_Y + WORLD_H, heightFallback: { _, _ in 64 })
+    placeTree(treeSink, prune: true) { s in
+        s.set(2, 70, 2, cell(B.oak_log))
+        for dx in 1...8 { s.set(2 + dx, 70, 2, cell(B.oak_leaves)) }   // a 1-wide arm, 8 long
+    }
+    check("leaves within 6 steps of the log stay", treeSink.get(8, 70, 2) >> 4 == Int(B.oak_leaves))
+    check("leaves 7 or more steps out are pruned", treeSink.get(9, 70, 2) == 0 && treeSink.get(10, 70, 2) == 0)
+    // furnaces: a blast furnace only takes ores, a smoker only food (vanilla)
+    func smelts(_ item: String, _ k: FurnaceKind) -> String? { smeltResultFor(ItemStack(iid(item), 1), k)?.output }
+    check("a furnace smelts sand, ore and food", smelts("sand", .furnace) == "glass" && smelts("raw_iron", .furnace) == "iron_ingot" && smelts("beef", .furnace) == "cooked_beef")
+    check("a blast furnace smelts ore, not sand or food", smelts("raw_iron", .blast) == "iron_ingot" && smelts("sand", .blast) == nil && smelts("beef", .blast) == nil)
+    check("a smoker cooks food only", smelts("beef", .smoker) == "cooked_beef" && smelts("raw_iron", .smoker) == nil)
     // anvil: vanilla's 40-level limit, with renames held at 39
     let worn = ItemStack(iid("iron_sword"), 1, damage: 100)
     worn.data.priorWork = 5
@@ -2657,7 +2675,9 @@ do {
     g.saveAndFlush(synchronous: true)
     let rec = g.worldRec!
     let spawnKey = g.db.chunkKey(rec.id, 0, floorDiv(ifloor(p.x), 16), floorDiv(ifloor(p.z), 16))
-    check("an untouched chunk the player stood in is saved", g.db.getChunkKeys(rec.id).contains(spawnKey))
+    let spawnChunk = g.db.getChunk(rec.id, 0, floorDiv(ifloor(p.x), 16), floorDiv(ifloor(p.z), 16))
+    check("an untouched chunk the player stood in is saved, blocks and all",
+          g.db.getChunkKeys(rec.id).contains(spawnKey) && spawnChunk?.blocks != nil)
     check("a new world uses the current generator", rec.genVersion == GEN_VERSION && w.genVersion == GEN_VERSION)
     // a player's death records the high-fall wording
     p.health = 1

@@ -195,8 +195,7 @@ public func useBlock(_ ctx: InteractCtx, _ hit: RaycastHit) -> Bool {
     if id == Int(B.furnace) || id == Int(B.furnace_lit) || id == Int(B.blast_furnace) || id == Int(B.blast_furnace_lit) || id == Int(B.smoker) || id == Int(B.smoker_lit) {
         var be = world.getBlockEntity(x, y, z)
         if be == nil || be!.type != "furnace" {
-            let kind = (id == Int(B.blast_furnace) || id == Int(B.blast_furnace_lit)) ? "blast" : (id == Int(B.smoker) || id == Int(B.smoker_lit)) ? "smoker" : "furnace"
-            be = makeFurnaceBE(x, y, z, kind)
+            be = makeFurnaceBE(x, y, z, FurnaceKind.of(block: id))
             world.setBlockEntity(be!)
         }
         var data = ScreenData()
@@ -907,7 +906,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
         }
         return false
     }
-    if def.tool?.type == "hoe" {
+    if def.tool?.type == .hoe {
         if (targetId == Int(B.grass_block) || targetId == Int(B.dirt) || targetId == Int(B.dirt_path)) && world.getBlock(x, y + 1, z) == 0 {
             world.setBlock(x, y, z, Int(cell(B.farmland, 0)))
             world.hooks.playSound("item.hoe.till", Double(x) + 0.5, Double(y) + 1, Double(z) + 0.5, 1, 1)
@@ -922,7 +921,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
         }
         return false
     }
-    if def.tool?.type == "shovel" {
+    if def.tool?.type == .shovel {
         if targetId == Int(B.grass_block) && world.getBlock(x, y + 1, z) == 0 {
             world.setBlock(x, y, z, Int(cell(B.dirt_path)))
             world.hooks.playSound("item.shovel.flatten", Double(x) + 0.5, Double(y) + 1, Double(z) + 0.5, 1, 1)
@@ -937,7 +936,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
         }
         return false
     }
-    if def.tool?.type == "axe" {
+    if def.tool?.type == .axe {
         let stripped = strippedVersion(targetId)
         if stripped >= 0 {
             world.setBlock(x, y, z, Int(cell(UInt16(stripped), targetCell & 15)))
@@ -1150,7 +1149,7 @@ private func attachPlacementBE(_ world: World, _ blockId: Int, _ x: Int, _ y: In
     if blockId == Int(B.chest) || blockId == Int(B.trapped_chest) || blockId == Int(B.barrel) {
         world.setBlockEntity(makeContainerBE(x, y, z, 27))
     } else if blockId == Int(B.furnace) || blockId == Int(B.blast_furnace) || blockId == Int(B.smoker) {
-        world.setBlockEntity(makeFurnaceBE(x, y, z, blockId == Int(B.blast_furnace) ? "blast" : blockId == Int(B.smoker) ? "smoker" : "furnace"))
+        world.setBlockEntity(makeFurnaceBE(x, y, z, FurnaceKind.of(block: blockId)))
     } else if blockId == Int(B.brewing_stand) {
         world.setBlockEntity(makeBrewingBE(x, y, z))
     } else if blockId == Int(B.hopper) {
@@ -1498,9 +1497,9 @@ public func finishBreaking(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int) {
         }
     }
     let ctx2 = DropCtx(fortune: fortune, silkTouch: silk,
-                       toolType: ToolType(rawValue: toolDef?.type ?? "none") ?? .none,
+                       toolType: toolDef?.type ?? .none,
                        toolTier: toolDef?.tier ?? 0,
-                       shears: toolDef?.type == "shears",
+                       shears: toolDef?.type == .shears,
                        random: { gameRng.nextFloat() })
     let drops: [Drop]
     if let dropsFn = def.drops {
@@ -1536,7 +1535,7 @@ private func damageToolForBreak(_ player: Player, _ c: Int) {
     guard let held = player.mainHand else { return }
     let toolDef = itemDef(held.id).tool
     if toolDef != nil && blockDefs[c >> 4].hardness > 0 {
-        player.damageHeld(toolDef!.type == "sword" ? 2 : 1)
+        player.damageHeld(toolDef!.type == .sword ? 2 : 1)
     }
 }
 private func defaultDrop(_ id: Int) -> [Drop] {

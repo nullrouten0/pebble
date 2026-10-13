@@ -253,7 +253,7 @@ final class FurnaceScreen: ContainerScreen {
     init(_ be: BlockEntityData) {
         self.be = be
         super.init()
-        title = be.kind == "blast" ? "Blast Furnace" : be.kind == "smoker" ? "Smoker" : "Furnace"
+        title = be.kind == .blast ? "Blast Furnace" : be.kind == .smoker ? "Smoker" : "Furnace"
         sheet = "furnace"
     }
     override func buildSlots(_ ui: UIManager, _ game: GameCore) {

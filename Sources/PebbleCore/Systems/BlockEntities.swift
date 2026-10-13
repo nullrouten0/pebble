@@ -7,14 +7,18 @@ import Foundation
 // ---------------------------------------------------------------------------
 // Furnace family
 // ---------------------------------------------------------------------------
-public func smeltResultFor(_ input: ItemStack?, _ kind: String) -> (output: String, xp: Double)? {
+/// vanilla: a furnace smelts everything; a blast furnace only ores, a
+/// smoker (and a campfire) only food. (The blast furnace used to take every
+/// general recipe too — sand, cobblestone, logs.)
+public func smeltResultFor(_ input: ItemStack?, _ kind: FurnaceKind) -> (output: String, xp: Double)? {
     guard let input else { return nil }
     let name = itemDef(input.id).name
-    for r in smeltingRecipes {
-        if r.input != name { continue }
-        if kind == "furnace" { return (r.output, r.xp) }
-        if kind == "blast" && (r.kind == "blast" || r.kind == "any") { return (r.output, r.xp) }
-        if kind == "smoker" && r.kind == "smoke" { return (r.output, r.xp) }
+    for r in smeltingRecipes where r.input == name {
+        switch kind {
+        case .furnace: return (r.output, r.xp)
+        case .blast: if r.kind == .ore { return (r.output, r.xp) }
+        case .smoker: if r.kind == .food { return (r.output, r.xp) }
+        }
     }
     return nil
 }
@@ -57,8 +61,8 @@ private func insertInto(_ be: BlockEntityData, _ stack: ItemStack, _ slotFilter:
 
 private let registerBlockEntityHandlersOnce: Void = {
     beTickHandlers["furnace"] = { world, be in
-        let kind = be.kind ?? "furnace"
-        let speed = kind == "furnace" ? 1 : 2
+        let kind = be.kind ?? .furnace
+        let speed = kind == .furnace ? 1 : 2
         var items = be.items ?? [nil, nil, nil]
         defer { be.items = items }
         let wasBurning = (be.burnTime ?? 0) > 0
@@ -264,7 +268,7 @@ private let registerBlockEntityHandlersOnce: Void = {
             if !lit { continue }
             times[i] += 1
             if times[i] >= 600 {
-                if let result = smeltResultFor(s, "smoker") {
+                if let result = smeltResultFor(s, .smoker) {
                     spawnItem(world, Double(be.x) + 0.5, Double(be.y) + 1, Double(be.z) + 0.5, ItemStack(iid(result.output), 1))
                 }
                 items[i] = nil

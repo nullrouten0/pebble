@@ -432,7 +432,8 @@ private let FLOWER_SETS: [String: [UInt16]] = [
 ]
 
 /// one biome feature, pre-split (`BiomeDef.featureParts`): ["patch", "short_grass", "24"]
-public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, _ ocx: Int, _ ocz: Int, _ seed: UInt32, _ biomeAt: (Int, Int) -> Int) {
+public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, _ ocx: Int, _ ocz: Int, _ seed: UInt32,
+                       genVersion: Int = GEN_VERSION, _ biomeAt: (Int, Int) -> Int) {
     let name = parts[0]
     let baseX = ocx * 16, baseZ = ocz * 16
     func intArg(_ i: Int, _ def: Int = 0) -> Int { parts.count > i ? (Int(parts[i]) ?? def) : def }
@@ -465,7 +466,7 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
                 if biome == Biome.river.rawValue || biome == Biome.beach.rawValue
                     || biome == Biome.snowyBeach.rawValue || biome == Biome.stonyShore.rawValue { continue }
             }
-            placeTreeKind(kind, s, &rng, x, y, z)
+            placeTree(s, prune: genVersion >= 2) { placeTreeKind(kind, $0, &rng, x, y, z) }
         }
 
     case "patch":
@@ -1021,6 +1022,66 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
     default:
         return
     }
+}
+
+/// wraps a sink while one tree is built, remembering every log and leaf it
+/// writes (outside the chunk too, so each chunk rebuilding the tree agrees),
+/// so leaves out of the tree's reach can be taken back afterwards
+final class TreeRecorder: ChunkSink {
+    let base: ChunkSink
+    private var logs: [BlockPos] = []
+    private var leaves: [BlockPos: UInt16] = [:]
+    init(_ base: ChunkSink) { self.base = base }
+    var cx: Int { base.cx }
+    var cz: Int { base.cz }
+    var minY: Int { base.minY }
+    var maxY: Int { base.maxY }
+    func set(_ x: Int, _ y: Int, _ z: Int, _ c: UInt16) {
+        let id = Int(c >> 4), p = BlockPos(x, y, z)
+        if IS_LEAVES[id] == 1 { leaves[p] = c } else if LOG_LIKE[id] { logs.append(p); leaves[p] = nil } else { leaves[p] = nil }
+        base.set(x, y, z, c)
+    }
+    func get(_ x: Int, _ y: Int, _ z: Int) -> Int { base.get(x, y, z) }
+    func topY(_ x: Int, _ z: Int) -> Int { base.topY(x, z) }
+    func addBlockEntity(_ spec: BESpec) { base.addBlockEntity(spec) }
+    func addEntity(_ spec: EntitySpec) { base.addEntity(spec) }
+
+    /// remove the leaves this tree placed more than 6 steps (through its own
+    /// leaves) from its logs: vanilla's decay reach. Left in, the first
+    /// neighbour change near one (snow settling, a vine) made it decay, and
+    /// the rest of the overhang fell after it.
+    func pruneOrphanLeaves() {
+        var dist: [BlockPos: Int] = [:]
+        var queue: [BlockPos] = []
+        for l in logs { dist[l] = 0; queue.append(l) }
+        var head = 0
+        while head < queue.count {
+            let p = queue[head]; head += 1
+            let d = dist[p]!
+            if d >= 6 { continue }
+            for (dx, dy, dz) in [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)] {
+                let n = BlockPos(p.x + dx, p.y + dy, p.z + dz)
+                if leaves[n] != nil && dist[n] == nil { dist[n] = d + 1; queue.append(n) }
+            }
+        }
+        for (p, c) in leaves where dist[p] == nil && base.get(p.x, p.y, p.z) == Int(c) {
+            base.set(p.x, p.y, p.z, 0)
+        }
+    }
+}
+
+/// blocks a leaf counts as attached to (logs, stems, wood, hyphae)
+let LOG_LIKE: [Bool] = blockDefs.map { d in
+    d.name.hasSuffix("_log") || d.name.hasSuffix("_stem") || d.name.hasSuffix("_wood") || d.name.contains("hyphae")
+}
+
+/// build a tree, then (generator version 2, and saplings) prune leaves out of
+/// reach of its logs
+public func placeTree(_ s: ChunkSink, prune: Bool, _ build: (ChunkSink) -> Void) {
+    if !prune { build(s); return }
+    let rec = TreeRecorder(s)
+    build(rec)
+    rec.pruneOrphanLeaves()
 }
 
 func placeTreeKind(_ kind: String, _ s: ChunkSink, _ rng: inout RandomX, _ x: Int, _ y: Int, _ z: Int) {

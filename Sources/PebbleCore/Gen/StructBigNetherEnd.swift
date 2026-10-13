@@ -213,15 +213,17 @@ func registerBigStructures() {
 // =============================================================================
 // NETHER + END
 // =============================================================================
-private func netherStructurePick(_ rng: Rng) -> String {
-    rng.nextFloat() < 0.4 ? "fortress" : "bastion"
+/// a Nether structure site holds a fortress or a bastion, never both
+private enum NetherSite { case fortress, bastion }
+private func netherStructurePick(_ rng: Rng) -> NetherSite {
+    rng.nextFloat() < 0.4 ? .fortress : .bastion
 }
 
 func registerNetherEndStructures() {
     registerStructure(StructureDef(
         id: "fortress", spacing: 27, separation: 4, salt: 30084232, maxRadiusChunks: 6,
         check: { ctx, _, _, rng in
-            ctx.dim == Dim.nether.rawValue && netherStructurePick(rng) == "fortress"
+            ctx.dim == Dim.nether.rawValue && netherStructurePick(rng) == .fortress
         },
         plan: { _, ocx, ocz, rng in
             var pieces: [StructPiece] = []
@@ -333,7 +335,7 @@ func registerNetherEndStructures() {
     registerStructure(StructureDef(
         id: "bastion", spacing: 27, separation: 4, salt: 30084232, maxRadiusChunks: 3,
         check: { ctx, _, _, rng in
-            if ctx.dim != Dim.nether.rawValue || netherStructurePick(rng) != "bastion" { return false }
+            if ctx.dim != Dim.nether.rawValue || netherStructurePick(rng) != .bastion { return false }
             return true
         },
         plan: { _, ocx, ocz, rng in

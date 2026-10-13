@@ -12,8 +12,12 @@ public struct SmeltRecipe {
     public let input: String
     public let output: String
     public let xp: Double
-    public let kind: String // any | blast | smoke
+    public let kind: SmeltKind
 }
+/// where a smelting recipe runs: every recipe in a plain furnace; ores also in
+/// a blast furnace, food also in a smoker (and on a campfire). The raw values
+/// are the old names.
+public enum SmeltKind: String { case general = "any", ore = "blast", food = "smoke" }
 public struct StonecutRecipe {
     public let input: String
     public let output: String
@@ -57,7 +61,7 @@ private func shaped(_ pattern: String, _ key: [Character: String], _ out: String
 private func shapeless(_ inputs: [String], _ out: String, _ count: Int = 1) {
     craftingRecipes.append(.shapeless(inputs: inputs, out: out, count: count))
 }
-private func smelt(_ input: String, _ output: String, _ xp: Double, _ kind: String = "any") {
+private func smelt(_ input: String, _ output: String, _ xp: Double, _ kind: SmeltKind = .general) {
     smeltingRecipes.append(SmeltRecipe(input: input, output: output, xp: xp, kind: kind))
 }
 private func cut(_ input: String, _ output: String, _ count: Int = 1) {
@@ -472,7 +476,7 @@ private let registerAllRecipesOnce: Void = {
         ("nether_gold_ore", "gold_ingot", 1), ("nether_quartz_ore", "quartz", 0.2),
         ("ancient_debris", "netherite_scrap", 2),
     ]
-    for (i, o, xp) in ORE_SMELTS { smelt(i, o, xp, "blast") }
+    for (i, o, xp) in ORE_SMELTS { smelt(i, o, xp, .ore) }
     let FOOD_SMELTS: [(String, String, Double)] = [
         ("beef", "cooked_beef", 0.35), ("porkchop", "cooked_porkchop", 0.35),
         ("chicken", "cooked_chicken", 0.35), ("mutton", "cooked_mutton", 0.35),
@@ -480,7 +484,7 @@ private let registerAllRecipesOnce: Void = {
         ("salmon", "cooked_salmon", 0.35), ("potato", "baked_potato", 0.35),
         ("kelp", "dried_kelp", 0.1),
     ]
-    for (i, o, xp) in FOOD_SMELTS { smelt(i, o, xp, "smoke") }
+    for (i, o, xp) in FOOD_SMELTS { smelt(i, o, xp, .food) }
     let GENERAL_SMELTS: [(String, String, Double)] = [
         ("cobblestone", "stone", 0.1), ("stone", "smooth_stone", 0.1),
         ("sand", "glass", 0.1), ("red_sand", "glass", 0.1),

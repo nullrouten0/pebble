@@ -729,11 +729,9 @@ public final class Tadpole: Animal {
 
 public final class Goat: Animal {
     public override var type: String { "goat" }
-    public var screaming = false
     public var ramCooldown = 200
     public override init(world: World) {
         super.init(world: world)
-        screaming = gameRng.nextFloat() < 0.02   // baseline field-init order
         width = 0.9; height = 1.3
         maxHealth = 10; health = 10
         speed = 0.1
@@ -968,7 +966,6 @@ public final class Panda: Animal {
         attackDamage = 6
         foods = ["bamboo"]
         xpReward = 4
-        _ = gameRng.nextInt(7)   // was a personality gene nothing read; the draw keeps spawns the same
         addBasicGoals(0.9)
         targetGoals.add(HurtByTargetGoal(self, 1))
         goals.add(MeleeAttackGoal(self, 2, 1.1))
@@ -1269,7 +1266,6 @@ public final class TropicalFish: AbstractFish {
     public override init(world: World) {
         super.init(world: world)
         bucketItem = "tropical_fish_bucket"
-        _ = gameRng.nextInt(12)   // was a colour pattern nothing drew; the draw keeps spawns the same
     }
     public override func drops() -> [DropEntry] { [DropEntry("tropical_fish")] }
 }

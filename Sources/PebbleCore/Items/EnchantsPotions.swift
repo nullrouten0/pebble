@@ -3,12 +3,19 @@
 
 import Foundation
 
+/// which items an enchantment can go on (vanilla's EnchantmentCategory)
+public enum EnchantTarget: String {
+    case armor, armorHead = "armor_head", armorChest = "armor_chest", armorLegs = "armor_legs", armorFeet = "armor_feet"
+    case sword, digger, axe, bow, crossbow, trident, fishingRod = "fishing_rod"
+    case breakable, wearable, vanishable
+}
+
 public struct EnchantmentDef {
     public let id: String
     public let displayName: String
     public let maxLevel: Int
     public let weight: Int             // 10 common, 5 uncommon, 2 rare, 1 very rare
-    public let target: String
+    public let target: EnchantTarget
     public let treasure: Bool
     public let curse: Bool
     public let tradeable: Bool
@@ -18,14 +25,14 @@ public struct EnchantmentDef {
     public let exclusiveGroup: String?
 }
 
-private func ench(_ id: String, _ displayName: String, _ maxLevel: Int, _ weight: Int, _ target: String,
+private func ench(_ id: String, _ displayName: String, _ maxLevel: Int, _ weight: Int, _ target: EnchantTarget,
                   _ minP: @escaping (Int) -> Int, _ span: Int,
                   treasure: Bool = false, curse: Bool = false, group: String? = nil, tradeable: Bool = true) -> EnchantmentDef {
     EnchantmentDef(id: id, displayName: displayName, maxLevel: maxLevel, weight: weight, target: target,
                    treasure: treasure, curse: curse, tradeable: tradeable,
                    minPower: minP, maxPower: { l in minP(l) + span }, exclusiveGroup: group)
 }
-private func enchF(_ id: String, _ displayName: String, _ maxLevel: Int, _ weight: Int, _ target: String,
+private func enchF(_ id: String, _ displayName: String, _ maxLevel: Int, _ weight: Int, _ target: EnchantTarget,
                    _ minP: @escaping (Int) -> Int, _ maxP: @escaping (Int) -> Int,
                    treasure: Bool = false, curse: Bool = false, group: String? = nil, tradeable: Bool = true) -> EnchantmentDef {
     EnchantmentDef(id: id, displayName: displayName, maxLevel: maxLevel, weight: weight, target: target,
@@ -35,52 +42,52 @@ private func enchF(_ id: String, _ displayName: String, _ maxLevel: Int, _ weigh
 
 public let ENCHANTMENTS: [EnchantmentDef] = [
     // armor
-    ench("protection", "Protection", 4, 10, "armor", { l in 1 + (l - 1) * 11 }, 11, group: "protection"),
-    ench("fire_protection", "Fire Protection", 4, 5, "armor", { l in 10 + (l - 1) * 8 }, 8, group: "protection"),
-    ench("feather_falling", "Feather Falling", 4, 5, "armor_feet", { l in 5 + (l - 1) * 6 }, 6),
-    ench("blast_protection", "Blast Protection", 4, 2, "armor", { l in 5 + (l - 1) * 8 }, 8, group: "protection"),
-    ench("projectile_protection", "Projectile Protection", 4, 5, "armor", { l in 3 + (l - 1) * 6 }, 6, group: "protection"),
-    ench("respiration", "Respiration", 3, 2, "armor_head", { l in 10 * l }, 30),
-    ench("aqua_affinity", "Aqua Affinity", 1, 2, "armor_head", { _ in 1 }, 40),
-    ench("thorns", "Thorns", 3, 1, "armor", { l in 10 + 20 * (l - 1) }, 50),
-    ench("depth_strider", "Depth Strider", 3, 2, "armor_feet", { l in 10 * l }, 15, group: "boots_move"),
-    ench("frost_walker", "Frost Walker", 2, 2, "armor_feet", { l in 10 * l }, 15, treasure: true, group: "boots_move"),
-    ench("curse_of_binding", "Curse of Binding", 1, 1, "wearable", { _ in 25 }, 25, treasure: true, curse: true),
-    ench("soul_speed", "Soul Speed", 3, 1, "armor_feet", { l in 10 * l }, 15, treasure: true, tradeable: false),
-    ench("swift_sneak", "Swift Sneak", 3, 1, "armor_legs", { l in 25 * l }, 50, treasure: true, tradeable: false),
+    ench("protection", "Protection", 4, 10, .armor, { l in 1 + (l - 1) * 11 }, 11, group: "protection"),
+    ench("fire_protection", "Fire Protection", 4, 5, .armor, { l in 10 + (l - 1) * 8 }, 8, group: "protection"),
+    ench("feather_falling", "Feather Falling", 4, 5, .armorFeet, { l in 5 + (l - 1) * 6 }, 6),
+    ench("blast_protection", "Blast Protection", 4, 2, .armor, { l in 5 + (l - 1) * 8 }, 8, group: "protection"),
+    ench("projectile_protection", "Projectile Protection", 4, 5, .armor, { l in 3 + (l - 1) * 6 }, 6, group: "protection"),
+    ench("respiration", "Respiration", 3, 2, .armorHead, { l in 10 * l }, 30),
+    ench("aqua_affinity", "Aqua Affinity", 1, 2, .armorHead, { _ in 1 }, 40),
+    ench("thorns", "Thorns", 3, 1, .armor, { l in 10 + 20 * (l - 1) }, 50),
+    ench("depth_strider", "Depth Strider", 3, 2, .armorFeet, { l in 10 * l }, 15, group: "boots_move"),
+    ench("frost_walker", "Frost Walker", 2, 2, .armorFeet, { l in 10 * l }, 15, treasure: true, group: "boots_move"),
+    ench("curse_of_binding", "Curse of Binding", 1, 1, .wearable, { _ in 25 }, 25, treasure: true, curse: true),
+    ench("soul_speed", "Soul Speed", 3, 1, .armorFeet, { l in 10 * l }, 15, treasure: true, tradeable: false),
+    ench("swift_sneak", "Swift Sneak", 3, 1, .armorLegs, { l in 25 * l }, 50, treasure: true, tradeable: false),
     // sword
-    ench("sharpness", "Sharpness", 5, 10, "sword", { l in 1 + (l - 1) * 11 }, 20, group: "damage"),
-    ench("smite", "Smite", 5, 5, "sword", { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
-    ench("bane_of_arthropods", "Bane of Arthropods", 5, 5, "sword", { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
-    ench("knockback", "Knockback", 2, 5, "sword", { l in 5 + 20 * (l - 1) }, 50),
-    ench("fire_aspect", "Fire Aspect", 2, 2, "sword", { l in 10 + 20 * (l - 1) }, 50),
-    ench("looting", "Looting", 3, 2, "sword", { l in 15 + (l - 1) * 9 }, 50),
-    ench("sweeping_edge", "Sweeping Edge", 3, 2, "sword", { l in 5 + (l - 1) * 9 }, 15),
+    ench("sharpness", "Sharpness", 5, 10, .sword, { l in 1 + (l - 1) * 11 }, 20, group: "damage"),
+    ench("smite", "Smite", 5, 5, .sword, { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
+    ench("bane_of_arthropods", "Bane of Arthropods", 5, 5, .sword, { l in 5 + (l - 1) * 8 }, 20, group: "damage"),
+    ench("knockback", "Knockback", 2, 5, .sword, { l in 5 + 20 * (l - 1) }, 50),
+    ench("fire_aspect", "Fire Aspect", 2, 2, .sword, { l in 10 + 20 * (l - 1) }, 50),
+    ench("looting", "Looting", 3, 2, .sword, { l in 15 + (l - 1) * 9 }, 50),
+    ench("sweeping_edge", "Sweeping Edge", 3, 2, .sword, { l in 5 + (l - 1) * 9 }, 15),
     // tools
-    ench("efficiency", "Efficiency", 5, 10, "digger", { l in 1 + 10 * (l - 1) }, 50),
-    ench("silk_touch", "Silk Touch", 1, 1, "digger", { _ in 15 }, 50, group: "silk_fortune"),
-    ench("unbreaking", "Unbreaking", 3, 5, "breakable", { l in 5 + (l - 1) * 8 }, 50),
-    ench("fortune", "Fortune", 3, 2, "digger", { l in 15 + (l - 1) * 9 }, 50, group: "silk_fortune"),
+    ench("efficiency", "Efficiency", 5, 10, .digger, { l in 1 + 10 * (l - 1) }, 50),
+    ench("silk_touch", "Silk Touch", 1, 1, .digger, { _ in 15 }, 50, group: "silk_fortune"),
+    ench("unbreaking", "Unbreaking", 3, 5, .breakable, { l in 5 + (l - 1) * 8 }, 50),
+    ench("fortune", "Fortune", 3, 2, .digger, { l in 15 + (l - 1) * 9 }, 50, group: "silk_fortune"),
     // bow
-    ench("power", "Power", 5, 10, "bow", { l in 1 + (l - 1) * 10 }, 15),
-    ench("punch", "Punch", 2, 2, "bow", { l in 12 + (l - 1) * 20 }, 25),
-    ench("flame", "Flame", 1, 2, "bow", { _ in 20 }, 30),
-    ench("infinity", "Infinity", 1, 1, "bow", { _ in 20 }, 30, group: "inf_mend"),
+    ench("power", "Power", 5, 10, .bow, { l in 1 + (l - 1) * 10 }, 15),
+    ench("punch", "Punch", 2, 2, .bow, { l in 12 + (l - 1) * 20 }, 25),
+    ench("flame", "Flame", 1, 2, .bow, { _ in 20 }, 30),
+    ench("infinity", "Infinity", 1, 1, .bow, { _ in 20 }, 30, group: "inf_mend"),
     // fishing
-    ench("luck_of_the_sea", "Luck of the Sea", 3, 2, "fishing_rod", { l in 15 + (l - 1) * 9 }, 50),
-    ench("lure", "Lure", 3, 2, "fishing_rod", { l in 15 + (l - 1) * 9 }, 50),
+    ench("luck_of_the_sea", "Luck of the Sea", 3, 2, .fishingRod, { l in 15 + (l - 1) * 9 }, 50),
+    ench("lure", "Lure", 3, 2, .fishingRod, { l in 15 + (l - 1) * 9 }, 50),
     // trident
-    enchF("loyalty", "Loyalty", 3, 5, "trident", { l in 5 + 7 * l }, { _ in 50 }, group: "riptide_x"),
-    ench("impaling", "Impaling", 5, 2, "trident", { l in 1 + (l - 1) * 8 }, 20),
-    enchF("riptide", "Riptide", 3, 2, "trident", { l in 10 + 7 * l }, { _ in 50 }, group: "riptide"),
-    ench("channeling", "Channeling", 1, 1, "trident", { _ in 25 }, 25, group: "riptide_x"),
+    enchF("loyalty", "Loyalty", 3, 5, .trident, { l in 5 + 7 * l }, { _ in 50 }, group: "riptide_x"),
+    ench("impaling", "Impaling", 5, 2, .trident, { l in 1 + (l - 1) * 8 }, 20),
+    enchF("riptide", "Riptide", 3, 2, .trident, { l in 10 + 7 * l }, { _ in 50 }, group: "riptide"),
+    ench("channeling", "Channeling", 1, 1, .trident, { _ in 25 }, 25, group: "riptide_x"),
     // crossbow
-    ench("multishot", "Multishot", 1, 2, "crossbow", { _ in 20 }, 30, group: "multi_pierce"),
-    ench("quick_charge", "Quick Charge", 3, 5, "crossbow", { l in 12 + (l - 1) * 20 }, 50),
-    ench("piercing", "Piercing", 4, 10, "crossbow", { l in 1 + (l - 1) * 10 }, 50, group: "multi_pierce"),
+    ench("multishot", "Multishot", 1, 2, .crossbow, { _ in 20 }, 30, group: "multi_pierce"),
+    ench("quick_charge", "Quick Charge", 3, 5, .crossbow, { l in 12 + (l - 1) * 20 }, 50),
+    ench("piercing", "Piercing", 4, 10, .crossbow, { l in 1 + (l - 1) * 10 }, 50, group: "multi_pierce"),
     // universal
-    ench("mending", "Mending", 1, 2, "breakable", { _ in 25 }, 50, treasure: true, group: "inf_mend"),
-    ench("curse_of_vanishing", "Curse of Vanishing", 1, 1, "vanishable", { _ in 25 }, 25, treasure: true, curse: true),
+    ench("mending", "Mending", 1, 2, .breakable, { _ in 25 }, 50, treasure: true, group: "inf_mend"),
+    ench("curse_of_vanishing", "Curse of Vanishing", 1, 1, .vanishable, { _ in 25 }, 25, treasure: true, curse: true),
 ]
 
 public let ENCH_BY_ID: [String: EnchantmentDef] = Dictionary(uniqueKeysWithValues: ENCHANTMENTS.map { ($0.id, $0) })
@@ -101,22 +108,21 @@ public func compatible(_ a: EnchantmentDef, _ b: EnchantmentDef) -> Bool {
 public func appliesTo(_ e: EnchantmentDef, _ item: ItemDef) -> Bool {
     let t = item.tool, a = item.armor
     switch e.target {
-    case "armor": return a != nil && a!.material != "elytra"
-    case "armor_head": return a?.slot == 0
-    case "armor_chest": return a?.slot == 1 && a?.material != "elytra"
-    case "armor_legs": return a?.slot == 2
-    case "armor_feet": return a?.slot == 3
-    case "sword": return t?.type == "sword"
-    case "digger": return t?.type == "pickaxe" || t?.type == "axe" || t?.type == "shovel" || t?.type == "hoe"
-    case "axe": return t?.type == "axe"
-    case "bow": return t?.type == "bow"
-    case "crossbow": return t?.type == "crossbow"
-    case "trident": return t?.type == "trident"
-    case "fishing_rod": return t?.type == "fishing_rod"
-    case "breakable": return t != nil || a != nil || item.name == "shield"
-    case "wearable": return a != nil
-    case "vanishable": return t != nil || a != nil || item.name == "shield" || item.name == "compass"
-    default: return false
+    case .armor: return a != nil && a!.material != "elytra"
+    case .armorHead: return a?.slot == 0
+    case .armorChest: return a?.slot == 1 && a?.material != "elytra"
+    case .armorLegs: return a?.slot == 2
+    case .armorFeet: return a?.slot == 3
+    case .sword: return t?.type == .sword
+    case .digger: return t?.type == .pickaxe || t?.type == .axe || t?.type == .shovel || t?.type == .hoe
+    case .axe: return t?.type == .axe
+    case .bow: return t?.type == .bow
+    case .crossbow: return t?.type == .crossbow
+    case .trident: return t?.type == .trident
+    case .fishingRod: return t?.type == .fishingRod
+    case .breakable: return t != nil || a != nil || item.name == "shield"
+    case .wearable: return a != nil
+    case .vanishable: return t != nil || a != nil || item.name == "shield" || item.name == "compass"
     }
 }
 

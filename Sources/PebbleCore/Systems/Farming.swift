@@ -48,17 +48,22 @@ final class WorldSink: ChunkSink {
 public func growTreeAt(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ sapId: Int) -> Bool {
     let sink = WorldSink(world)
     world.setBlock(x, y, z, 0)
-    if sapId == Int(B.oak_sapling) { genOakTree(sink, &farmingRng, x, y, z, fancy: farmingRng.nextFloat() < 0.1) }
-    else if sapId == Int(B.birch_sapling) { genBirchTree(sink, &farmingRng, x, y, z) }
-    else if sapId == Int(B.spruce_sapling) { genSpruceTree(sink, &farmingRng, x, y, z) }
-    else if sapId == Int(B.jungle_sapling) { genJungleTree(sink, &farmingRng, x, y, z, mega: false) }
-    else if sapId == Int(B.acacia_sapling) { genAcaciaTree(sink, &farmingRng, x, y, z) }
-    else if sapId == Int(B.dark_oak_sapling) { genDarkOakTree(sink, &farmingRng, x, y, z) }
-    else if sapId == Int(B.cherry_sapling) { genCherryTree(sink, &farmingRng, x, y, z) }
-    else if sapId == Int(B.mangrove_propagule) { genMangroveTree(sink, &farmingRng, x, y, z) }
-    else if sapId == Int(B.crimson_fungus) { genHugeFungus(sink, &farmingRng, x, y, z, crimson: true) }
-    else if sapId == Int(B.warped_fungus) { genHugeFungus(sink, &farmingRng, x, y, z, crimson: false) }
-    else { world.setBlock(x, y, z, Int(cell(UInt16(sapId)))); return false }
+    var grown = true
+    // a grown tree never keeps leaves out of its logs' reach (TreeRecorder)
+    placeTree(sink, prune: true) { sink in
+        if sapId == Int(B.oak_sapling) { genOakTree(sink, &farmingRng, x, y, z, fancy: farmingRng.nextFloat() < 0.1) }
+        else if sapId == Int(B.birch_sapling) { genBirchTree(sink, &farmingRng, x, y, z) }
+        else if sapId == Int(B.spruce_sapling) { genSpruceTree(sink, &farmingRng, x, y, z) }
+        else if sapId == Int(B.jungle_sapling) { genJungleTree(sink, &farmingRng, x, y, z, mega: false) }
+        else if sapId == Int(B.acacia_sapling) { genAcaciaTree(sink, &farmingRng, x, y, z) }
+        else if sapId == Int(B.dark_oak_sapling) { genDarkOakTree(sink, &farmingRng, x, y, z) }
+        else if sapId == Int(B.cherry_sapling) { genCherryTree(sink, &farmingRng, x, y, z) }
+        else if sapId == Int(B.mangrove_propagule) { genMangroveTree(sink, &farmingRng, x, y, z) }
+        else if sapId == Int(B.crimson_fungus) { genHugeFungus(sink, &farmingRng, x, y, z, crimson: true) }
+        else if sapId == Int(B.warped_fungus) { genHugeFungus(sink, &farmingRng, x, y, z, crimson: false) }
+        else { grown = false }
+    }
+    if !grown { world.setBlock(x, y, z, Int(cell(UInt16(sapId)))); return false }
     return true
 }
 

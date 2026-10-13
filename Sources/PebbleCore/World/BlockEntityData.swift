@@ -18,7 +18,7 @@ public final class BlockEntityData: Codable {
     public var name: String?
     public var cooldown: Int?
     // furnace
-    public var kind: String?           // furnace | blast | smoker
+    public var kind: FurnaceKind?
     public var burnTime: Int?
     public var burnTotal: Int?
     public var cookTime: Int?
@@ -156,7 +156,18 @@ public func makeHopperBE(_ x: Int, _ y: Int, _ z: Int) -> BlockEntityData {
     be.cooldown = 0
     return be
 }
-public func makeFurnaceBE(_ x: Int, _ y: Int, _ z: Int, _ kind: String) -> BlockEntityData {
+/// which of the three furnaces a furnace block entity is (saved as its raw value)
+public enum FurnaceKind: String, Codable {
+    case furnace, blast, smoker
+    /// the furnace block id → its kind (lit or not)
+    public static func of(block id: Int) -> FurnaceKind {
+        if id == Int(B.blast_furnace) || id == Int(B.blast_furnace_lit) { return .blast }
+        if id == Int(B.smoker) || id == Int(B.smoker_lit) { return .smoker }
+        return .furnace
+    }
+}
+
+public func makeFurnaceBE(_ x: Int, _ y: Int, _ z: Int, _ kind: FurnaceKind) -> BlockEntityData {
     let be = BlockEntityData(type: "furnace", x: x, y: y, z: z)
     be.kind = kind
     be.items = [nil, nil, nil]
