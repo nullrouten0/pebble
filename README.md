@@ -11,7 +11,8 @@
 </p>
 
 <p align="center">
-  <img src="packaging/homepage.png" alt="In-game render — dawn over a lake in a cherry grove, mountains behind, ultra graphics" width="800">
+  <img src="packaging/homepage.png" alt="In-game render — dawn over a lake in a cherry grove, mountains behind, ultra graphics" width="49%">
+  <img src="packaging/homepage-eiffel.png" alt="In-game render — the Eiffel Tower on a forested bay at midday, placed with /place eiffel_tower, ultra graphics" width="49%">
 </p>
 
 ---
