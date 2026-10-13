@@ -2,10 +2,10 @@
   <img src="packaging/logo.png" alt="Pebble" width="420">
 </p>
 
-<h3 align="center">A free, open-source block-building game, inspired by Minecraft: Java Edition.</h3>
+<h3 align="center">A native voxel sandbox for Mac, iPad, and iPhone, with powerful creative building tools.</h3>
 
 <p align="center">
-  <em>A complete block game, built from scratch in Swift + Metal, for Mac, iPad and iPhone.<br>
+  <em>Free and open source, built from scratch in Swift + Metal.<br>
   Survive alone, or build together over LAN with a creative toolkit.<br>
   Every sound synthesized in real time. Every chunk carved from noise.</em>
 </p>
@@ -20,7 +20,7 @@
 > ### New in Pebble 1.4: iPad and iPhone (beta)
 > The same game and worlds on iPad and iPhone (landscape), and they play LAN games with the Mac. Touch controls, hardware keyboard and mouse, and game controllers all work. Also new everywhere: a **headlamp**, and four **world wonders** for `/place` (Eiffel Tower, Stonehenge, Colosseum, Devils Tower). See [Install](#install) and the [1.4.0 notes](CHANGELOG.md#140--2026-10-12--ipad--iphone-headlamp-world-wonders).
 
-**Pebble** is a native voxel game with the full overworld/nether/end progression: worldgen, mobs, sparkstone, crafting, enchanting, brewing, villages, raids and boss fights, plus a creative building toolkit and LAN multiplayer. It is **~55,000 lines of Swift** with **no external dependencies** and no game engine: a hand-written Metal renderer, an audio engine that synthesizes every sound at runtime, and multiplayer on Apple's Network framework. Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack.
+**Pebble** is a native voxel sandbox with the full overworld/nether/end progression: worldgen, mobs, sparkstone, crafting, enchanting, brewing, villages, raids and boss fights, plus a creative building toolkit and LAN multiplayer. It is **~55,000 lines of Swift** with **no external dependencies** and no game engine: a hand-written Metal renderer, an audio engine that synthesizes every sound at runtime, and multiplayer on Apple's Network framework. Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack.
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer).
 

@@ -1,6 +1,6 @@
 # Contributing to Pebble
 
-**Contribution is incredibly welcome.** Pebble is an open-source block-building game inspired by Minecraft: Java Edition, it's a public beta, and the bug list is unknown by definition — every issue filed and every PR opened genuinely moves the project. You don't need permission to start: pick something broken or missing and go. This file is short on ceremony and long on the things that will actually break the game if you don't know them.
+**Contribution is incredibly welcome.** Pebble is a native voxel sandbox for Mac, iPad, and iPhone, with powerful creative building tools; it's open source, it's a public beta, and the bug list is unknown by definition — every issue filed and every PR opened genuinely moves the project. You don't need permission to start: pick something broken or missing and go. This file is short on ceremony and long on the things that will actually break the game if you don't know them.
 
 ## Filing a bug
 
