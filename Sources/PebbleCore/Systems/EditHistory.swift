@@ -40,13 +40,22 @@ public final class EditBatch {
         let be = world.getBlockEntity(x, y, z)
         let old = world.setBlock(x, y, z, c, flags)
         if old == c { return false }
-        let k = EditBatch.pack(x, y, z)
-        if seen.insert(k).inserted {
-            keys.append(k)
-            olds.append(UInt16(old))
-            if let be { bes[k] = be }
-        }
+        remember(x, y, z, old, be)
         return true
+    }
+
+    /// remember a cell as it is now without changing it — for an edit that
+    /// replaces only its block entity (a chest pasted over a chest)
+    public func record(_ x: Int, _ y: Int, _ z: Int) {
+        remember(x, y, z, world.getBlock(x, y, z), world.getBlockEntity(x, y, z))
+    }
+
+    private func remember(_ x: Int, _ y: Int, _ z: Int, _ old: Int, _ be: BlockEntityData?) {
+        let k = EditBatch.pack(x, y, z)
+        guard seen.insert(k).inserted else { return }
+        keys.append(k)
+        olds.append(UInt16(old))
+        if let be { bes[k] = be }
     }
 }
 
@@ -79,8 +88,14 @@ private func revert(_ b: EditBatch) -> EditBatch {
         let k = b.keys[i]
         let (x, y, z) = EditBatch.unpack(k)
         guard w.isLoadedAt(x, z) else { continue }
-        inv.set(x, y, z, Int(b.olds[i]))
-        if let be = b.bes[k] { w.setBlockEntity(be) }
+        let old = Int(b.olds[i]), want = b.bes[k]
+        if w.getBlock(x, y, z) == old && w.getBlockEntity(x, y, z) === want { continue }
+        inv.record(x, y, z)
+        w.setBlock(x, y, z, old, SET_NO_NEIGHBORS)
+        // exactly the block entity that was there, or none: setBlock keeps a
+        // block entity when the shape doesn't change (chest over chest)
+        if let now = w.getBlockEntity(x, y, z), now !== want { w.removeBlockEntity(x, y, z) }
+        if let want, w.getBlockEntity(x, y, z) !== want { w.setBlockEntity(want) }
     }
     return inv
 }

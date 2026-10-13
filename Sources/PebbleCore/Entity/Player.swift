@@ -62,6 +62,8 @@ public final class Player: LivingEntity {
     public var useItemHand = Hand.main
     /// selection wand corners (Systems/Selection.swift); not saved
     public var selection: Selection? = nil
+    /// what //copy or //cut took (Systems/Clipboard.swift); not saved
+    public var clipboard: Clipboard? = nil
     public var fishingBobberId: Int? = nil
     private var _wearingPumpkin = false
     public override var wearingPumpkin: Bool { _wearingPumpkin }

@@ -6,7 +6,7 @@ import PebbleCore
 
 /// commands that change the shared world — a LAN guest asks the host to run them
 let HOST_COMMANDS: Set<String> = [
-    "time", "weather", "summon", "setblock", "fill", "place", "undo", "redo", "difficulty", "gamerule",
+    "time", "weather", "summon", "setblock", "fill", "place", "undo", "redo", "/undo", "/redo", "difficulty", "gamerule",
 ]
 
 /// run a LAN guest's command on the host as that guest's player; returns what it printed
@@ -55,6 +55,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, effect, enchant, xp, setblock, fill, locate, place, undo, redo, chatsize, difficulty, gamerule, clear, spawnpoint, heal")
         ok("LAN: host [port], join <address[:port]>, leave, list, name <name>")
         ok("Selection: //pos1 [x y z], //pos2 [x y z], //desel (or use the selection_wand)")
+        ok("Clipboard: //copy, //cut, //paste [-a to skip air], //undo, //redo")
     case "give":
         guard let itemName = arg(0) else { return fail("Usage: /give <item> [count]") }
         let count = arg(1).flatMap(Int.init) ?? 1
@@ -219,6 +220,26 @@ func runCommand(_ game: GameCore, _ raw: String) {
     case "/desel":
         p.selection = nil
         ok("Selection cleared")
+    case "/copy", "/cut", "/paste":
+        // a guest's paste would change only its own copy of the world; LAN
+        // clipboards come with the host running these for guests
+        if game.netClient != nil { return fail("In a LAN game only the host can copy and paste for now") }
+        do {
+            if cmd == "/paste" {
+                let t0 = Date()
+                let r = try pasteClipboard(p, skipAir: args.contains("-a"))
+                let ms = Int(Date().timeIntervalSince(t0) * 1000)
+                ok("Pasted at \(r.lo.x) \(r.lo.y) \(r.lo.z) .. \(r.hi.x) \(r.hi.y) \(r.hi.z) - \(r.changed) blocks changed in \(ms) ms (//undo to take it back)")
+                if r.outside > 0 { fail("\(r.outside) blocks fell outside the world's height and were left out") }
+            } else {
+                let clip = try copySelection(p, cut: cmd == "/cut")
+                let what = "\(clip.w)×\(clip.h)×\(clip.l), \(clip.volume) blocks"
+                    + (clip.blockEntityCount > 0 ? ", \(clip.blockEntityCount) with contents" : "")
+                ok(cmd == "/cut" ? "Cut \(what) (//undo to put it back)" : "Copied \(what)")
+            }
+        } catch {
+            fail("\(error)")
+        }
     case "locate":
         guard let target = arg(0) else { return fail("Usage: /locate <structure>") }
         if target == "stronghold" {
@@ -352,17 +373,18 @@ func runCommand(_ game: GameCore, _ raw: String) {
         ok("Placed \(name) at \(r.x0)..\(r.x1), \(r.y0)..\(r.y1), \(r.z0)..\(r.z1) - \(r.changed) blocks in \(ms) ms")
         if let (ex, ey, ez) = r.entrance { ok("§eEntrance: ladder shaft under the red flag at \(ex) \(ey) \(ez) - /tp \(ex) \(ey + 1) \(ez - 2)") }
         if r.skippedCells > 0 { fail("\(r.skippedCells) blocks fell in unloaded chunks and were skipped") }
-    case "undo", "redo":
+    case "undo", "redo", "/undo", "/redo":
+        let undo = cmd.hasSuffix("undo")
         let n = max(1, min(64, arg(0).flatMap(Int.init) ?? 1))
         var done: [String] = []
         for _ in 0..<n {
             // editOwner: a LAN guest's command undoes only that guest's edits
-            guard let b = cmd == "undo" ? undoLastEdit(owner: editOwner) : redoLastEdit(owner: editOwner) else { break }
+            guard let b = undo ? undoLastEdit(owner: editOwner) : redoLastEdit(owner: editOwner) else { break }
             done.append("\(b.label) (\(b.count) blocks)")
         }
-        if done.isEmpty { return fail("Nothing to \(cmd)") }
+        if done.isEmpty { return fail("Nothing to \(undo ? "undo" : "redo")") }
         let left = editCounts(owner: editOwner)
-        ok((cmd == "undo" ? "Undid " : "Redid ") + done.joined(separator: ", ")
+        ok((undo ? "Undid " : "Redid ") + done.joined(separator: ", ")
            + " - \(left.undo) undo / \(left.redo) redo left")
     case "chatsize":
         guard let v = arg(0).flatMap(Double.init), v >= 1, v <= 3 else {

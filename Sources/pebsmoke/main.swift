@@ -2459,6 +2459,73 @@ do {
         check("selection wand world loads", false)
     }
 
+    // clipboard: //copy, //cut and //paste (each one undo step)
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        // a 3×2×3 build floating over the player: a stone floor with a chest of
+        // 5 diamonds in the middle of the layer above
+        let bx = ifloor(p.x) + 4, by = ifloor(p.y) + 10, bz = ifloor(p.z)
+        let stone = Int(cell(B.stone)), chestCell = Int(cell(B.chest))
+        for dz in 0..<3 { for dx in 0..<3 { w.setBlock(bx + dx, by, bz + dz, stone) } }
+        w.setBlock(bx + 1, by + 1, bz + 1, chestCell)
+        let chest = makeContainerBE(bx + 1, by + 1, bz + 1, 27)
+        chest.items![0] = ItemStack(iid("diamond"), 5)
+        w.setBlockEntity(chest)
+        p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 2, by + 1, bz + 2))
+        let clip = try? copySelection(p, cut: false)
+        check("//copy takes the box and the chest in it", clip?.volume == 18 && clip?.blockEntityCount == 1,
+              "\(String(describing: clip?.volume)) \(String(describing: clip?.blockEntityCount))")
+
+        // walk 10 east and paste: it lands 10 east of the original
+        p.setPos(p.x + 10, p.y, p.z)
+        let ox = bx + 10
+        let r = try? pasteClipboard(p, skipAir: false)
+        check("//paste keeps the offset from where you stand", r?.lo == BlockPos(ox, by, bz), "\(String(describing: r?.lo))")
+        check("pasted blocks match the copy",
+              w.getBlock(ox, by, bz) == stone && w.getBlock(ox + 2, by, bz + 2) == stone && w.getBlock(ox + 1, by + 1, bz + 1) == chestCell)
+        let pasted = w.getBlockEntity(ox + 1, by + 1, bz + 1)
+        check("the pasted chest gets its own copy of the items",
+              pasted?.items?[0]?.count == 5 && pasted !== chest && pasted?.items?[0] !== chest.items![0])
+
+        // paste again over the first paste: the blocks match, only the chest's contents differ
+        pasted?.items?[0] = ItemStack(iid("emerald"), 3)
+        _ = try? pasteClipboard(p, skipAir: false)
+        check("pasting a chest over a chest replaces its contents",
+              w.getBlockEntity(ox + 1, by + 1, bz + 1)?.items?[0]?.id == iid("diamond"))
+        _ = undoLastEdit()
+        check("undoing that paste brings back the chest it replaced",
+              w.getBlockEntity(ox + 1, by + 1, bz + 1)?.items?[0]?.id == iid("emerald"))
+        _ = undoLastEdit()
+        check("undoing the first paste leaves air and no chest data",
+              w.getBlock(ox, by, bz) == 0 && w.getBlock(ox + 1, by + 1, bz + 1) == 0 && w.getBlockEntity(ox + 1, by + 1, bz + 1) == nil)
+
+        // -a: the clipboard's air (the top layer around the chest) leaves what's there
+        let glass = Int(cell(B.glass))
+        w.setBlock(ox, by + 1, bz, glass)
+        _ = try? pasteClipboard(p, skipAir: true)
+        check("//paste -a leaves blocks where the clipboard has air", w.getBlock(ox, by + 1, bz) == glass && w.getBlock(ox, by, bz) == stone)
+        _ = undoLastEdit()
+        w.setBlock(ox, by + 1, bz, 0)
+
+        _ = try? copySelection(p, cut: true)
+        check("//cut clears the box", w.getBlock(bx, by, bz) == 0 && w.getBlock(bx + 1, by + 1, bz + 1) == 0
+              && w.getBlockEntity(bx + 1, by + 1, bz + 1) == nil)
+        _ = undoLastEdit()
+        let back = w.getBlockEntity(bx + 1, by + 1, bz + 1)
+        check("undoing a cut brings back the chest and its items",
+              w.getBlock(bx, by, bz) == stone && back?.items?[0]?.id == iid("diamond") && back?.items?[0]?.count == 5)
+
+        p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 200, by + 30, bz + 200))
+        var tooBig = false
+        do { try copySelection(p, cut: false) } catch ClipboardError.tooBig { tooBig = true } catch {}
+        check("a copy over the block limit is refused", tooBig)
+        p.selection = nil
+        check("//copy without a selection is refused", (try? copySelection(p, cut: false)) == nil)
+        g.exitToTitle()
+    } else {
+        check("clipboard world loads", false)
+    }
+
     // saves: a chest edited in place (no block change) in an already-saved
     // chunk must survive an unload + reload, and the untouched chunks around
     // it must not be rewritten when they're revisited

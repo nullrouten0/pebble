@@ -518,6 +518,11 @@ public final class World {
             trackTickingBE(be)
         }
     }
+    public func removeBlockEntity(_ x: Int, _ y: Int, _ z: Int) {
+        guard let c = getChunkAt(x, z), let be = c.getBlockEntity(posMod(x, CHUNK_W), y, posMod(z, CHUNK_W)) else { return }
+        untrackTickingBE(be)
+        c.removeBlockEntity(posMod(x, CHUNK_W), y, posMod(z, CHUNK_W))
+    }
     /// rebuild ticking set after chunk load — sorted by cell index so the tick
     /// order is reproducible (Dictionary.values order is hash-seeded)
     public func adoptChunkBlockEntities(_ c: Chunk) {

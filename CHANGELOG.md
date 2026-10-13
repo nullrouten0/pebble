@@ -3,6 +3,25 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.5.4 — 2026-10-13 — copy and paste
+
+- **`//copy`** copies the selection to your clipboard: blocks plus their
+  contents, such as chest items and sign text. **`//cut`** also clears it.
+- **`//paste`** puts the clipboard back where it sat relative to you when you
+  copied: stand 5 blocks east of where you copied, and it lands 5 blocks east
+  of the original. **`//paste -a`** skips the clipboard's air, so it doesn't
+  carve out what's around it.
+- Each paste or cut is one undo step. **`//undo`** and **`//redo`** work the
+  same as `/undo` and `/redo`.
+- Up to 1,000,000 blocks (100×100×100) at a time. The whole area must be
+  loaded. Mobs and dropped items aren't copied. Each player has their own
+  clipboard, and it's cleared on quit.
+- For now, only the host can copy and paste in a LAN game.
+- **Undo restores chest contents in more cases.** Undoing an edit that
+  replaced a chest with an identical-looking one brings back the original's
+  items. Undoing an edit that added a furnace, chest or similar where there
+  was none no longer leaves its contents data behind.
+
 ## 1.5.3 — 2026-10-13 — selection wand
 
 - **Selection wand (`selection_wand`).** Left-click a block to mark corner 1
