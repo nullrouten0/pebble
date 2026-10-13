@@ -11,7 +11,9 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 - **`//pos1` and `//pos2`** mark a corner at your feet, or at `x y z`
   (`~` works). **`//desel`** clears the selection.
 - The selection shows as a gold box with a red marker on corner 1 and a blue
-  one on corner 2, drawn faintly through terrain.
+  one on corner 2. Its edges are thick, dark-bordered strips that stay a few
+  pixels wide at any distance and still show, a little dimmer, through
+  terrain.
 - The selection belongs to one dimension and is cleared on quit. It's the
   groundwork for copy and paste, which come next.
 - Release builds no longer fail on toolchains that time out type-checking the

@@ -1766,7 +1766,7 @@ final class WorldRenderer {
 
     // ---- selection wand box (Systems/Selection.swift) --------------------------
     /// the box between the two corners plus a marker on each corner, drawn
-    /// faintly through terrain and solidly where it's in view
+    /// as thick edges: faintly through terrain, solidly where it's in view
     private func drawWandSelection(_ enc: MTLRenderCommandEncoder, game: GameCore, viewProj: simd_float4x4, camPos: SIMD3<Double>) {
         guard let p = game.player, let sel = p.selection, sel.dim == game.world.dim else { return }
         func box(_ lo: BlockPos, _ hi: BlockPos, _ pad: Double) -> (Double, Double, Double, Double, Double, Double) {
@@ -1774,20 +1774,64 @@ final class WorldRenderer {
              Double(hi.x + 1) - camPos.x + pad, Double(hi.y + 1) - camPos.y + pad, Double(hi.z + 1) - camPos.z + pad)
         }
         var parts: [((Double, Double, Double, Double, Double, Double), SIMD3<Float>)] = []
-        if let (lo, hi) = sel.box { parts.append((box(lo, hi, 0.02), SIMD3(1.0, 0.8, 0.25))) }
+        if let (lo, hi) = sel.box { parts.append((box(lo, hi, 0.02), SIMD3(1.0, 0.85, 0.2))) }
         if let a = sel.a { parts.append((box(a, a, 0.01), SIMD3(1.0, 0.35, 0.3))) }
         if let b = sel.b { parts.append((box(b, b, 0.01), SIMD3(0.35, 0.6, 1.0))) }
         for (bx, c) in parts {
-            drawBoxOutline(enc, viewProj, [bx], asLines: false, color: SIMD4(c, 0.25), throughWalls: true)
-            drawBoxOutline(enc, viewProj, [bx], asLines: false, color: SIMD4(c, 0.9))
+            // a dark border under a bright core reads on grass, sand and sky
+            // alike; edges inside terrain still show, a little dimmer
+            for hidden in [true, false] {
+                drawThickBoxEdges(enc, viewProj, bx, color: SIMD4(0.08, 0.06, 0.02, hidden ? 0.45 : 0.75), width: 1.7, throughWalls: hidden)
+                drawThickBoxEdges(enc, viewProj, bx, color: SIMD4(c, hidden ? 0.7 : 1), width: 1, throughWalls: hidden)
+            }
         }
     }
 
-    /// wireframe boxes (12 edges) or a single straight segment (asLines);
-    /// throughWalls skips the depth test
+    /// a box's 12 edges as camera-facing strips, `width` × about 3 pt wide at
+    /// any distance (Metal lines are always 1 px). Camera-relative coordinates.
+    private func drawThickBoxEdges(_ enc: MTLRenderCommandEncoder, _ viewProj: simd_float4x4,
+                                   _ b: (Double, Double, Double, Double, Double, Double),
+                                   color: SIMD4<Float>, width: Float, throughWalls: Bool) {
+        let x0 = Float(b.0), y0 = Float(b.1), z0 = Float(b.2), x1 = Float(b.3), y1 = Float(b.4), z1 = Float(b.5)
+        let c = [SIMD3(x0, y0, z0), SIMD3(x1, y0, z0), SIMD3(x1, y0, z1), SIMD3(x0, y0, z1),
+                 SIMD3(x0, y1, z0), SIMD3(x1, y1, z0), SIMD3(x1, y1, z1), SIMD3(x0, y1, z1)]
+        let edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
+        /// half-width at a point: ~1.5 pt at a 70° view on a 700 pt tall window
+        func half(_ p: SIMD3<Float>) -> Float { max(0.012, simd_length(p) * 0.0026) * width }
+        var verts: [Float] = []
+        verts.reserveCapacity(edges.count * 18)
+        for (i, j) in edges {
+            let d = simd_normalize(c[j] - c[i])
+            // stretch each end by its half-width so corners close up
+            let a = c[i] - d * half(c[i]), e = c[j] + d * half(c[j])
+            // the camera sits at the origin: widen across the view direction
+            var side = simd_cross(d, (a + e) * 0.5)
+            let len = simd_length(side)
+            if len < 1e-5 { continue } // looking straight down the edge
+            side /= len
+            let a0 = a - side * half(a), a1 = a + side * half(a)
+            let e0 = e - side * half(e), e1 = e + side * half(e)
+            for p in [a0, a1, e1, a0, e1, e0] { verts.append(contentsOf: [p.x, p.y, p.z]) }
+        }
+        guard !verts.isEmpty else { return }
+        var u = LineUniforms(viewProj: viewProj, color: color)
+        enc.setRenderPipelineState(linePipeline)
+        enc.setDepthStencilState(throughWalls ? depthNone : depthRead)
+        enc.setCullMode(.none)
+        verts.withUnsafeBytes { raw in
+            enc.setVertexBytes(raw.baseAddress!, length: raw.count, index: 0) // 864 B, under the 4 KB limit
+        }
+        enc.setVertexBytes(&u, length: MemoryLayout<LineUniforms>.stride, index: 1)
+        enc.setFragmentBytes(&u, length: MemoryLayout<LineUniforms>.stride, index: 1)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: verts.count / 3)
+        enc.setCullMode(.back)
+        enc.setDepthStencilState(depthWrite)
+    }
+
+    /// wireframe boxes (12 edges) or a single straight segment (asLines)
     func drawBoxOutline(_ enc: MTLRenderCommandEncoder, _ viewProj: simd_float4x4,
                         _ boxes: [(Double, Double, Double, Double, Double, Double)],
-                        asLines: Bool, color: SIMD4<Float>, throughWalls: Bool = false) {
+                        asLines: Bool, color: SIMD4<Float>) {
         var verts: [Float] = []
         for (x0, y0, z0, x1, y1, z1) in boxes {
             if asLines {
@@ -1805,7 +1849,7 @@ final class WorldRenderer {
         guard !verts.isEmpty else { return }
         var u = LineUniforms(viewProj: viewProj, color: color)
         enc.setRenderPipelineState(linePipeline)
-        enc.setDepthStencilState(throughWalls ? depthNone : depthRead)
+        enc.setDepthStencilState(depthRead)
         verts.withUnsafeBytes { raw in
             enc.setVertexBytes(raw.baseAddress!, length: raw.count, index: 0)
         }
