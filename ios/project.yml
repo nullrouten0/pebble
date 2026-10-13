@@ -1,0 +1,61 @@
+# XcodeGen spec for the iOS app. Generate with `pebble ios` (the .xcodeproj
+# is git-ignored). The app is a thin UIKit shell around the PebbleApp
+# library from the repo's Package.swift.
+name: Pebble
+options:
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config/Shared.xcconfig
+  Release: Config/Shared.xcconfig
+packages:
+  Pebble:
+    path: ..
+targets:
+  PebbleiOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: PebbleiOS
+        excludes:
+          - Info.plist
+      # the same bundled assets the Mac app ships (see `bundle` in ./pebble)
+      - path: "../packaging/Faithful 32x - 1.20.1.zip"
+        buildPhase: resources
+      - path: ../packaging/FAITHFUL-LICENSE.txt
+        buildPhase: resources
+      - path: ../packaging/logo.png
+        buildPhase: resources
+      - path: ../packaging/title-bg.png
+        buildPhase: resources
+    dependencies:
+      - package: Pebble
+        product: PebbleApp
+    # PebbleCommit: the 8-digit commit ("+" with uncommitted changes), which
+    # the title screen shows as major.minor.revision.commit (PEBBLE_BUILD).
+    # Runs every build so the stamp never goes stale.
+    postBuildScripts:
+      - name: Stamp commit
+        basedOnDependencyAnalysis: false
+        script: |
+          repo="$SRCROOT/.."
+          c="$(git -C "$repo" rev-parse --short=8 HEAD 2>/dev/null)" || exit 0
+          [ -n "$(git -C "$repo" status --porcelain --untracked-files=no 2>/dev/null)" ] && c="$c+"
+          plist="$TARGET_BUILD_DIR/$INFOPLIST_PATH"
+          /usr/libexec/PlistBuddy -c "Set :PebbleCommit $c" "$plist" 2>/dev/null ||
+            /usr/libexec/PlistBuddy -c "Add :PebbleCommit string $c" "$plist"
+schemes:
+  PebbleiOS:
+    build:
+      targets:
+        PebbleiOS: all
+    # ⌘R runs the optimized build: unoptimized Swift makes chunk gen,
+    # lighting and meshing several times slower, which reads as stutter
+    # whenever new terrain streams in
+    run:
+      config: Release
+    profile:
+      config: Release
+    archive:
+      config: Release

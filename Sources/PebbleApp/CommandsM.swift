@@ -375,7 +375,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
     case "join", "connect":
         guard let addr = arg(0) else { return fail("Usage: /join <address[:port]>") }
         let (h, port) = parseLANAddress(addr)
-        gAppDelegate?.beginJoin { $0.joinLAN(host: h, port: port) }
+        gRuntime?.beginJoin { $0.joinLAN(host: h, port: port) }
     case "leave", "disconnect":
         if !game.isNetworked { return fail("Not in a LAN game") }
         if game.isGuest { game.exitToTitle(); return }

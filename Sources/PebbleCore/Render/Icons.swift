@@ -205,7 +205,8 @@ private func paintIcon(_ img: inout [UInt8], _ def: ItemDef, _ data: StackData?)
         drawTemplate(&img, tpl, H, Bc, D)
         return
     }
-    // armor
+    // armor (the headlamp is worn but has its own picture)
+    if name == "headlamp", paintSpecific(&img, name, data) { return }
     if let armor = def.armor, armor.material != "elytra", let tpl = ARMOR_TEMPLATES[armor.slot] {
         let (H, Bc, D) = materialColors(armor.material)
         drawTemplate(&img, tpl, H, Bc, D, 1, 3)
@@ -344,6 +345,15 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         for y in y0...y1 { for x in x0...x1 { px(x, y, c) } }
     }
     switch name {
+    case "headlamp":
+        let strap = 0x3c3230, strapHi = 0x5e4e48, body = 0x8c8c8c, bodyDk = 0x4e4e4e, lens = 0xfff0a8, glow = 0xffffff
+        // elastic strap seen from the front, curving away at the sides
+        px(0, 8, strap); px(15, 8, strap)
+        fill(1, 9, 14, 10, strap); fill(2, 8, 13, 8, strapHi)
+        // lamp housing on the band, lens lit
+        fill(4, 3, 11, 10, bodyDk); fill(5, 4, 10, 9, body)
+        fill(6, 5, 9, 8, lens); fill(7, 5, 8, 6, glow)
+        return true
     case "stick":
         fill(11, 2, 12, 3, 0x8a6a42); fill(9, 4, 10, 5, 0x8a6a42); fill(7, 6, 8, 7, 0x6a4f30)
         fill(5, 8, 6, 9, 0x8a6a42); fill(3, 10, 4, 11, 0x6a4f30)

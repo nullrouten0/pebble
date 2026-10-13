@@ -63,7 +63,9 @@ final class Slider: Button {
 }
 
 final class TextField {
-    var text = ""
+    /// setting the text (clearing a search, recalling a name) keeps the caret
+    /// inside it — a stale caret past the end traps on the next keystroke
+    var text = "" { didSet { caret = min(max(caret, 0), text.count) } }
     var focused = false
     var caret = 0
     var maxLength = 64
@@ -78,18 +80,21 @@ final class TextField {
         mx >= x && mx < x + w && my >= y && my < y + h
     }
     func type(_ ch: String) {
-        if text.count < maxLength {
-            let i = text.index(text.startIndex, offsetBy: caret)
-            text.insert(contentsOf: ch, at: i)
-            caret += ch.count
-        }
+        caret = min(max(caret, 0), text.count)
+        guard text.count < maxLength else { return }
+        let before = text.count
+        text.insert(contentsOf: ch, at: text.index(text.startIndex, offsetBy: caret))
+        // advance by what the text actually grew: an accent or emoji
+        // modifier from the iOS keyboard can merge into its neighbor
+        caret = min(text.count, caret + max(0, text.count - before))
+        if text.count > maxLength { text = String(text.prefix(maxLength)) }
     }
     func backspace() {
-        if caret > 0 {
-            let i = text.index(text.startIndex, offsetBy: caret - 1)
-            text.remove(at: i)
-            caret -= 1
-        }
+        caret = min(max(caret, 0), text.count)
+        guard caret > 0 else { return }
+        let i = text.index(text.startIndex, offsetBy: caret - 1)
+        caret -= 1   // before the remove, whose didSet would clamp it too
+        text.remove(at: i)
     }
 }
 
@@ -97,6 +102,8 @@ class Screen {
     var closeOnEsc = true
     var showHUD = false
     var pausesGame = false
+    /// a vertical finger drag scrolls this screen (sent as wheel notches)
+    var touchScrolls = false
     var buttons: [Button] = []
     var sliders: [Slider] = []
     var fields: [TextField] = []
@@ -150,7 +157,17 @@ class Screen {
         return false
     }
     func slotAt(_ mx: Double, _ my: Double) -> SlotDef? {
-        slots.first { mx >= $0.x && mx < $0.x + 18 && my >= $0.y && my < $0.y + 18 }
+        if let s = slots.first(where: { mx >= $0.x && mx < $0.x + 18 && my >= $0.y && my < $0.y + 18 }) {
+            return s
+        }
+        // fingers are blunt: on touch, take the nearest slot a few units out
+        guard gRuntime?.ui.touchMode == true else { return nil }
+        var best: SlotDef?, bestD = 13.0
+        for s in slots {
+            let d = hypot(mx - (s.x + 9), my - (s.y + 9))
+            if d < bestD { best = s; bestD = d }
+        }
+        return best
     }
     /// shift-click routing — override in container screens
     func quickMove(_ game: GameCore, _ slot: SlotDef) {}
@@ -169,6 +186,10 @@ final class UIManager {
     var shiftDown = false
     var ctrlDown = false
     var cursorStack: ItemStack?
+    /// a finger is the pointer: the held stack and tooltips ride above it
+    var touchMode = false
+    /// on-screen keyboard height in UI units (text screens lift above it)
+    var keyboardInset = 0.0
     private var stack: [Screen] = []
     var tooltipLines: [String]?
 
@@ -176,9 +197,22 @@ final class UIManager {
         self.cv = cv
     }
 
+    /// safe-area insets in UI units (notch, home indicator); zero on the Mac
+    private(set) var safeTop = 0.0, safeLeft = 0.0, safeBottom = 0.0, safeRight = 0.0
+
+    /// a larger scale for the current context (phones: in-world and inventory
+    /// screens, GameRuntime.touchZoom); nil = the usual GUI scale
+    var zoomScale: Double?
+
     func resize(_ pw: Double, _ ph: Double, _ guiScaleSetting: Int, relayout game: GameCore? = nil) {
         let auto = max(1.0, min((pw / 380).rounded(.down), (ph / 240).rounded(.down)))
-        let newScale = guiScaleSetting == 0 ? auto : min(Double(guiScaleSetting), auto)
+        let newScale = zoomScale ?? (guiScaleSetting == 0 ? auto : min(Double(guiScaleSetting), auto))
+        if let inset = gRuntime?.platform.safeAreaInsets {
+            safeTop = (inset.top / newScale).rounded(.up)
+            safeLeft = (inset.left / newScale).rounded(.up)
+            safeBottom = (inset.bottom / newScale).rounded(.up)
+            safeRight = (inset.right / newScale).rounded(.up)
+        }
         let newWidth = (pw / newScale).rounded(.up)
         let newHeight = (ph / newScale).rounded(.up)
         let changed = newScale != scale || newWidth != width || newHeight != height
@@ -238,11 +272,12 @@ final class UIManager {
         tooltipLines = nil
     }
     func endFrame() {
+        let lift = touchMode ? 20.0 : 0
         if let c = cursorStack {
-            drawItemStack(c, mouseX - 8, mouseY - 8)
+            drawItemStack(c, mouseX - 8, mouseY - 8 - lift)
         }
         if let lines = tooltipLines, !lines.isEmpty {
-            drawTooltipBox(lines, mouseX + 6, mouseY - 6)
+            drawTooltipBox(lines, mouseX + 6, mouseY - 6 - lift * 1.5)
         }
     }
 
@@ -318,9 +353,9 @@ final class UIManager {
         }
     }
     func drawSlots(_ screen: Screen, slotBg: Bool = true) {
+        let hovered = screen.slotAt(mouseX, mouseY)
         for s in screen.slots {
-            let hover = mouseX >= s.x && mouseX < s.x + 18 && mouseY >= s.y && mouseY < s.y + 18
-            drawSlot(s, hover, slotBg: slotBg)
+            drawSlot(s, s === hovered, slotBg: slotBg)
         }
     }
     func drawButton(_ b: Button, _ hover: Bool) {

@@ -227,10 +227,10 @@ open class LivingEntity: Entity {
         return true
     }
 
-    func damageArmor(_ amount: Double) {
+    public func damageArmor(_ amount: Double) {
         let dmg = max(1, Int((amount / 4).rounded(.down)))
         for i in 0..<4 {
-            guard let a = armor[i] else { continue }
+            guard let a = armor[i], (itemDef(a.id).armor?.durability ?? 100) > 0 else { continue }  // 0 = unbreakable
             let unb = enchLevel(a, "unbreaking")
             if unb > 0 && rng.nextFloat() < Double(unb) / Double(unb + 1) * 0.6 { continue }
             a.damage += dmg

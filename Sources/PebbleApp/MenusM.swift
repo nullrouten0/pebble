@@ -1,7 +1,6 @@
 // Menus — title screen, world select/create, pause,
 // settings (video/audio/controls/accessibility), advancements tree, credits.
 
-import AppKit
 import Foundation
 import QuartzCore
 import PebbleCore
@@ -49,13 +48,17 @@ final class TitleScreen: Screen {
         }))
         // keep the bottom row clear of the corner credits on short windows
         y = max(y + 28, min(y + 36, ui.height - 46))
-        buttons.append(Button(cx - 100, y, 98, 20, "Options...", { [weak ui, weak game] in
+        // (no Quit on iOS — apps don't quit themselves)
+        let canQuit = gRuntime?.platform.canQuit ?? true
+        buttons.append(Button(cx - 100, y, canQuit ? 98 : 200, 20, "Options...", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.open(SettingsScreen(), game)
         }))
-        buttons.append(Button(cx + 2, y, 98, 20, "Quit Game", {
-            NSApp.terminate(nil)
-        }))
+        if canQuit {
+            buttons.append(Button(cx + 2, y, 98, 20, "Quit Game", {
+                gRuntime?.platform.quit()
+            }))
+        }
     }
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         let cv = ui.cv
@@ -88,7 +91,7 @@ final class TitleScreen: Screen {
         cv.scale(pulse, pulse)
         cv.drawTextCentered(splash, 0, 0, 1, "#ffff55")
         cv.restore()
-        cv.drawText("Pebble \(PEBBLE_VERSION)", 2, ui.height - 10, 1, "#c8c8c8")
+        cv.drawText("Pebble \(PEBBLE_BUILD)", 2, ui.height - 10, 1, "#c8c8c8")
         cv.drawText("Textures: Faithful 32x (faithfulpack.net)", 2, ui.height - 20, 1, "#909090")
         let credit = "Singleplayer & LAN"
         cv.drawText(credit, ui.width - Double(textWidth(credit)) - 2, ui.height - 10, 1, "#c8c8c8")
@@ -113,6 +116,7 @@ final class WorldSelectScreen: Screen {
     init(hosting: Bool = false) {
         self.hosting = hosting
         super.init()
+        touchScrolls = true
     }
 
     private func play(_ ui: UIManager, _ game: GameCore, _ i: Int) {
@@ -244,6 +248,7 @@ final class WorldCreateScreen: Screen {
     init(hosting: Bool = false) {
         self.hosting = hosting
         super.init()
+        touchScrolls = true
     }
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
@@ -321,7 +326,7 @@ final class LoadingScreen: Screen {
     }
     /// sections meshed within 2 chunks of the player
     private func progress(_ game: GameCore) -> (Int, Int, Bool) {
-        guard let renderer = gAppDelegate?.renderer, game.hasWorld(), let p = game.player else {
+        guard let renderer = gRuntime?.renderer, game.hasWorld(), let p = game.player else {
             return (0, Self.target, false)
         }
         let pcx = Int(p.x.rounded(.down)) >> 4, pcz = Int(p.z.rounded(.down)) >> 4
@@ -486,11 +491,7 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                     // re-layout immediately — applySettings only persists,
                     // and ui.resize otherwise waits for a window resize
-                    if let a = gAppDelegate {
-                        a.ui.resize(Double(a.gameView.drawableSize.width),
-                                    Double(a.gameView.drawableSize.height),
-                                    a.game.settings.guiScale, relayout: a.game)
-                    }
+                    gRuntime?.relayoutUI()
                 }))
             y += 22
             toggle("Fancy Graphics", { game.settings.fancyGraphics }, { game.settings.fancyGraphics = $0 }, 0)
@@ -502,9 +503,26 @@ final class SettingsScreen: Screen {
             toggle("Clouds", { game.settings.clouds }, { game.settings.clouds = $0 }, 0)
             toggle("View Bobbing", { game.settings.viewBobbing }, { game.settings.viewBobbing = $0 }, 1)
             y += 22
-            toggle("Fullscreen",
-                   { gAppDelegate?.window?.styleMask.contains(.fullScreen) ?? false },
-                   { _ in gAppDelegate?.window?.toggleFullScreen(nil) }, 0)
+            let fsRow = gRuntime?.platform.supportsFullscreen ?? true
+            if fsRow {
+                toggle("Fullscreen",
+                       { gRuntime?.platform.isFullscreen ?? false },
+                       { _ in gRuntime?.platform.toggleFullscreen() }, 0)
+            }
+            // 0 = Auto, then 50%…100% in 5% steps
+            sliders.append(Slider(cx - 160 + (fsRow ? GAP : 0), y, W, 18,
+                { [weak game] in
+                    let pct = Int(((gRuntime?.renderScale ?? 1) * 100).rounded())
+                    return game?.settings.renderScale == nil ? "Render Scale: Auto (\(pct)%)" : "Render Scale: \(pct)%"
+                },
+                { [weak game] in
+                    guard let s = game?.settings.renderScale else { return 0 }
+                    return 0.05 + (s - 0.5) / 0.5 * 0.95
+                },
+                { [weak game] v in
+                    game?.settings.renderScale = v < 0.05 ? nil : 0.5 + (((v - 0.05) / 0.95 * 10).rounded() / 10) * 0.5
+                    game?.applySettings()
+                }))
             y += 22
             sliders.append(Slider(cx - 160, y, W, 18,
                 { [weak game] in "Particles: \(["Minimal", "Decreased", "All"][min(2, game?.settings.particles ?? 2)])" },
@@ -513,16 +531,27 @@ final class SettingsScreen: Screen {
                     game?.settings.particles = Int((v * 2).rounded())
                     game?.applySettings()
                 }))
-            sliders.append(Slider(cx - 2, y, W, 18,
-                { [weak game] in
-                    let f = game?.settings.maxFps ?? 250
-                    return "Max FPS: \(f >= 250 ? "Unlimited" : String(f))"
-                },
-                { [weak game] in Double((game?.settings.maxFps ?? 250) - 30) / 220 },
-                { [weak game] v in
-                    game?.settings.maxFps = 30 + Int((v * 220).rounded())
-                    game?.applySettings()
-                }))
+            if let cap = gRuntime?.platform.maxFrameRate, cap > 30 {
+                // capped to the panel (iOS): 30…refresh rate, no "Unlimited"
+                sliders.append(Slider(cx - 2, y, W, 18,
+                    { [weak game] in "Max FPS: \(min(cap, game?.settings.maxFps ?? cap))" },
+                    { [weak game] in Double(min(cap, game?.settings.maxFps ?? cap) - 30) / Double(cap - 30) },
+                    { [weak game] v in
+                        game?.settings.maxFps = 30 + Int((v * Double(cap - 30)).rounded())
+                        game?.applySettings()
+                    }))
+            } else {
+                sliders.append(Slider(cx - 2, y, W, 18,
+                    { [weak game] in
+                        let f = game?.settings.maxFps ?? 250
+                        return "Max FPS: \(f >= 250 ? "Unlimited" : String(f))"
+                    },
+                    { [weak game] in Double((game?.settings.maxFps ?? 250) - 30) / 220 },
+                    { [weak game] v in
+                        game?.settings.maxFps = 30 + Int((v * 220).rounded())
+                        game?.applySettings()
+                    }))
+            }
             y += 22
             let shaderB = Button(cx - 160, y, W, 18, "", {})
             func shaderLabel() -> String {
@@ -536,6 +565,9 @@ final class SettingsScreen: Screen {
                 game.applySettings()
             }
             buttons.append(shaderB)
+            // 30 fps and no shadows: about half the GPU work (power bench)
+            toggle("Battery Saver", { game.settings.batterySaver == true },
+                   { game.settings.batterySaver = $0 ? true : nil }, 1)
         } else if tab == "audio" {
             let cats: [(String, String)] = [
                 ("master", "Master Volume"), ("music", "Music"), ("blocks", "Blocks"),
@@ -564,6 +596,28 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                 }))
             toggle("Invert Y", { game.settings.invertY }, { game.settings.invertY = $0 }, 1)
+            y += 22
+            let touch = gRuntime?.touch.enabled == true
+            if touch {
+                sliders.append(Slider(cx - 160, y, W, 18,
+                    { [weak game] in "Touch Look: \(Int(((game?.settings.touchSensitivity ?? 0.5) * 200).rounded()))%" },
+                    { [weak game] in game?.settings.touchSensitivity ?? 0.5 },
+                    { [weak game] v in
+                        game?.settings.touchSensitivity = v
+                        game?.applySettings()
+                    }))
+            }
+            // how long a block takes to break in creative (0 = instant)
+            sliders.append(Slider(cx - 160 + (touch ? GAP : 0), y, W, 18,
+                { [weak game] in
+                    let d = game?.creativeBreakDelay ?? 0
+                    return d <= 0 ? "Creative Dig: Instant" : String(format: "Creative Dig: %.2fs", d)
+                },
+                { [weak game] in game?.creativeBreakDelay ?? 0 },
+                { [weak game] v in
+                    game?.settings.creativeBreakDelay = (v * 20).rounded() / 20
+                    game?.applySettings()
+                }))
             y += 26
             let binds: [(String, String)] = [
                 ("forward", "Forward"), ("back", "Back"), ("left", "Left"), ("right", "Right"),
@@ -600,7 +654,10 @@ final class SettingsScreen: Screen {
                     game?.applySettings()
                 }))
         }
-        buttons.append(Button(cx - 100, ui.height - 30, 200, 20, "Done", { [weak ui, weak game] in
+        // short screens (iPhone landscape, ~240 units): the bottom Done would
+        // sit on the last row, so it joins the tab strip instead
+        let doneFrame = ui.height < 250 ? (cx + 164, 20.0, 50.0, 16.0) : (cx - 100, ui.height - 30, 200.0, 20.0)
+        buttons.append(Button(doneFrame.0, doneFrame.1, doneFrame.2, doneFrame.3, "Done", { [weak ui, weak game] in
             guard let ui, let game else { return }
             game.applySettings()
             ui.closeTop(game)
@@ -803,7 +860,7 @@ final class MultiplayerScreen: Screen {
             guard let self, let game, let b = self.browser, self.selected >= 0, self.selected < b.games.count else { return }
             let target = b.games[self.selected]
             self.saveName(game)
-            gAppDelegate?.beginJoin { $0.joinLAN(target) }
+            gRuntime?.beginJoin { $0.joinLAN(target) }
         })
         buttons.append(joinBtn)
         buttons.append(Button(cx + 4, by, 150, 20, "Direct Connect", { [weak self, weak game] in
@@ -812,7 +869,7 @@ final class MultiplayerScreen: Screen {
             if addr.isEmpty { self.addrField.focused = true; return }
             self.saveName(game)
             let (h, port) = parseLANAddress(addr)
-            gAppDelegate?.beginJoin { $0.joinLAN(host: h, port: port) }
+            gRuntime?.beginJoin { $0.joinLAN(host: h, port: port) }
         }))
         buttons.append(Button(cx - 100, by + 24, 200, 20, "Back", { [weak ui, weak game] in
             guard let ui, let game else { return }
@@ -862,7 +919,7 @@ final class MultiplayerScreen: Screen {
                 if selected == i {
                     saveName(game)
                     let target = games[i]
-                    gAppDelegate?.beginJoin { $0.joinLAN(target) }
+                    gRuntime?.beginJoin { $0.joinLAN(target) }
                 }
                 selected = i
                 return true
@@ -893,7 +950,7 @@ final class JoinScreen: Screen {
         if game.hasWorld() {
             ui.closeAll(game)
             ui.open(LoadingScreen(), game)
-            gAppDelegate?.gameView.captureMouse()
+            gRuntime?.input.captureMouse()
             return
         }
         ui.drawDirtBg()

@@ -25,6 +25,8 @@ class ContainerScreen: Screen {
     var playerInvY: Double { panelH - 83 }
     /// true when this frame's panel came from the pack texture (slot bgs baked in)
     private(set) var textured = false
+    /// UI units this screen needs on screen, for zooming it up on phones
+    var zoomExtent: (w: Double, h: Double) { (panelW + 16, panelH + 12) }
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         panelX = ((ui.width - panelW) / 2).rounded(.down)
@@ -1089,6 +1091,7 @@ final class CreativeScreen: ContainerScreen {
 
     override init() {
         super.init()
+        touchScrolls = true
         panelW = 195
         panelH = 186
         title = ""
@@ -1096,6 +1099,7 @@ final class CreativeScreen: ContainerScreen {
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         panelX = ((ui.width - panelW) / 2).rounded(.down)
         panelY = ((ui.height - panelH) / 2).rounded(.down)
+        sideTabs = ui.height < panelH + 28 + 8 && ui.width >= panelW + 2 * 42 + 8
         search.x = panelX + 100
         search.y = panelY + 5
         fields.append(search)
@@ -1125,12 +1129,23 @@ final class CreativeScreen: ContainerScreen {
         }
         scroll = min(scroll, max(0, (filtered.count + 8) / 9 - 6))
     }
+    /// tabs above and below the panel, or in columns beside it when there's
+    /// width but not height (a phone zoomed up for touch-sized slots)
+    override var zoomExtent: (w: Double, h: Double) { (panelW + 2 * 42 + 8, panelH + 12) }
+    private var sideTabs = false
+    private func tabRect(_ i: Int) -> (x: Double, y: Double) {
+        if sideTabs {
+            // below the touch Quick Move / close buttons in the top corners
+            return (i < 5 ? panelX - 41 : panelX + panelW + 3, panelY + 46 + Double(i % 5) * 18)
+        }
+        return (panelX + Double(i % 5) * 39, i < 5 ? panelY - 14 : panelY + panelH)
+    }
+
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDarkBg(0.55)
         let cv = ui.cv
         for i in 0..<CREATIVE_TABS.count {
-            let tx = panelX + Double(i % 5) * 39
-            let ty = i < 5 ? panelY - 14 : panelY + panelH
+            let (tx, ty) = tabRect(i)
             cv.setFill(i == tab ? "#c6c6c6" : "#8a8a8a")
             cv.fillRect(tx, ty, 38, 14)
             cv.drawText(String(CREATIVE_TABS[i].1.prefix(7)), tx + 2, ty + 3, 1, i == tab ? "#3f3f3f" : "#e8e8e8", shadow: false)
@@ -1161,12 +1176,12 @@ final class CreativeScreen: ContainerScreen {
         cv.fillRect(panelX + panelW - 16, panelY + 22 + (sf * 93).rounded(), 10, 15)
         ui.drawSlots(self)
         ui.drawButtons(self)
-        cv.drawText("Destroy item: drop on grid", panelX + 4, panelY + 6, 1, "#3f3f3f", shadow: false)
+        // under the grid: the search field covers the title row past x+100
+        cv.drawText("Destroy item: drop on grid", panelX + 8, panelY + 138, 1, "#3f3f3f", shadow: false)
     }
     override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
         for i in 0..<CREATIVE_TABS.count {
-            let tx = panelX + Double(i % 5) * 39
-            let ty = i < 5 ? panelY - 14 : panelY + panelH
+            let (tx, ty) = tabRect(i)
             if mx >= tx && mx < tx + 38 && my >= ty && my < ty + 14 {
                 tab = i
                 search.text = ""
@@ -1223,7 +1238,8 @@ final class SignScreen: Screen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDarkBg(0.5)
         let w = 140.0, h = 80.0
-        let px = ((ui.width - w) / 2).rounded(.down), py = ((ui.height - h) / 2).rounded(.down)
+        let px = ((ui.width - w) / 2).rounded(.down)
+        let py = max(4, ((ui.height - ui.keyboardInset - h) / 2).rounded(.down))
         let cv = ui.cv
         cv.setFill("#9a7444")
         cv.fillRect(px, py, w, h)
@@ -1330,15 +1346,17 @@ final class ChatScreen: Screen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         let cv = ui.cv
         let s = chatScale
-        drawChatLines(ui, chatLog.map { ($0, 1.0) }, ui.height - 4 - 12 * s, 0.5)
+        // sit on top of the on-screen keyboard / home indicator when there is one
+        let bottom = ui.height - max(ui.keyboardInset, ui.safeBottom)
+        drawChatLines(ui, chatLog.map { ($0, 1.0) }, bottom - 4 - 12 * s, 0.5)
         cv.setFill("rgba(0,0,0,0.6)")
-        cv.fillRect(2, ui.height - 2 - 12 * s, ui.width - 4, 12 * s)
+        cv.fillRect(2, bottom - 2 - 12 * s, ui.width - 4, 12 * s)
         let blink = Int(CACurrentMediaTime() * 1000 / 400) % 2 == 0 ? "_" : ""
         // keep the caret in view when the line is wider than the screen
         let maxW = Int((ui.width - 12) / s)
         var shown = input + blink
         while textWidth(shown) > maxW && !shown.isEmpty { shown.removeFirst() }
-        cv.drawText(shown, 4, ui.height - 2 - 12 * s + 2 * s, s)
+        cv.drawText(shown, 4, bottom - 2 - 12 * s + 2 * s, s)
     }
     override func onChar(_ ui: UIManager, _ game: GameCore, _ ch: String) -> Bool {
         input += ch
@@ -1384,10 +1402,10 @@ func drawChatOverlay(_ ui: UIManager) {
         if age > 8000 { break }
         recent.append((msg, age > 6000 ? 1 - (age - 6000) / 2000 : 1))
     }
-    drawChatLines(ui, recent.reversed(), ui.height - 34, 0.45)
+    drawChatLines(ui, recent.reversed(), ui.height - ui.safeBottom - 34, 0.45, left: ui.safeLeft)
 }
 
-var chatScale: Double { min(3, max(1, gAppDelegate?.game.settings.chatScale ?? 1)) }
+var chatScale: Double { min(3, max(1, gRuntime?.game.settings.chatScale ?? 1)) }
 
 /// wrap a chat message to `maxW` (unscaled px), carrying the active §color
 /// code onto continuation lines
@@ -1405,7 +1423,8 @@ func wrapChat(_ text: String, _ maxW: Int) -> [String] {
 }
 
 /// messages oldest→newest, newest line sitting on `bottom`; stops at the top of the screen
-private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ bottom: Double, _ bgAlpha: Double) {
+private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ bottom: Double, _ bgAlpha: Double,
+                           left: Double = 0) {
     let cv = ui.cv
     let s = chatScale
     let lineH = 10 * s
@@ -1418,8 +1437,8 @@ private func drawChatLines(_ ui: UIManager, _ msgs: [(ChatMessage, Double)], _ b
             if y < 4 { return }
             cv.globalAlpha = Float(alpha)
             cv.setFill("rgba(0,0,0,\(bgAlpha))")
-            cv.fillRect(2, y, Double(textWidth(line)) * s + 4 * s, lineH)
-            cv.drawText(line, 2 + 2 * s, y + s, s)
+            cv.fillRect(left + 2, y, Double(textWidth(line)) * s + 4 * s, lineH)
+            cv.drawText(line, left + 2 + 2 * s, y + s, s)
             cv.globalAlpha = 1
         }
     }

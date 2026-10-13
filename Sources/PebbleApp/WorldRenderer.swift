@@ -2,7 +2,6 @@
 // selection drawing from the frozen baseline. Owns every pipeline, the offscreen scene
 // target, the bloom chain and the composite pass; draws camera-relative.
 
-import AppKit
 import Metal
 import MetalKit
 import simd
@@ -38,9 +37,11 @@ final class SectionGPU {
 /// draws from the same few buffers (only offsets change between draws), which
 /// removes the per-draw buffer-bind/residency work that dominated CPU encode.
 /// Frees are deferred 3 frames so in-flight GPU work never reads freed blocks.
+/// A page that empties out entirely goes back to the system (one stays warm),
+/// so the footprint shrinks again after a big world or a long trip.
 final class MeshArena {
     private let device: MTLDevice
-    private(set) var pages: [MTLBuffer] = []
+    private var pages: [MTLBuffer?] = []   // nil = released slot, reused by the next new page
     private var free: [[(Int, Int)]] = []
     private var pendingFree: [(MeshBlock, Int)] = []
     private var frame = 0
@@ -64,11 +65,23 @@ final class MeshArena {
             }
         }
         let buf = device.makeBuffer(length: max(Self.pageSize, sz), options: .storageModeShared)!
-        pages.append(buf)
         let used = (size + 255) & ~255
-        free.append(used < buf.length ? [(used, buf.length - used)] : [])
+        let rest: [(Int, Int)] = used < buf.length ? [(used, buf.length - used)] : []
+        if let slot = pages.firstIndex(where: { $0 == nil }) {
+            pages[slot] = buf
+            free[slot] = rest
+            return (slot, 0)
+        }
+        pages.append(buf)
+        free.append(rest)
         return (pages.count - 1, 0)
     }
+
+    /// the buffer behind a live block's page
+    func page(_ i: Int) -> MTLBuffer { pages[i]! }
+
+    /// bytes held in live pages (the F3 overlay / memory hooks)
+    var residentBytes: Int { pages.reduce(0) { $0 + ($1?.length ?? 0) } }
 
     func release(_ b: MeshBlock?) {
         if let b { pendingFree.append((b, frame)) }
@@ -85,6 +98,20 @@ final class MeshArena {
             } else {
                 i += 1
             }
+        }
+        releaseEmptyPages()
+    }
+
+    private func releaseEmptyPages() {
+        var live = pages.reduce(0) { $0 + ($1 == nil ? 0 : 1) }
+        for pi in pages.indices where live > 1 {
+            guard let buf = pages[pi], free[pi].count == 1,
+                  free[pi][0].0 == 0, free[pi][0].1 == buf.length else { continue }
+            // nothing pending may still point into it (frees wait 3 frames)
+            if pendingFree.contains(where: { $0.0.page == pi }) { continue }
+            pages[pi] = nil
+            free[pi] = []
+            live -= 1
         }
     }
 
@@ -121,6 +148,8 @@ struct ChunkSharedU {
     var fog: SIMD4<Float>
     var fogColor: SIMD4<Float>
     var misc: SIMD4<Float>      // time, packFluidDamp, ultraOn, shadowTexel
+    var lampPos: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>) = (.zero, .zero, .zero, .zero)
+    var lampDir: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>) = (.zero, .zero, .zero, .zero)
 }
 struct UltraUniforms {
     var invViewProj: simd_float4x4
@@ -247,13 +276,20 @@ final class WorldRenderer {
 
     // offscreen targets
     var sceneColor: MTLTexture!
+    /// scene depth when nothing reads it back: tile memory only where the
+    /// GPU allows (Apple GPUs), so it costs no RAM
     var sceneDepth: MTLTexture!
     var bloomA: MTLTexture!
     var bloomB: MTLTexture!
+    // ultra-only targets, allocated while the ultra preset is on (they're
+    // ~45 MB at iPad Pro resolution)
+    var sceneDepthStored: MTLTexture?   // depth the ultra pass samples
     var ultraA: MTLTexture!         // half-res rgba16f: rgb=volumetric, a=AO
     var ultraB: MTLTexture!
     var ultraDummy: MTLTexture!     // 1×1 neutral bound when ultra is off
     var fbWidth = 0, fbHeight = 0
+    private(set) var shadowDraws = 0   // sections drawn into the shadow map last frame
+    private(set) var shadowCandidates = 0   // …of those within the horizontal shadow range
     private var shadowSizeNow = 0   // rebuilt when the ultra preset changes it
 
     var sections: [SectionKey: SectionGPU] = [:]
@@ -391,25 +427,12 @@ final class WorldRenderer {
         compositePipeline = pipe("fs_vs", "composite_fs", vd: nil, depth: .invalid)
         titlePipeline = pipe("fs_vs", "title_fs", vd: nil, depth: .invalid)
         logoPipeline = pipe("logo_vs", "logo_fs", vd: nil, blend: true, depth: .invalid)
-        if let path = bundleResourcePath("logo.png"),
+        if let path = gRuntime?.platform.resourcePath("logo.png"),
            let d = FileManager.default.contents(atPath: path),
            let img = decodePNG(d) {
             titleLogoTex = makeImageTexture(img)
         }
-        if let path = bundleResourcePath("title-bg.png"),
-           let d = FileManager.default.contents(atPath: path),
-           let img = decodePNG(d) {
-            let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
-                                                              width: img.width, height: img.height, mipmapped: false)
-            td.usage = .shaderRead
-            if let t = device.makeTexture(descriptor: td) {
-                img.pixels.withUnsafeBytes { raw in
-                    t.replace(region: MTLRegionMake2D(0, 0, img.width, img.height), mipmapLevel: 0,
-                              withBytes: raw.baseAddress!, bytesPerRow: img.width * 4)
-                }
-                titleBgTex = t
-            }
-        }
+        loadTitleBg()
         ultraPipeline = pipe("fs_vs", "ultra_fs", vd: nil, color: .rgba16Float, depth: .invalid)
         ultraBlurPipeline = pipe("fs_vs", "ultra_blur_fs", vd: nil, color: .rgba16Float, depth: .invalid)
 
@@ -694,8 +717,8 @@ final class WorldRenderer {
         cd.storageMode = .private
         sceneColor = device.makeTexture(descriptor: cd)!
         let dd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: fbWidth, height: fbHeight, mipmapped: false)
-        dd.usage = [.renderTarget, .shaderRead]   // ultra pass reads scene depth
-        dd.storageMode = .private
+        dd.usage = .renderTarget
+        dd.storageMode = device.supportsFamily(.apple4) ? .memoryless : .private
         sceneDepth = device.makeTexture(descriptor: dd)!
         let bw = max(1, fbWidth >> 2), bh = max(1, fbHeight >> 2)
         let bd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: bw, height: bh, mipmapped: false)
@@ -703,12 +726,10 @@ final class WorldRenderer {
         bd.storageMode = .private
         bloomA = device.makeTexture(descriptor: bd)!
         bloomB = device.makeTexture(descriptor: bd)!
-        let uw = max(1, fbWidth >> 1), uh = max(1, fbHeight >> 1)
-        let ud = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: uw, height: uh, mipmapped: false)
-        ud.usage = [.renderTarget, .shaderRead]
-        ud.storageMode = .private
-        ultraA = device.makeTexture(descriptor: ud)!
-        ultraB = device.makeTexture(descriptor: ud)!
+        // size changed: the ultra targets come back at the new size on demand
+        sceneDepthStored = nil
+        ultraA = nil
+        ultraB = nil
         if ultraDummy == nil {
             let dd1 = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: 1, height: 1, mipmapped: false)
             dd1.usage = .shaderRead
@@ -719,6 +740,44 @@ final class WorldRenderer {
                                    withBytes: raw.baseAddress!, bytesPerRow: 8)
             }
         }
+    }
+
+    /// the title photo (~28 MB as a texture)
+    private var titleBgUnavailable = false
+    func loadTitleBg() {
+        guard titleBgTex == nil, !titleBgUnavailable else { return }
+        guard let path = gRuntime?.platform.resourcePath("title-bg.png"),
+              let d = FileManager.default.contents(atPath: path),
+              let img = decodePNG(d) else { titleBgUnavailable = true; return }
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm,
+                                                          width: img.width, height: img.height, mipmapped: false)
+        td.usage = .shaderRead
+        if let t = device.makeTexture(descriptor: td) {
+            img.pixels.withUnsafeBytes { raw in
+                t.replace(region: MTLRegionMake2D(0, 0, img.width, img.height), mipmapLevel: 0,
+                          withBytes: raw.baseAddress!, bytesPerRow: img.width * 4)
+            }
+            titleBgTex = t
+        }
+    }
+
+    /// allocate (ultra on) or free (off) the ultra preset's targets
+    private func setUltraTargets(_ on: Bool) {
+        if !on {
+            if sceneDepthStored != nil { sceneDepthStored = nil; ultraA = nil; ultraB = nil }
+            return
+        }
+        if sceneDepthStored != nil { return }
+        let dd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: fbWidth, height: fbHeight, mipmapped: false)
+        dd.usage = [.renderTarget, .shaderRead]   // ultra pass reads scene depth
+        dd.storageMode = .private
+        sceneDepthStored = device.makeTexture(descriptor: dd)!
+        let uw = max(1, fbWidth >> 1), uh = max(1, fbHeight >> 1)
+        let ud = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: uw, height: uh, mipmapped: false)
+        ud.usage = [.renderTarget, .shaderRead]
+        ud.storageMode = .private
+        ultraA = device.makeTexture(descriptor: ud)!
+        ultraB = device.makeTexture(descriptor: ud)!
     }
 
     // ---- section meshes (GameHost) ----------------------------------------------
@@ -737,7 +796,7 @@ final class WorldRenderer {
             let vbBytes = layer.data.count * 4
             let ibBytes = layer.idx.count * 4
             let (page, offset) = arena.alloc(vbBytes + ibBytes)
-            let base = arena.pages[page].contents().advanced(by: offset)
+            let base = arena.page(page).contents().advanced(by: offset)
             layer.data.withUnsafeBytes { base.copyMemory(from: $0.baseAddress!, byteCount: vbBytes) }
             layer.idx.withUnsafeBytes { base.advanced(by: vbBytes).copyMemory(from: $0.baseAddress!, byteCount: ibBytes) }
             return MeshBlock(page: page, offset: offset, ibRel: vbBytes,
@@ -823,15 +882,24 @@ final class WorldRenderer {
     func render(cmd: MTLCommandBuffer, rpd: MTLRenderPassDescriptor,
                 game: GameCore, cam: CamState, partial: Double, timeSec: Double) -> MTLRenderCommandEncoder {
         drawCalls = 0
+        shadowDraws = 0
+        shadowCandidates = 0
         arena.tick()
         let world = game.world
         let settings = game.settings
+        let drawDistance = game.drawDistance
         let ultraOn = settings.shader == "ultra"
         let wantShadowSize = ultraOn ? 4096 : 2048
         if shadowSizeNow != wantShadowSize { buildShadow(size: wantShadowSize) }
+        setUltraTargets(ultraOn)
+        #if os(iOS)
+        // in a world the title photo is dead weight on a phone; the title
+        // screen reloads it (HostBridge.openTitleScreen)
+        titleBgTex = nil
+        #endif
 
         let aspect = Float(fbWidth) / Float(max(1, fbHeight))
-        let far = max(256, Float(settings.renderDistance) * 16 * 1.6)
+        let far = max(256, Float(drawDistance) * 16 * 1.6)
         let proj = mat4Perspective(fovYRad: Float(cam.fov * .pi / 180), aspect: aspect, near: 0.05, far: far)
         let dir = SIMD3<Float>(
             Float(Foundation.cos(cam.pitch) * -Foundation.sin(cam.yaw)),
@@ -847,8 +915,8 @@ final class WorldRenderer {
 
         let sky = skyColors(world, cam)
         var fogColor = sky.fog
-        var fogStart = Float(settings.renderDistance) * 16 * 0.55
-        var fogEnd = Float(settings.renderDistance) * 16 * 0.95
+        var fogStart = Float(drawDistance) * 16 * 0.55
+        var fogEnd = Float(drawDistance) * 16 * 0.95
         if cam.underwater {
             let wc = BIOMES[world.biomeAt(ifloorD(cam.x), ifloorD(cam.y), ifloorD(cam.z))]?.waterColor ?? 0x3f76e4
             fogColor = SIMD3<Float>(Float((wc >> 16) & 255) / 255 * 0.4, Float((wc >> 8) & 255) / 255 * 0.45, Float(wc & 255) / 255 * 0.6)
@@ -875,7 +943,7 @@ final class WorldRenderer {
 
         let angle = world.sunAngle()
         let sunDir = SIMD3<Float>(Float(-Foundation.sin(angle * .pi * 2 + .pi)), Float(Foundation.cos(angle * .pi * 2)), 0.18)
-        let shadowOK = settings.shadows && world.dim == .overworld && sky.dayLight > 0.1 && sunDir.y > 0.05
+        let shadowOK = settings.shadows && settings.batterySaver != true && world.dim == .overworld && sky.dayLight > 0.1 && sunDir.y > 0.05
 
         var shadowMat = matrix_identity_float4x4
         var lightViewM = matrix_identity_float4x4
@@ -909,6 +977,9 @@ final class WorldRenderer {
             var su = ChunkSharedU(viewProj: shadowMat, shadowMat: shadowMat,
                                   light: .zero, fog: .zero, fogColor: .zero, misc: .zero)
             senc.setVertexBytes(&su, length: MemoryLayout<ChunkSharedU>.stride, index: 1)
+            // only sections inside the light's ortho box can write the map
+            var lightFrustum = Frustum()
+            lightFrustum.setFromMatrix(shadowMat)
             var boundPage = -1
             for gpu in sections.values {
                 guard let buf = gpu.opaque else { continue }
@@ -916,16 +987,19 @@ final class WorldRenderer {
                 let oy = Float(Double(gpu.minY + gpu.key.sy * 16) - cam.y)
                 let oz = Float(Double(gpu.key.cz * 16) - cam.z)
                 if abs(ox + 8) > r + 24 || abs(oz + 8) > r + 24 { continue }
+                shadowCandidates += 1
+                if !lightFrustum.intersectsBox(ox, oy, oz, ox + 16, oy + 16, oz + 16) { continue }
+                shadowDraws += 1
                 var origin = SIMD4<Float>(ox, oy, oz, 0)
                 senc.setVertexBytes(&origin, length: 16, index: 2)
                 if buf.page != boundPage {
                     boundPage = buf.page
-                    senc.setVertexBuffer(arena.pages[buf.page], offset: buf.offset, index: 0)
+                    senc.setVertexBuffer(arena.page(buf.page), offset: buf.offset, index: 0)
                 } else {
                     senc.setVertexBufferOffset(buf.offset, index: 0)
                 }
                 senc.drawIndexedPrimitives(type: .triangle, indexCount: buf.indexCount, indexType: .uint32,
-                                           indexBuffer: arena.pages[buf.page], indexBufferOffset: buf.offset + buf.ibRel)
+                                           indexBuffer: arena.page(buf.page), indexBufferOffset: buf.offset + buf.ibRel)
                 drawCalls += 1
             }
             senc.endEncoding()
@@ -937,7 +1011,7 @@ final class WorldRenderer {
         scenePass.colorAttachments[0].loadAction = .clear
         scenePass.colorAttachments[0].storeAction = .store
         scenePass.colorAttachments[0].clearColor = MTLClearColor(red: Double(fogColor.x), green: Double(fogColor.y), blue: Double(fogColor.z), alpha: 1)
-        scenePass.depthAttachment.texture = sceneDepth
+        scenePass.depthAttachment.texture = ultraOn ? sceneDepthStored : sceneDepth
         scenePass.depthAttachment.loadAction = .clear
         scenePass.depthAttachment.storeAction = ultraOn ? .store : .dontCare
         scenePass.depthAttachment.clearDepth = 1
@@ -1006,12 +1080,20 @@ final class WorldRenderer {
             fog: SIMD4<Float>(fogStart, fogEnd, 0, 1),
             fogColor: SIMD4<Float>(fogColor, 1),
             misc: SIMD4<Float>(Float(timeSec), packFluidDamp, ultraOn ? 1 : 0, 1 / Float(shadowSizeNow)))
+        lamps = gatherHeadlamps(world, partial, (cam.x, cam.y, cam.z))
+        func lamp(_ i: Int) -> (SIMD4<Float>, SIMD4<Float>) {
+            i < lamps.count ? (SIMD4<Float>(lamps[i].pos, 1), SIMD4<Float>(lamps[i].dir, 0)) : (.zero, .zero)
+        }
+        (uni.lampPos.0, uni.lampDir.0) = lamp(0)
+        (uni.lampPos.1, uni.lampDir.1) = lamp(1)
+        (uni.lampPos.2, uni.lampDir.2) = lamp(2)
+        (uni.lampPos.3, uni.lampDir.3) = lamp(3)
         enc.setFragmentTexture(atlasTexture, index: 0)
         enc.setFragmentTexture(shadowTexture, index: 1)
         enc.setFragmentSamplerState(atlasSampler, index: 0)
         enc.setFragmentSamplerState(shadowSampler, index: 1)
 
-        let rd = Float(settings.renderDistance) * 16
+        let rd = Float(drawDistance) * 16
         var visible: [(gpu: SectionGPU, rel: SIMD3<Float>, dist: Float)] = []
         visible.reserveCapacity(sections.count)
         for gpu in sections.values {
@@ -1041,12 +1123,12 @@ final class WorldRenderer {
                 enc.setVertexBytes(&origin, length: 16, index: 2)
                 if buf.page != boundPage {
                     boundPage = buf.page
-                    enc.setVertexBuffer(arena.pages[buf.page], offset: buf.offset, index: 0)
+                    enc.setVertexBuffer(arena.page(buf.page), offset: buf.offset, index: 0)
                 } else {
                     enc.setVertexBufferOffset(buf.offset, index: 0)
                 }
                 enc.drawIndexedPrimitives(type: .triangle, indexCount: buf.indexCount, indexType: .uint32,
-                                          indexBuffer: arena.pages[buf.page], indexBufferOffset: buf.offset + buf.ibRel)
+                                          indexBuffer: arena.page(buf.page), indexBufferOffset: buf.offset + buf.ibRel)
                 drawCalls += 1
             }
         }
@@ -1140,10 +1222,10 @@ final class WorldRenderer {
                 params: SIMD4<Float>(Float(timeSec), far,
                                      (shadowOK && !cam.underwater) ? 1 : 0,
                                      cam.underwater ? 1 : 0),
-                fogColor: SIMD4<Float>(fogColor, Float(settings.renderDistance * 16)),
+                fogColor: SIMD4<Float>(fogColor, Float(drawDistance * 16)),
                 texel: SIMD4<Float>(1 / Float(ultraA.width), 1 / Float(ultraA.height), 0, 0))
             ue.setFragmentBytes(&uu, length: MemoryLayout<UltraUniforms>.stride, index: 1)
-            ue.setFragmentTexture(sceneDepth, index: 0)
+            ue.setFragmentTexture(sceneDepthStored, index: 0)
             ue.setFragmentTexture(shadowTexture, index: 1)
             ue.setFragmentSamplerState(linearSampler, index: 0)
             ue.setFragmentSamplerState(shadowSampler, index: 1)
@@ -1197,6 +1279,9 @@ final class WorldRenderer {
     func renderTitle(cmd: MTLCommandBuffer, rpd: MTLRenderPassDescriptor) -> MTLRenderCommandEncoder {
         rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0.02, green: 0.02, blue: 0.05, alpha: 1)
         rpd.colorAttachments[0].loadAction = .clear
+        #if os(iOS)
+        loadTitleBg()   // back from a world, which freed it
+        #endif
         let enc = cmd.makeRenderCommandEncoder(descriptor: rpd)!
         if let tex = titleBgTex, let target = rpd.colorAttachments[0].texture {
             let sA = Double(target.width) / Double(target.height)
@@ -1301,6 +1386,10 @@ final class WorldRenderer {
             pose.baby = ent.data.baby ?? false
             pose.sky = w.getSkyLight(bx, by, bz)
             pose.block = w.getBlockLight(bx, by, bz)
+            if !lamps.isEmpty {
+                let rel = SIMD3<Float>(Float(ix - camPos.x), Float(iy + ent.height * 0.5 - camPos.y), Float(iz - camPos.z))
+                pose.block = max(pose.block, Int((headlampLevel(rel) * 15).rounded()))
+            }
             pose.ageTicks = ent.age
             pose.airborne = !ent.onGround
             pose.aiming = (ent as? Mob)?.target != nil
@@ -1324,6 +1413,15 @@ final class WorldRenderer {
                                 time: timeSec, dayLight: dayLight,
                                 fog: (fog.0, fog.1, fog.2),
                                 gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            if let player = ent as? Player, player.headlampOn {
+                var lit = pose
+                lit.block = 15   // a lit lamp glows, day or night
+                entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
+                                    viewProj: viewProj, camPos: camPos, name: "headlamp", p: lit,
+                                    time: timeSec, dayLight: dayLight,
+                                    fog: (fog.0, fog.1, fog.2),
+                                    gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            }
             if let player = ent as? Player, let chest = player.armor[1],
                itemDef(chest.id).name == "elytra" {
                 entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
@@ -1350,6 +1448,48 @@ final class WorldRenderer {
                 }
             }
         }
+    }
+
+    /// worn headlamps this frame (camera-relative eye, look direction), nearest first
+    private var lamps: [(pos: SIMD3<Float>, dir: SIMD3<Float>)] = []
+
+    /// every player wearing a headlamp (other LAN players too: their armor is
+    /// synced), the 4 nearest to the camera
+    private func gatherHeadlamps(_ w: World, _ partial: Double,
+                                 _ cam: (x: Double, y: Double, z: Double)) -> [(pos: SIMD3<Float>, dir: SIMD3<Float>)] {
+        var out: [(pos: SIMD3<Float>, dir: SIMD3<Float>, d: Float)] = []
+        for e in w.entities {
+            guard let p = e as? Player, p.headlampOn, !p.dead else { continue }
+            let x = p.prevX + (p.x - p.prevX) * partial
+            let y = p.prevY + (p.y - p.prevY) * partial + (p.eyeY() - p.y)
+            let z = p.prevZ + (p.z - p.prevZ) * partial
+            let rel = SIMD3<Float>(Float(x - cam.x), Float(y - cam.y), Float(z - cam.z))
+            let dist = simd_length(rel)
+            if dist > 160 { continue }
+            let dir = SIMD3<Float>(Float(-Foundation.sin(p.yaw) * Foundation.cos(p.pitch)),
+                                   Float(-Foundation.sin(p.pitch)),
+                                   Float(Foundation.cos(p.yaw) * Foundation.cos(p.pitch)))
+            out.append((rel, dir, dist))
+        }
+        out.sort { $0.d < $1.d }
+        return out.prefix(4).map { ($0.pos, $0.dir) }
+    }
+
+    /// the beam's light level (0…1) at a camera-relative point — the shader's
+    /// cone without the face term, for entities
+    private func headlampLevel(_ at: SIMD3<Float>) -> Float {
+        var best: Float = 0
+        for l in lamps {
+            let d = at - l.pos
+            let dist = simd_length(d)
+            if dist > 22 || dist < 0.3 { continue }
+            let c = simd_dot(d / dist, l.dir)
+            func smooth(_ a: Float, _ b: Float, _ x: Float) -> Float {
+                let t = min(1, max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t)
+            }
+            best = max(best, smooth(0.87, 0.965, c) * (1 - smooth(5, 22, dist)))
+        }
+        return best
     }
 
     /// Flat ground-projected disc, flat black with `alpha`. Double-sided so the
@@ -1559,7 +1699,7 @@ final class WorldRenderer {
     // ---- breaking crack overlay ----------------------------------------------------
     private func drawCrack(_ enc: MTLRenderCommandEncoder, game: GameCore, camPos: SIMD3<Double>, uni: inout ChunkSharedU) {
         guard let p = game.player else { return }
-        if p.breakingProgress < 0 || p.gameMode == GameMode.creative {
+        if p.breakingProgress < 0 {
             overlayMesh = nil
             overlayStage = -1
             return

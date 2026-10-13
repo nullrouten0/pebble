@@ -5,11 +5,11 @@
 // frame animations, and falls back to the procedural painter for anything a
 // pack doesn't cover. Pure app-layer: PebbleCore goldens never see any of it.
 
-import AppKit
 import Compression
 import CoreGraphics
 import Foundation
 import ImageIO
+import Metal
 import PebbleCore
 
 // =============================================================================
@@ -345,7 +345,7 @@ let DEFAULT_PACK_LABEL = "Default (Faithful 32x)"
 func ensureDefaultPack() {
     let dest = resourcePacksDir().appendingPathComponent(DEFAULT_PACK_FILE)
     if !FileManager.default.fileExists(atPath: dest.path),
-       let bundled = bundleResourcePath(DEFAULT_PACK_FILE) {
+       let bundled = gRuntime?.platform.resourcePath(DEFAULT_PACK_FILE) {
         try? FileManager.default.copyItem(atPath: bundled, toPath: dest.path)
         print("[packs] default pack restored from app bundle")
     }

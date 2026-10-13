@@ -16,6 +16,18 @@
 
 ---
 
+> ### New in Pebble 1.4: iPad and iPhone (beta)
+> Pebble runs on **iPad** and **iPhone** (in landscape) — the same game and worlds, and it plays LAN games with the Mac version. Touch controls (move stick, drag to look, tap to place, hold to dig), hardware keyboard and mouse, and game controllers all work. Also new everywhere: a **headlamp** to light your way and four **world wonders** for `/place` (Eiffel Tower, Stonehenge, Colosseum, Devils Tower). The iOS app is a **beta**: not in the App Store, frame rate dips while new terrain streams in, and the touch controls will keep improving. See the [1.4.0 notes](CHANGELOG.md#140--2026-10-12--ipad--iphone-headlamp-world-wonders).
+>
+> **Install it on your iPad or iPhone** (needs a Mac with Xcode 16+ and a free Apple ID):
+> ```bash
+> brew install xcodegen
+> git clone https://github.com/nullrouten0/pebble.git && cd pebble
+> cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # add your team ID + a unique bundle ID
+> ./pebble ios                                                     # generates and opens the Xcode project
+> ```
+> In Xcode: **Settings → Accounts** → add your Apple ID (your team ID is shown there), plug in the iPad or iPhone, pick it as the run destination, and press **⌘R**. On the device, turn on **Settings → Privacy & Security → Developer Mode** if asked, and trust your Apple ID under **Settings → General → VPN & Device Management**. Apps signed with a free Apple ID expire after 7 days — press ⌘R again to refresh. No iPad handy? `./pebble ios run` launches it in the simulator.
+
 > ### New in Pebble 1.2: build together
 > **LAN multiplayer** — click **Host LAN Game** on the title screen, pick a world, and you're in and open to the local network. Friends on the same Wi-Fi click **Join LAN Game**. Pebble finds the game for you. Everyone shares one world: blocks, mobs, items, chests, chat, day and night.
 >
@@ -23,11 +35,11 @@
 >
 > See [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
 
-**Pebble** is the open-source alternative to Minecraft: Java Edition — a native macOS voxel game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids, and boss fights — plus a creative building toolkit and LAN multiplayer. It is implemented in **~50,000 lines of Swift** with **zero external dependencies**. No game engine, no .xcodeproj. The renderer is hand-written Metal, the audio engine synthesizes every sound from oscillators at runtime, multiplayer runs on Apple's Network framework, and the game looks the way it does thanks to [Faithful 32x](https://faithfulpack.net) as its built-in texture set.
+**Pebble** is the open-source alternative to Minecraft: Java Edition — a native macOS (and now iPad and iPhone) voxel game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids, and boss fights — plus a creative building toolkit and LAN multiplayer. It is implemented in **~50,000 lines of Swift** with **zero external dependencies**. No game engine, no .xcodeproj. The renderer is hand-written Metal, the audio engine synthesizes every sound from oscillators at runtime, multiplayer runs on Apple's Network framework, and the game looks the way it does thanks to [Faithful 32x](https://faithfulpack.net) as its built-in texture set.
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft** in any way, and contains no Mojang code or assets. Full statement in [Disclaimer](#disclaimer) below.
 
-> **Pebble 1.2.0 is a beta.** The engine is pinned by 461 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
+> **Pebble 1.4.0 is a beta.** The engine is pinned by 516 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
 
 ## By the numbers
 
@@ -39,9 +51,9 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Items | 1,194 |
 | Biomes | 63 (overworld, nether, end, cave biomes) |
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
-| Structures | 19 worldgen types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…), plus 11 placeable starters and landmarks |
+| Structures | 19 worldgen types, 30+ variants (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable starters, landmarks and world wonders |
 | Multiplayer | LAN: one host, any number of guests, found automatically on the local network (Bonjour) |
-| Golden regression checks | 461, all green (`pebble test`) |
+| Golden regression checks | 497, all green (`pebble test`) |
 | Renderer | Metal, 15+ passes, runtime-compiled MSL |
 | Textures | [Faithful 32x](https://faithfulpack.net) by the Faithful team (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized (AVAudioSourceNode + biquad filters) |
@@ -52,7 +64,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 - **Full survival loop** — mining with tool tiers, hunger/saturation, XP, sleeping, fall damage, drowning, fire, status effects, death messages, respawn/keep-inventory game rules.
 - **LAN multiplayer** — host or join straight from the title screen; shared blocks, mobs, items, containers, chat, time and weather, with name tags over other players and everyone's progress saved in the host's world. See [Multiplayer (LAN)](#multiplayer-lan).
-- **Creative tools** — drop any structure into the world with `/place` (including 11 starter builds and landmarks like a 101-wide Giza pyramid), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, erase whole landscapes with the Infinity Wipe, and undo almost any of it with Cmd+Z. See [Creative tools](#creative-tools).
+- **Creative tools** — drop any structure into the world with `/place` (including 18 starter builds, landmarks and world wonders like a 101-wide Giza pyramid and a 150-tall Eiffel Tower), raise 16×16 walls and 16×16×16 boxes in one click, blast or bore terrain with the bazooka, mining laser, void bomb and quarry charge, erase whole landscapes with the Infinity Wipe, and undo almost any of it with Cmd+Z. See [Creative tools](#creative-tools).
 - **Worldgen** — multi-noise climate sampling (temperature/humidity/continentalness/erosion/weirdness) through spline-driven terrain, 3D density caves (cheese/spaghetti/noodle), ravines, aquifers, ore distribution per vanilla 1.20 tables, snow lines, and 63 biomes including lush caves, dripstone caves, and the deep dark.
 - **Three dimensions** — overworld, nether (fortresses, bastions, all five nether biomes), and the end (dragon fight, end cities, gateways), connected by working portals.
 - **Structures** — villages with professioned villagers and working trades, strongholds with the portal room, mineshafts, desert/jungle temples, igloos with basements, witch huts, ocean monuments and ruins, shipwrecks, buried treasure, ruined portals, woodland mansions, amethyst geodes, ancient cities with sculk and shriekers.
@@ -79,10 +91,12 @@ That builds in release mode, assembles a signed `Pebble.app`, installs it to `~/
 ./pebble install    build from source and install ~/Applications/Pebble.app
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the 461-check golden test suite
+pebble test         run the 497-check golden test suite
 ```
 
 For development you can also run straight from the checkout — `swift run -c release Pebble` — and the app will find its packaged assets in `packaging/`.
+
+**iPad and iPhone (experimental).** With full Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) installed, `pebble ios` generates and opens the Xcode project, `pebble ios run` builds and launches it in the iPad simulator, and `pebble test ios` runs the golden suite inside the simulator. To install on your own device, copy `ios/Config/Local.xcconfig.example` to `Local.xcconfig`, fill in your team ID, and run from Xcode. The Mac build never needs any of this.
 
 For LAN play, everyone needs the same Pebble version: each player runs `pebble update` (or installs the same release) before playing together.
 
@@ -148,6 +162,7 @@ Fast building and demolition for creative play. Get the tools with `/give <id>`.
 - **Structures you can place:**
   - Starters: `cabin`, `watchtower`, `bunker`, `farm`, `portal`
   - Landmarks: `giza_pyramid` (101 wide, with internal tunnels and chambers), `castle`, `lighthouse`, `windmill`, `treehouse`, `sky_island`
+  - World wonders: `eiffel_tower` (~150 tall, lattice legs, three platforms, a ladder to the top room), `stonehenge` (1:1, sarsens, trilithons, bluestones, ditch and Avenue), `colosseum` (125×105 with arcades, seating and the hypogeum, ruined on the south side as in Rome), `devils_tower` (an 80-block basalt monolith on a talus apron)
   - Town: `city`, a 107-block-wide downtown: a 4×4 grid of glass, brick, stone and white towers (tallest in the middle) with lit floors and a ladder to every roof, plus streets with crosswalks and street lamps, and a park. `small_school` has 4 classrooms, and `large_school` has 3 floors of 4 with a stair tower. Each classroom has desks, a chalkboard and bookshelves. A different `variant` gives a different city.
   - Terrain: `mountain` pours a natural-looking peak about 160 blocks across and 80 tall (1.5× the pyramid) onto the land. Each column fills down through air, water and trees until it meets solid ground, so it buries whatever is under it (handy for covering up old builds) and blends into higher hills around it. It rises over a few seconds, lifting anyone standing there. A different `variant` gives a different mountain.
   - Every worldgen structure, such as villages, strongholds and end cities. A different `variant` number gives a different layout.
@@ -193,8 +208,11 @@ Sources/PebbleCore/   the engine — headless, no AppKit, fully testable
                       host and guest sessions
   Render/             section mesher, texture atlas, entity models
   Game/               GameCore tick orchestrator, SQLite saves, settings
-Sources/Pebble/       the macOS app — window, Metal renderer, UI, audio, input
-Sources/pebsmoke/     golden test harness (461 checks against goldens/*.json)
+Sources/PebbleApp/    the shared app: Metal renderer, UI, audio, input routing,
+                      touch and controller input
+Sources/Pebble/       the macOS shell — window, menus, NSEvent input
+ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
+Sources/pebsmoke/     golden test harness (516 checks against goldens/*.json)
 goldens/              golden baseline files pinning engine behavior
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
 pebble                the build/install/test CLI
@@ -204,7 +222,7 @@ A deeper tour lives in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## The determinism contract
 
-Pebble's engine is **fully deterministic**: a portable fdlibm implementation of `sin/cos/atan2` (pure IEEE-754 operations, no platform math library), 32-bit-wrapping integer hashes, and seeded RNG everywhere mean the same seed produces the identical world — bit for bit, on any machine, across releases. That contract is enforced by golden baseline files: `pebble test` runs 461 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps and compared at checkpoints, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. The goldens are the contract that keeps the engine honest — a change that moves a single block in an existing world fails the suite.
+Pebble's engine is **fully deterministic**: a portable fdlibm implementation of `sin/cos/atan2` (pure IEEE-754 operations, no platform math library), 32-bit-wrapping integer hashes, and seeded RNG everywhere mean the same seed produces the identical world — bit for bit, on any machine, across releases. That contract is enforced by golden baseline files: `pebble test` runs 516 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps and compared at checkpoints, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. The goldens are the contract that keeps the engine honest — a change that moves a single block in an existing world fails the suite.
 
 Multiplayer doesn't rely on that contract: the LAN host runs the one real simulation and sends guests what happened, so a guest never has to reproduce the host's world on its own.
 
@@ -258,7 +276,7 @@ Found a bug? [Open an issue](https://github.com/thebriangao/pebble/issues). To h
 - **Settings that matter**: render distance and whether ultra graphics are on.
 - **Screenshots or video** for anything visual.
 - For crashes: the crash report from `~/Library/Logs/DiagnosticReports`, and terminal output if you launched with `pebble run` from a terminal.
-- If the engine itself seems wrong (worldgen, physics, redstone): the tail of `pebble test` — it should print `461 passed, 0 failed`.
+- If the engine itself seems wrong (worldgen, physics, redstone): the tail of `pebble test` — it should print `516 passed, 0 failed`.
 
 Even better than a bug report is a **pull request with a fix** — see [CONTRIBUTING.md](CONTRIBUTING.md) for the build/test workflow and the conventions that are load-bearing (registration order, RNG discipline, determinism rules). PRs of all sizes are wanted, from typo fixes to subsystem work.
 

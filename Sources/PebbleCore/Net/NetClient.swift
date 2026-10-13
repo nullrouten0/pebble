@@ -48,7 +48,7 @@ public final class NetClient {
             var w = ByteWriter()
             w.u16(NET_PROTOCOL)
             w.str(name)
-            w.str(PEBBLE_VERSION)
+            w.str(PEBBLE_BUILD)
             w.u8(viewDistance)
             conn.send(w.frame(.hello))
             DispatchQueue.main.async { self?.status = "Joining..." }
@@ -197,6 +197,7 @@ public final class NetClient {
                 for (k, v) in rules { if let n = v as? NSNumber { w.gameRules[k] = n.doubleValue } }
                 w.spawnX = Double(sx); w.spawnY = Double(sy); w.spawnZ = Double(sz)
             }
+            if r.remaining > 0 { game.netHostView = try r.u8() }
         case .sounds:
             let n = try r.u16()
             for _ in 0..<n {

@@ -3,6 +3,130 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.0 — 2026-10-12 — iPad & iPhone, headlamp, world wonders
+
+Pebble now runs on iPad and iPhone (beta): build it with `./pebble ios`
+(see the README banner). The Mac app shares all its game, render and UI
+code with the iOS app now. Known rough edges on iOS: frame rate dips while
+new terrain streams in, and iPhone layouts are only lightly polished.
+Entries tagged with a version below landed during the iOS beta; everything
+here ships to the Mac too unless it says touch, iPad or iPhone.
+
+- **Four world wonders for `/place` (1.4.0):** `eiffel_tower` (about 150
+  tall: curved lattice legs, the great arches, three platforms, a glass room
+  and lit spire on top, a ladder up the middle), `stonehenge` (1:1: the
+  sarsen circle and lintels with the real gaps, five trilithons opening to
+  the midsummer sunrise with the great one fallen, bluestones, ditch, bank
+  and Avenue), `colosseum` (125×105 and 32 tall: three arcaded stories and
+  an attic, corridors, seating, the arena half floored over the hypogeum,
+  the south side ruined as it is in Rome) and `devils_tower` (an 80-block
+  monolith of fluted basalt columns on a talus apron with fallen columns
+  and pines). `/place` also clears tree canopies left floating over a site
+  when it cut their trunks.
+- **Headlamp (1.4.0).** Wear it in the helmet slot and a warm beam lights
+  whatever you look at, about 22 blocks out, like a real headlamp. It lights
+  terrain and mobs, shows as a lamp on your forehead to other players, and
+  in LAN games you see everyone's beams (up to four at once). It's light
+  only: mobs still spawn in the dark. Never wears out. Craft it from
+  glowstone dust over an iron ingot with leather either side, or take one
+  from the creative Tools tab.
+- **Bigger touch targets on iPhone (1.3.4).** Menus need the full screen
+  height, which pins an iPhone's GUI scale low (inventory slots about 5 mm
+  on a Pro Max). In-world and on inventory screens nothing needs that
+  height, so phones now zoom the UI up there: in-world as far as the
+  hotbar and corner buttons still fit side by side (about 20% bigger on a
+  Pro Max), inventory, crafting, furnace and chest screens as far as their
+  panel fits (about 40% bigger slots), creative about 30% with its
+  category tabs moved beside the panel. Menus keep their size; a manual
+  GUI Scale turns the zoom off. iPads are unchanged. The creative screen's
+  "Destroy item" hint moved under the grid (the search box covered it).
+- **Untouched terrain stays put (1.3.3).** Two things changed the world
+  on their own as players explored (single-player too, but worst while
+  hosting guests who explore):
+  - *Cave gravel and sand collapsed.* Generated springs are woken when a
+    chunk loads, and their flow brushing a gravel or sand deposit over a
+    cave brought the whole deposit down: over 1,000 falling blocks at once
+    on one route, all simulated (and sent to guests) by the host. Fluid
+    flowing in beside or above a gravity block no longer unsettles it;
+    flowing in underneath still does, as in Minecraft. 81% fewer falls.
+  - *Forests shed saplings.* 2-3% of generated leaves sit past the
+    6-block reach to a log, and every random tick re-checked them, so
+    about 100 saplings and sticks dropped around spawn every 5 minutes.
+    Like Minecraft, leaves now re-check only after something next to them
+    changes: chopping a trunk still brings its canopy down, leaf by leaf.
+- **Hosting a LAN game is much lighter (1.3.2).** The host has to load and
+  run every guest's surroundings (it owns the world), but it was also
+  building 3D meshes for them, which it never draws. It now meshes only
+  what's within its own render distance. On an iPad Pro hosting two
+  exploring guests: processor 91% → 49%, meshes held 8,500 → 3,000, and
+  about 300 MB less memory. Guests are also held to the host's render
+  distance (a Mac guest at 16 made the host load ~1,500 chunks for it
+  alone); the host tells guests its distance, so they draw fog there
+  instead of a hard terrain edge.
+- **Easier on the battery (1.3.1).** The title screen and the pause menu
+  now draw at 30 fps instead of 60. The world behind the pause menu is
+  frozen, but it was still being redrawn 60 times a second, costing as
+  much as playing. The game also drops to 30 fps in Low Power Mode and
+  when the device reports it's running hot (on top of the lower
+  resolution it already used when hot).
+- **Battery Saver** (Options → Video): 30 fps and no shadows, leaving your
+  Max FPS and Soft Shadows choices untouched for when you switch it off.
+  On an iPad Pro the graphics chip's work fell from about 40% to 21% at 30
+  fps; turning shadows off saves a further ~7 points over open landscape
+  and almost nothing looking down. Measured with the new power benchmark
+  (`PEBBLE_POWERBENCH`, see CONTRIBUTING).
+- **The screen no longer locks mid-game.** Playing with a game controller,
+  or holding the look finger still, sent no touches, so iOS auto-lock
+  could dim and lock the screen. It now stays on while you're in a world.
+- **Exact build on the title screen.** The version now reads
+  major.minor.revision.commit, e.g. `Pebble 1.3.0.2d559e0a` (bottom-left of
+  the title screen and in F3), so you can tell which build each device is
+  on. A `+` at the end means it was built with uncommitted changes. The
+  revision goes up for a small feature or a fix, the minor version for a
+  release that adds features.
+- **No more starting on the ocean floor.** About 1 in 20 new worlds put
+  spawn in water (the spawn search reads a terrain estimate, and the real
+  terrain had a lake or ocean there), so you started and respawned on the
+  bottom. Spawn now moves to the nearest dry land; older worlds fix
+  themselves the next time you respawn there.
+- **Icons on the touch buttons** in place of text labels: jump (up arrow),
+  sneak (down arrow onto the floor), drop (your held item with an arrow),
+  swap hands, inventory (chest), chat (speech bubble), camera view (eye),
+  pause, and an × to close screens. Jump, sneak, swap, drop and inventory
+  form an L in the bottom-right corner.
+
+- **Pebble runs on iPad and iPhone.** The same game, built from the same
+  repo: `pebble ios run` launches it in the simulator. Touch controls (move
+  stick, drag to look, tap to place, hold to break, jump/sneak/inventory
+  buttons, long-press for right-click in inventories), hardware keyboard and
+  mouse, and game controllers all work. Mac↔iPad LAN games work because
+  both apps are always the same version.
+- **Hold to dig, like Minecraft.** Press and hold a finger still on the
+  look area for a quarter second and it digs for as long as the finger stays
+  down; a finger that rolls slightly keeps digging. Only a fresh press digs:
+  steering with the look finger stops the dig, and pausing mid-turn no longer
+  starts one. Lift and press again to dig. Held items like a bow keep
+  drawing while you aim.
+- **Creative blocks erode before they break.** A crack grows over the block
+  you're digging, so you can see it and look away or let go to keep it.
+  **Options → Controls → Creative Dig** sets the time: 0.4 s by default on
+  touch screens, instant on the Mac (where it was before), up to 1 s.
+- **Far fewer disk writes.** A 3-player LAN game made an iPad host write
+  about 1 GB in 10 minutes, enough for iOS to flag it. Chunks you only walk
+  back through are no longer re-saved unless something in them changed, and
+  on iOS chunk saves are compressed (about 50× smaller). Five minutes of
+  exploring went from 233 MB written to 3 MB on iPad (170 MB on the Mac).
+  Every build reads both formats; only iOS writes compressed chunks until
+  this branch reaches main, so Mac worlds still open in older builds.
+- **Fixed: a crash typing in the creative inventory search** after switching
+  tabs (and from accented letters or emoji on the iOS keyboard).
+- **Game controllers on the Mac too.** Plug in an Xbox, PlayStation or MFi
+  controller: sticks move and look, triggers break and place, and the left
+  stick drives a cursor in menus.
+- **Chunk generation is about 4–5× faster on many-core Macs.** Noise lookups no
+  longer fight over a shared reference count, so chunk generation scales with
+  your cores instead of slowing down past six threads. Same seeds, same worlds.
+
 ## 1.2.0 — 2026-10-10 — LAN multiplayer
 
 ### Play together over LAN

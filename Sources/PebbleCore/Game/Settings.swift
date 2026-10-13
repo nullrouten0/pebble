@@ -46,6 +46,17 @@ public struct Settings: Codable {
     public var chatScale: Double? = nil
     /// name shown to others in LAN games (nil = the Mac user's first name)
     public var playerName: String? = nil
+    /// touch-drag look speed, 0…1 (nil = 0.5); separate from mouse sensitivity
+    public var touchSensitivity: Double? = nil
+    /// 3D scene resolution as a fraction of the window, 0.5…1 (nil = auto:
+    /// full size on the Mac, adaptive on iOS); the UI always renders native
+    public var renderScale: Double? = nil
+    /// seconds a creative-mode block takes to break, 0…1 (0 = instant; nil =
+    /// the platform default: instant on the Mac, 0.4 s on touch screens)
+    public var creativeBreakDelay: Double? = nil
+    /// Battery Saver: 30 fps and no shadows while on, without touching the
+    /// Max FPS and Soft Shadows choices underneath (nil = off)
+    public var batterySaver: Bool? = nil
 
     public init() {}
 }
@@ -68,10 +79,21 @@ public let DEFAULT_KEYBINDS: [String: String] = [
 
 public func defaultSettings() -> Settings { Settings() }
 
-/// ~/Library/Application Support/Pebble — created on first touch
+/// ~/Library/Application Support/Pebble — created on first touch.
+/// Test hook: PEBBLE_HOME=<dir> keeps saves/settings out of the real profile.
+/// On iOS a relative dir lands in the app's tmp (a launch from the Mac can't
+/// know the sandbox path).
 public func vcSupportDir() -> URL {
-    let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    let dir = base.appendingPathComponent("Pebble", isDirectory: true)
+    let dir: URL
+    if var home = ProcessInfo.processInfo.environment["PEBBLE_HOME"], !home.isEmpty {
+        #if os(iOS)
+        if !home.hasPrefix("/") { home = NSTemporaryDirectory() + home }
+        #endif
+        dir = URL(fileURLWithPath: home, isDirectory: true)
+    } else {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        dir = base.appendingPathComponent("Pebble", isDirectory: true)
+    }
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     return dir
 }

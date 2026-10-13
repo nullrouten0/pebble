@@ -342,6 +342,22 @@ public func registerAllItems() {
     registerItem("box_builder", display: "Box Builder", maxStack: 1, category: "tools", icon: "shulker_shell", rarity: 3)
     registerItem("infinity_wipe", display: "Infinity Wipe", maxStack: 1, category: "tools", icon: "nether_star", rarity: 3)
 
+    // worn in the helmet slot: a beam of light where you look (WorldRenderer
+    // headlamps). Durability 0 = never wears out.
+    registerItem("headlamp", display: "Headlamp",
+                 armor: ArmorDef(slot: 0, defense: 1, toughness: 0, knockbackRes: 0, durability: 0, enchantability: 0, material: "headlamp"),
+                 category: "tools", rarity: 1)
+
+    HEADLAMP_ID = iid("headlamp")
+
     // post-registration fixups
     itemDefs[iid("cake")].maxStack = 1
+}
+
+/// the headlamp's item id (-1 until items register)
+nonisolated(unsafe) public private(set) var HEADLAMP_ID = -1
+
+public extension Player {
+    /// wearing a headlamp: it's on whenever it's worn
+    var headlampOn: Bool { armor[0]?.id == HEADLAMP_ID && HEADLAMP_ID >= 0 }
 }

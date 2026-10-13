@@ -79,12 +79,23 @@ private struct TickKey: Hashable {
     let x: Int, y: Int, z: Int, id: Int
 }
 
+public struct BlockPos: Hashable {
+    public let x: Int, y: Int, z: Int
+    public init(_ x: Int, _ y: Int, _ z: Int) { self.x = x; self.y = y; self.z = z }
+}
+
 public final class World {
     public let dim: Dim
     public let seed: UInt32
     public var chunks: [Int64: Chunk] = [:]
     public var entities: [EntityRef] = []
     public var entityById: [Int: EntityRef] = [:]
+    /// leaves woken by a neighbor change: only these re-check their reach to a
+    /// log on random ticks. Like vanilla, untouched generated trees keep every
+    /// leaf (2-3% of generated canopy sits past the 6-block reach and shed
+    /// saplings around every forest); chopping a trunk wakes its leaves, and
+    /// each one that decays wakes its neighbors.
+    public var leafChecks = Set<BlockPos>()
     public let info: DimInfo
     public var time = 0            // total ticks elapsed (world age)
     public var dayTime = 1000      // 0..23999
@@ -155,6 +166,9 @@ public final class World {
     }
     public func removeChunk(_ cx: Int, _ cz: Int) {
         chunks.removeValue(forKey: chunkKey(cx, cz))
+        if !leafChecks.isEmpty {
+            leafChecks = leafChecks.filter { floorDiv($0.x, CHUNK_W) != cx || floorDiv($0.z, CHUNK_W) != cz }
+        }
     }
     public func isChunkReady(_ cx: Int, _ cz: Int) -> Bool {
         guard let c = getChunk(cx, cz) else { return false }

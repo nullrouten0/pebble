@@ -1,0 +1,10 @@
+// Copy to Local.xcconfig (git-ignored) and fill in your Apple developer team
+// ID to sign for a real device. Simulator builds don't need it.
+// Find the ID in Xcode → Settings → Accounts (select your Apple ID; it's the
+// 10-character code beside your team), or developer.apple.com → Membership.
+
+DEVELOPMENT_TEAM = ABCDE12345
+
+// Bundle IDs are unique per Apple account: if Xcode says this one is taken,
+// make it yours (anything reverse-DNS, e.g. com.yourname.pebble).
+PRODUCT_BUNDLE_IDENTIFIER = com.yourname.pebble

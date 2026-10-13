@@ -9,6 +9,7 @@
 // keep the VCK1 container (binary blocks + JSON tail); entity-only records
 // regenerate terrain from seed and re-attach saved entities.
 
+import Compression
 import Foundation
 import SQLite3
 
@@ -31,8 +32,19 @@ public struct DimState: Codable {
 
 /// single source of truth for the app version — the title screen, the F3
 /// overlay and save records all read this (Info.plist is bumped separately
-/// at packaging time)
-public let PEBBLE_VERSION = "1.2.0"
+/// at packaging time). major.minor.revision: a new minor adds features, a
+/// new revision is a small feature or a fix.
+public let PEBBLE_VERSION = "1.4.0"
+
+/// the commit this build came from: 8 hex digits, "+" when built with
+/// uncommitted changes. Stamped into the app's Info.plist at build time
+/// (`bundle` in ./pebble; a build phase in ios/project.yml); nil for bare
+/// `swift run` builds.
+public let PEBBLE_COMMIT = Bundle.main.object(forInfoDictionaryKey: "PebbleCommit") as? String
+
+/// what players see, e.g. "1.3.0.2d559e0a" — tells apart builds that share a
+/// version
+public let PEBBLE_BUILD = PEBBLE_COMMIT.map { "\(PEBBLE_VERSION).\($0)" } ?? PEBBLE_VERSION
 
 /// WorldMeta + the global-state extension (baseline WorldRecord extends WorldMeta)
 public struct WorldRecord: Codable {
@@ -115,6 +127,19 @@ private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.sel
 
 public final class SaveDB {
     private var db: OpaquePointer?
+    /// chunk-write tallies since launch (updated on the save queue; read for
+    /// diagnostics only): full records carry block data, stubs only entities
+    public private(set) var chunkBytesWritten = 0
+    public private(set) var fullChunkWrites = 0
+    public private(set) var stubChunkWrites = 0
+    /// write chunks as zlib-compressed VCK2 (~50× smaller full records).
+    /// Every build reads both; only iOS writes VCK2 for now, so a Mac world
+    /// still opens in builds from before VCK2 existed
+    #if os(iOS)
+    public var compressChunks = true
+    #else
+    public var compressChunks = false
+    #endif
 
     public init() {
         let url = vcSupportDir().appendingPathComponent("pebble.db")
@@ -263,7 +288,9 @@ public final class SaveDB {
         guard exec("BEGIN") else { return false }
         var ok = true
         for r in records {
-            guard let data = encodeChunk(r) else { ok = false; continue }
+            guard let data = encodeChunk(r, compress: compressChunks) else { ok = false; continue }
+            chunkBytesWritten += data.count
+            if r.blocks != nil { fullChunkWrites += 1 } else { stubChunkWrites += 1 }
             let wrote = run("INSERT OR REPLACE INTO chunks(world, dim, cx, cz, data) VALUES(?,?,?,?,?)", bind: { stmt in
                 self.bindText(stmt, 1, r.worldId)
                 sqlite3_bind_int(stmt, 2, Int32(r.dim))
@@ -284,6 +311,25 @@ public final class SaveDB {
     }
 
     // binary container: "VCK1" | u8 flags | [u32 nBlocks, u16[] LE, u32 nBiomes, u8[]] | u32 jsonLen, json
+    // compressed:       "VCK2" | u32 bodyLen | zlib(the VCK1 container after its magic)
+    func encodeChunk(_ r: ChunkRecord, compress: Bool) -> Data? {
+        guard let plain = encodeChunk(r) else { return nil }
+        guard compress else { return plain }
+        let body = plain.dropFirst(4)
+        let cap = body.count + 4096
+        let dst = UnsafeMutablePointer<UInt8>.allocate(capacity: cap)
+        defer { dst.deallocate() }
+        let n = body.withUnsafeBytes { src in
+            compression_encode_buffer(dst, cap, src.bindMemory(to: UInt8.self).baseAddress!, body.count, nil, COMPRESSION_ZLIB)
+        }
+        guard n > 0 else { return plain }   // incompressible / failed: store plain
+        var out = Data("VCK2".utf8)
+        var le = UInt32(body.count).littleEndian
+        withUnsafeBytes(of: &le) { out.append(contentsOf: $0) }
+        out.append(dst, count: n)
+        return out
+    }
+
     private func encodeChunk(_ r: ChunkRecord) -> Data? {
         var data = Data("VCK1".utf8)
         let hasBlocks = r.blocks != nil && r.biomes != nil
@@ -315,7 +361,21 @@ public final class SaveDB {
         return data
     }
 
-    private func decodeChunk(_ data: Data, key: String, worldId: String, dim: Int, cx: Int, cz: Int) -> ChunkRecord? {
+    func decodeChunk(_ data: Data, key: String, worldId: String, dim: Int, cx: Int, cz: Int) -> ChunkRecord? {
+        if data.count >= 8, data.prefix(4) == Data("VCK2".utf8) {
+            let bodyLen = Int(UInt32(littleEndian: data.subdata(in: 4..<8).withUnsafeBytes { $0.load(as: UInt32.self) }))
+            guard bodyLen > 0, bodyLen < 64 << 20 else { return nil }
+            var plain = Data("VCK1".utf8)
+            plain.count = 4 + bodyLen
+            let got = plain.withUnsafeMutableBytes { dst in
+                data.subdata(in: 8..<data.count).withUnsafeBytes { src in
+                    compression_decode_buffer(dst.bindMemory(to: UInt8.self).baseAddress! + 4, bodyLen,
+                                              src.bindMemory(to: UInt8.self).baseAddress!, src.count, nil, COMPRESSION_ZLIB)
+                }
+            }
+            guard got == bodyLen else { return nil }
+            return decodeChunk(plain, key: key, worldId: worldId, dim: dim, cx: cx, cz: cz)
+        }
         var rec = ChunkRecord(key: key, worldId: worldId, dim: dim, cx: cx, cz: cz)
         var off = 0
         func readU32() -> Int? {

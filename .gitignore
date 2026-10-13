@@ -5,3 +5,9 @@ dist/
 *.zip
 !packaging/*.zip
 .claude/
+# iOS: generated project + per-developer config
+ios/*.xcodeproj
+ios/Config/Local.xcconfig
+ios/Config/Version.xcconfig
+ios/build/
+DerivedData/

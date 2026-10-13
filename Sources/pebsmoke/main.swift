@@ -6,6 +6,12 @@ import Foundation
 import simd
 import PebbleCore
 
+// PEBBLE_CWD=<repo> lets runners that can't set the working directory
+// (simctl spawn in the iOS Simulator) still find goldens/
+if let cwd = ProcessInfo.processInfo.environment["PEBBLE_CWD"] {
+    FileManager.default.changeCurrentDirectoryPath(cwd)
+}
+
 var passed = 0
 var failed = 0
 
@@ -152,7 +158,7 @@ registerAllItems()
 // fns referenced items that never existed; appended at the END so every
 // baseline id is unchanged)
 let BASE_ITEM_COUNT = 1186
-check("item count", itemDefs.count == 1195, "got \(itemDefs.count) want 1195") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder, infinity_wipe
+check("item count", itemDefs.count == 1196, "got \(itemDefs.count) want 1196") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder, infinity_wipe, headlamp
 check("item ids stable after append", iid("weeping_vines") == 1186 && iid("twisting_vines") == 1187,
       "vines ids \(iid("weeping_vines"))/\(iid("twisting_vines")) want 1186/1187")
 let itemGoldens: [(String, Int)] = [
@@ -1040,8 +1046,8 @@ if let g = loadJSON("items-goldens.json") {
     func num(_ k: String) -> Int { (g[k] as! NSNumber).intValue }
     func hash32(_ k: String) -> UInt32 { UInt32(truncating: g[k] as! NSNumber) }
 
-    // recipes
-    let craftSer = craftingRecipes.map { r -> String in
+    // recipes: the baseline prefix (new recipes are appended after it, like items)
+    let craftSer = craftingRecipes.prefix(num("craftCount")).map { r -> String in
         switch r {
         case .shaped(let w, let h, let grid, let out, let count):
             return "S|\(w)|\(h)|\(grid.map { $0 ?? "." }.joined(separator: ","))|\(out)|\(count)"
@@ -1049,8 +1055,8 @@ if let g = loadJSON("items-goldens.json") {
             return "L|\(inputs.joined(separator: ","))|\(out)|\(count)"
         }
     }.joined(separator: ";")
-    check("crafting recipe count", craftingRecipes.count == num("craftCount"),
-          "got \(craftingRecipes.count) want \(num("craftCount"))")
+    check("crafting recipe count", craftingRecipes.count >= num("craftCount"),
+          "got \(craftingRecipes.count) want at least \(num("craftCount"))")
     check("crafting recipes hash", hashString(craftSer) == hash32("craftH"),
           "got \(hashString(craftSer)) want \(hash32("craftH"))")
 
@@ -2279,6 +2285,44 @@ do {
     check("wipe zones round-trip through JSON", back?.done == z2.done && back?.radius == z2.radius)
 }
 
+section("world wonders (/place eiffel_tower, stonehenge, colosseum, devils_tower)")
+do {
+    func capture(_ id: String) -> (pf: Prefab, n: (String) -> Int)? {
+        guard let pf = capturePrefab(id, dim: 0, minY: -64, maxY: 320, biome: 1, variant: 0) else { return nil }
+        var counts: [Int: Int] = [:]
+        for (_, _, _, c) in pf.cells { counts[Int(c >> 4), default: 0] += 1 }
+        return (pf, { counts[Int(bid($0))] ?? 0 })
+    }
+    func size(_ pf: Prefab) -> (w: Int, d: Int, h: Int) { (pf.x1 - pf.x0 + 1, pf.z1 - pf.z0 + 1, pf.y1 - PREFAB_GROUND) }
+    if let (pf, n) = capture("eiffel_tower") {
+        let sz = size(pf)
+        check("eiffel_tower: ~150 tall on a 63-block square (\(sz.w)×\(sz.d), \(sz.h) tall)", sz.h >= 145 && sz.w == 63 && sz.d == 63)
+        check("eiffel_tower: iron lattice, a ladder to the top room, a light on the spire",
+              n("brown_terracotta") > 5000 && n("ladder") >= 125 && n("sea_lantern") == 1, "lattice \(n("brown_terracotta")), ladder \(n("ladder"))")
+    } else { check("eiffel_tower captures", false) }
+    if let (pf, n) = capture("stonehenge") {
+        let sz = size(pf)
+        check("stonehenge: henge and Avenue (\(sz.w)×\(sz.d))", sz.w >= 110 && sz.d >= 110)
+        let sarsen = n("stone") + n("andesite") + n("tuff") + n("mossy_cobblestone")
+        check("stonehenge: sarsens, lintels and bluestones",
+              sarsen > 300 && n("smooth_stone") > 60 && n("cobbled_deepslate") + n("polished_deepslate") > 40,
+              "sarsen \(sarsen), lintels \(n("smooth_stone"))")
+    } else { check("stonehenge captures", false) }
+    if let (pf, n) = capture("colosseum") {
+        let sz = size(pf)
+        check("colosseum: a 125×105 ellipse, 32 tall (\(sz.w)×\(sz.d), \(sz.h))", sz.w == 125 && sz.d >= 103 && sz.h >= 31)
+        check("colosseum: travertine arcades, brick vaults, a planked arena",
+              n("white_terracotta") > 10000 && n("bricks") > 2000 && n("spruce_planks") > 300,
+              "travertine \(n("white_terracotta")), bricks \(n("bricks")), planks \(n("spruce_planks"))")
+    } else { check("colosseum captures", false) }
+    if let (pf, n) = capture("devils_tower") {
+        let sz = size(pf)
+        check("devils_tower: ~90 tall over a 100-block apron (\(sz.w)×\(sz.d), \(sz.h))", sz.h >= 85 && sz.w >= 100)
+        check("devils_tower: basalt columns, fallen columns, pines",
+              n("basalt") > 40000 && n("spruce_log") > 30, "basalt \(n("basalt")), spruce \(n("spruce_log"))")
+    } else { check("devils_tower captures", false) }
+}
+
 section("town structures (/place city, small_school, large_school)")
 do {
     func key(_ x: Int, _ y: Int, _ z: Int) -> Int64 { (Int64(x + 4096) << 40) | (Int64(y + 4096) << 20) | Int64(z + 4096) }
@@ -2326,6 +2370,288 @@ do {
     if let (_, a) = capture("city", 0), let (_, b) = capture("city", 7) {
         check("city variants differ", a.count != b.count || a != b)
     }
+}
+
+// ---------------------------------------------------------------------------
+section("analog movement and creative dig (touch / controller input)")
+do {
+    // a real GameCore on a scratch profile: the stick path must move the
+    // player exactly like the keys, and stay inert when unset
+    let home = NSTemporaryDirectory() + "pebsmoke-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    /// settle a fresh creative world's player on the ground
+    func settled() -> GameCore? {
+        let g = GameCore()
+        g.createWorld(name: "smoke", seedText: "12345", mode: GameMode.creative, difficulty: 0)
+        var grounded = 0
+        let deadline = Date().addingTimeInterval(30)
+        while grounded < 20 {
+            if Date() > deadline { return nil }
+            _ = g.frame(dtMs: 50)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.005))
+            grounded = g.player.onGround ? grounded + 1 : 0
+        }
+        return g
+    }
+    /// settle, apply `input`, walk 30 ticks
+    func walk(_ input: (GameCore) -> Void) -> (dx: Double, dz: Double)? {
+        guard let g = settled() else { return nil }
+        let x0 = g.player.x, z0 = g.player.z
+        input(g)
+        for _ in 0..<30 { _ = g.frame(dtMs: 50) }
+        let d = (g.player.x - x0, g.player.z - z0)
+        g.exitToTitle()
+        return d
+    }
+    let fwd = DEFAULT_KEYBINDS["forward"]!
+    // (now: 0 would read as a double-tap sprint against lastForwardPress = 0)
+    if let keys = walk({ $0.keyDown(fwd, now: 100_000) }),
+       let stick = walk({ $0.analogMove = (1, 0) }),
+       let idle = walk({ $0.analogMove = (0, 0) }),
+       let none = walk({ _ in }) {
+        check("forward key walks the player", hypot(keys.dx, keys.dz) > 1, "moved \(keys)")
+        check("full stick forward == forward key",
+              abs(keys.dx - stick.dx) < 1e-9 && abs(keys.dz - stick.dz) < 1e-9, "keys \(keys) stick \(stick)")
+        check("centered stick and no stick both stand still",
+              hypot(idle.dx, idle.dz) < 1e-9 && hypot(none.dx, none.dz) < 1e-9, "idle \(idle) none \(none)")
+    } else {
+        check("analog movement world loads", false)
+    }
+
+    // creative dig delay: looking straight down, count ticks until the block
+    // underfoot is gone (nil = still there after `limit`)
+    func ticksToBreak(_ delay: Double?, interrupt: Int? = nil, limit: Int = 30) -> Int?? {
+        guard let g = settled() else { return .none }
+        defer { g.exitToTitle() }
+        g.settings.creativeBreakDelay = delay
+        let p = g.player!
+        p.pitch = .pi / 2 - 0.01
+        let bx = Int(floor(p.x)), by = Int(floor(p.y)) - 1, bz = Int(floor(p.z))
+        let id = g.world.getBlockId(bx, by, bz)
+        g.mouseDown(0)
+        for t in 1...limit {
+            if t == interrupt { g.mouseUp(0); g.mouseDown(0) }   // let go, press again
+            _ = g.frame(dtMs: 50)
+            if g.world.getBlockId(bx, by, bz) != id { return .some(t) }
+        }
+        return .some(nil)
+    }
+    if case .some(let instant) = ticksToBreak(0),
+       case .some(let erode) = ticksToBreak(0.4),
+       case .some(let regrip) = ticksToBreak(0.4, interrupt: 6) {
+        check("creative dig 0 breaks on the first tick", instant == 1, "\(String(describing: instant))")
+        check("creative dig 0.4 s takes 8 ticks", erode == 8, "\(String(describing: erode))")
+        check("letting go restarts the erode", regrip == 6 + 8 - 1, "\(String(describing: regrip))")
+    } else {
+        check("creative dig world loads", false)
+    }
+
+    // saves: a chest edited in place (no block change) in an already-saved
+    // chunk must survive an unload + reload, and the untouched chunks around
+    // it must not be rewritten when they're revisited
+    if let g = settled() {
+        g.settings.renderDistance = 4
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)), bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(B.chest) << 4)
+        let be = BlockEntityData(type: "chest", x: bx, y: by, z: bz)
+        be.items = [ItemStack?](repeating: nil, count: 27)
+        w.setBlockEntity(be)
+        g.saveAndFlush(); g.waitForSaves()
+        be.items![0] = ItemStack(iid("diamond"), 5)   // in place: the chunk isn't marked
+        let key = chunkKey(floorDiv(bx, 16), floorDiv(bz, 16))
+        let home = (p.x, p.y, p.z)
+        func go(_ x: Double, until done: () -> Bool) -> Bool {
+            p.setPos(x, 200, home.2); p.flying = true
+            for _ in 0..<2000 {
+                _ = g.frame(dtMs: 50)
+                RunLoop.main.run(until: Date().addingTimeInterval(0.002))
+                if done() { return true }
+            }
+            return false
+        }
+        let away = go(home.0 + 3000) { w.chunks[key] == nil }
+        for _ in 0..<40 { _ = g.frame(dtMs: 50) }   // the once-a-second unload batch
+        g.waitForSaves()
+        let fullBefore = g.db.fullChunkWrites
+        let back = go(home.0) { w.chunks[key] != nil }
+        for _ in 0..<60 { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)) }
+        let kept: ItemStack? = w.getBlockEntity(bx, by, bz)?.items?[0] ?? nil
+        check("chest edited in place survives unload + reload",
+              away && back && kept?.id == iid("diamond") && kept?.count == 5,
+              "away \(away) back \(back) slot0 \(String(describing: kept))")
+        // revisiting writes nothing on its own (natural block changes may)
+        g.waitForSaves()
+        check("revisiting saved chunks doesn't rewrite them", g.db.fullChunkWrites - fullBefore < 5,
+              "\(g.db.fullChunkWrites - fullBefore) full writes")
+        g.exitToTitle()
+    } else {
+        check("save world loads", false)
+    }
+}
+
+section("world spawn on dry land")
+do {
+    // the spawn search reads a terrain estimate, so a new world could start
+    // its player on a lake or ocean floor (surfaceY looks through water)
+    let home = NSTemporaryDirectory() + "pebsmoke-spawn-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    var wet: [Int] = []
+    // 16 of 300 random seeds started underwater before; a few dry ones too
+    let seeds = [-957389223, -570112306, -1675440399, 2140826113, -365683123, 1662125329,
+                 -696457382, 78096452, 761226419, -879305116, -583452066, -822802458,
+                 782807868, 930734393, -1963051760, -1279921793, 1, 2, 3, 12345]
+    for seed in seeds {
+        g.createWorld(name: "spawn", seedText: "\(seed)", mode: GameMode.survival, difficulty: 0)
+        let p = g.player!
+        let x = Int(p.x.rounded(.down)), y = Int(p.y.rounded(.down)), z = Int(p.z.rounded(.down))
+        let feet = UInt16(truncatingIfNeeded: g.world.getBlock(x, y, z))
+        let ground = g.world.getBlock(x, y - 1, z) >> 4
+        if isWaterlogged(feet) || !blockDefs[ground].solid { wet.append(seed) }
+        let id = g.worldRec!.id
+        g.exitToTitle()
+        g.deleteWorld(id)
+    }
+    check("\(seeds.count) new worlds start on dry ground", wet.isEmpty, "wet: seeds \(wet)")
+}
+
+// ---------------------------------------------------------------------------
+section("untouched terrain stays put: leaves, loose ground")
+do {
+    // generated trees shed 2-3% of their leaves (canopy past the 6-block
+    // reach) and water woken on chunk load collapsed cave gravel deposits:
+    // ~100 sapling drops per 5 minutes around spawn, 1,000+ falling blocks
+    // while exploring
+    let home = NSTemporaryDirectory() + "pebsmoke-terrain-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    g.settings.renderDistance = 6
+    g.createWorld(name: "terrain", seedText: "12345", mode: GameMode.creative, difficulty: 0)
+    let w = g.worlds[.overworld]!
+    var leafDrops = 0
+    w.onLocalSpawn = { e in
+        if let it = e as? ItemEntity {
+            let n = itemDefs[it.stack.id].name
+            if n.hasSuffix("_sapling") || n == "stick" || n == "apple" || n == "propagule" { leafDrops += 1 }
+        }
+        return true
+    }
+    w.randomTickSpeed = 30   // 10x: 600 ticks ≈ 5 minutes of play
+    for _ in 0..<600 { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)) }
+    check("untouched trees keep their leaves", leafDrops == 0, "\(leafDrops) leaf drops")
+
+    // a tree in the sky: chopping its trunk still makes the canopy decay
+    let tx = Int(g.player.x) + 3, tz = Int(g.player.z) + 3, base = 200
+    let LOG = Int(cell(B.oak_log)), LEAF = Int(cell(B.oak_leaves))
+    func leaves() -> Int {
+        var n = 0
+        for y in (base + 2)...(base + 6) { for z in (tz - 2)...(tz + 2) { for x in (tx - 2)...(tx + 2) where (w.getBlock(x, y, z) >> 4) == Int(B.oak_leaves) { n += 1 } } }
+        return n
+    }
+    func plantTree() {
+        for y in (base + 2)...(base + 5) { for z in (tz - 2)...(tz + 2) { for x in (tx - 2)...(tx + 2) where x != tx || z != tz { w.setBlock(x, y, z, LEAF) } } }
+        for y in base...(base + 5) { w.setBlock(tx, y, tz, LOG) }
+        w.setBlock(tx, base + 6, tz, LEAF)
+    }
+    plantTree()
+    let full = leaves()
+    w.randomTickSpeed = 300
+    for _ in 0..<200 { _ = g.frame(dtMs: 50) }
+    check("a tree with its trunk keeps its leaves", leaves() == full, "\(leaves()) of \(full)")
+    for y in base...(base + 5) { w.setBlock(tx, y, tz, 0) }
+    for _ in 0..<1500 { _ = g.frame(dtMs: 50) }
+    check("a chopped tree's leaves decay", leaves() == 0, "\(leaves()) of \(full) left")
+    w.randomTickSpeed = 3
+
+    // gravel over air beside flowing water stays; water flowing in under it doesn't
+    let gx = tx + 8, gy = base, gz = tz
+    let STONE = Int(cell(B.stone)), GRAVEL = Int(cell(B.gravel))
+    // a stone floor with a sealed one-block pocket under the gravel
+    for z in (gz - 4)...(gz + 4) { for x in (gx - 4)...(gx + 4) {
+        w.setBlock(x, gy - 2, z, STONE)
+        if x != gx || z != gz { w.setBlock(x, gy - 1, z, STONE) }
+    } }
+    w.setBlock(gx, gy, gz, GRAVEL, SET_SILENT)          // a generated deposit over a "cave"
+    w.setBlock(gx + 1, gy, gz, Int(cell(B.water, 0)))   // a spring beside it
+    for _ in 0..<100 { _ = g.frame(dtMs: 50) }
+    check("water flowing beside gravel over a cave leaves it", (w.getBlock(gx, gy, gz) >> 4) == Int(B.gravel))
+    w.setBlock(gx + 1, gy - 1, gz, 0)                    // open the pocket: water runs in under it
+    for _ in 0..<100 { _ = g.frame(dtMs: 50) }
+    check("water flowing in under gravel still drops it", (w.getBlock(gx, gy, gz) >> 4) != Int(B.gravel))
+    g.exitToTitle()
+}
+
+// ---------------------------------------------------------------------------
+section("headlamp")
+do {
+    func st(_ n: String) -> ItemStack? { n.isEmpty ? nil : ItemStack(iid(n), 1) }
+    let grid = ["", "glowstone_dust", "", "leather", "iron_ingot", "leather", "", "", ""].map(st)
+    let out = matchCrafting(grid, 3, 3)?.out
+    check("glowstone over iron, leather either side crafts a headlamp", out.map { itemDefs[$0.id].name } == "headlamp")
+    check("it's worn on the head", itemDefs[iid("headlamp")].armor?.slot == 0)
+    let home = NSTemporaryDirectory() + "pebsmoke-lamp-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    g.createWorld(name: "lamp", seedText: "12345", mode: GameMode.survival, difficulty: 2)
+    let p = g.player!
+    check("no headlamp, no light", !p.headlampOn)
+    p.armor[0] = ItemStack(iid("headlamp"), 1)
+    check("wearing one turns it on", p.headlampOn)
+    for _ in 0..<200 { p.damageArmor(20) }
+    check("it never wears out", p.armor[0]?.id == iid("headlamp"))
+    g.exitToTitle()
+}
+
+// ---------------------------------------------------------------------------
+section("chunk saves (VCK1 plain, VCK2 compressed)")
+do {
+    let home = NSTemporaryDirectory() + "pebsmoke-db-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let db = SaveDB()
+    let gen = generateChunk(.overworld, 12345, 3, -2)
+    func record(_ cx: Int) -> ChunkRecord {
+        ChunkRecord(key: db.chunkKey("w", 0, cx, 0), worldId: "w", dim: 0, cx: cx, cz: 0,
+                    blocks: gen.blocks, biomes: gen.biomes, blockEntities: [],
+                    entities: [["type": "cow", "x": 1.5, "y": 70.0, "z": 2.5]])
+    }
+    func write(_ r: ChunkRecord, compressed: Bool) -> Int {
+        db.compressChunks = compressed
+        let before = db.chunkBytesWritten
+        _ = db.putChunks([r])
+        return db.chunkBytesWritten - before
+    }
+    let plainBytes = write(record(0), compressed: false)
+    let zBytes = write(record(1), compressed: true)
+    var stub = ChunkRecord(key: db.chunkKey("w", 0, 2, 0), worldId: "w", dim: 0, cx: 2, cz: 0)
+    stub.entities = [["type": "sheep", "x": 33.0, "y": 64.0, "z": 1.0]]
+    _ = write(stub, compressed: true)
+    let a = db.getChunk("w", 0, 0, 0), b = db.getChunk("w", 0, 1, 0), c = db.getChunk("w", 0, 2, 0)
+    check("plain record reads back", a?.blocks == gen.blocks && a?.biomes == gen.biomes && a?.entities.count == 1)
+    check("compressed record reads back identical",
+          b?.blocks == gen.blocks && b?.biomes == gen.biomes && (b?.entities.first?["type"] as? String) == "cow")
+    check("compressed entity-only record reads back", c?.blocks == nil && (c?.entities.first?["type"] as? String) == "sheep")
+    check("compressed full record is >10× smaller", zBytes * 10 < plainBytes, "\(plainBytes) → \(zBytes) bytes")
 }
 
 print("\n\(passed) passed, \(failed) failed")

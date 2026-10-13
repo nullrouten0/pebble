@@ -55,8 +55,10 @@ final class HUD {
         timerAccum -= Double(tickSteps) / 20
         let cv = ui.cv
         guard let player = game.player else { return }
-        let W = ui.width, H = ui.height
-        let cx = (W / 2).rounded(.down)
+        // HUD furniture stays inside the safe area; the crosshair and the
+        // sleep fade use the full screen
+        let W = ui.width - ui.safeRight, H = ui.height - ui.safeBottom
+        let cx = (ui.width / 2).rounded(.down)
 
         drawNameTags(ui, game)
 
@@ -66,10 +68,10 @@ final class HUD {
         if player.sleepTicks > 0 {
             let a = min(1.0, Double(player.sleepTicks) / 40.0)
             cv.setFill("rgba(0,0,0,\(a))")
-            cv.fillRect(0, 0, W, H)
+            cv.fillRect(0, 0, ui.width, ui.height)
             if a > 0.55 {
-                cv.drawTextCentered("Sleeping...", cx, (H / 2).rounded() - 18, 2)
-                cv.drawTextCentered("Press Sneak to leave the bed", cx, (H / 2).rounded() + 6, 1, "#b0b0b0")
+                cv.drawTextCentered("Sleeping...", cx, (ui.height / 2).rounded() - 18, 2)
+                cv.drawTextCentered("Press Sneak to leave the bed", cx, (ui.height / 2).rounded() + 6, 1, "#b0b0b0")
             }
             return
         }
@@ -80,19 +82,19 @@ final class HUD {
         // crosshair (plain white; canvas used difference-blend)
         if !ui.hasScreen() {
             if packHud {
-                ui.blitSheet("icons", 0, 0, 15, 15, ((W - 15) / 2).rounded(), ((H - 15) / 2).rounded())
+                ui.blitSheet("icons", 0, 0, 15, 15, ((ui.width - 15) / 2).rounded(), ((ui.height - 15) / 2).rounded())
             } else {
                 cv.setFill("rgba(255,255,255,0.85)")
-                cv.fillRect(cx - 5, H / 2 - 0.5, 10, 1)
-                cv.fillRect(cx - 0.5, H / 2 - 5, 1, 10)
+                cv.fillRect(cx - 5, ui.height / 2 - 0.5, 10, 1)
+                cv.fillRect(cx - 0.5, ui.height / 2 - 5, 1, 10)
             }
             // attack indicator
             let str = player.attackStrength()
             if str < 1 {
                 cv.setFill("rgba(255,255,255,0.4)")
-                cv.fillRect(cx - 8, H / 2 + 8, 16, 2)
+                cv.fillRect(cx - 8, ui.height / 2 + 8, 16, 2)
                 cv.setFill("#ffffff")
-                cv.fillRect(cx - 8, H / 2 + 8, (16 * str).rounded(), 2)
+                cv.fillRect(cx - 8, ui.height / 2 + 8, (16 * str).rounded(), 2)
             }
         }
 
@@ -405,7 +407,7 @@ final class HUD {
         let bx = Int(p.x.rounded(.down)), by = Int(p.y.rounded(.down)), bz = Int(p.z.rounded(.down))
         let biome = BIOMES[world.biomeAt(bx, by, bz)]
         var lines = [
-            "Pebble \(PEBBLE_VERSION) (\(debugInfo["fps"] ?? "?") fps, \(debugInfo["chunkUpdates"] ?? "0") chunk updates)",
+            "Pebble \(PEBBLE_BUILD) (\(debugInfo["fps"] ?? "?") fps, \(debugInfo["chunkUpdates"] ?? "0") chunk updates)",
             "XYZ: \(String(format: "%.3f", p.x)) / \(String(format: "%.4f", p.y)) / \(String(format: "%.3f", p.z))",
             "Block: \(bx) \(by) \(bz)  Chunk: \(bx >> 4) \(bz >> 4)",
             "Facing: \(facingName(p.yaw)) (\(String(format: "%.1f", (p.yaw * 180 / .pi).truncatingRemainder(dividingBy: 360))) / \(String(format: "%.1f", p.pitch * 180 / .pi)))",
@@ -442,7 +444,7 @@ private func facingName(_ yaw: Double) -> String {
 extension HUD {
     /// names over other players (LAN), dimmed while they sneak, hidden behind walls
     func drawNameTags(_ ui: UIManager, _ game: GameCore) {
-        guard game.isNetworked, let r = gAppDelegate?.renderer, let me = game.player else { return }
+        guard game.isNetworked, let r = gRuntime?.renderer, let me = game.player else { return }
         let w = game.world
         let t = r.lastPartial
         for e in w.entities {

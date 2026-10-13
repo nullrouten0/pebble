@@ -120,7 +120,12 @@ final class RemoteClient: NetPlayerLink {
     var name = "?"
     var joined = false
     var proxy: Player!
-    var viewDistance = 8
+    /// the render distance the guest asked for (its own setting)
+    var requestedView = 8
+    /// what the host loads, streams and tracks for this guest: never past the
+    /// host's own render distance, so a guest at 16 can't make a phone host
+    /// hold ~1,500 extra chunks
+    var viewDistance: Int { min(requestedView, max(2, host.game.settings.renderDistance)) }
     /// chunk keys this guest holds (host's current dimension)
     var sent = Set<Int64>()
     var resend: [Int64] = []
@@ -438,10 +443,10 @@ public final class NetHost {
         let proto = try r.u16()
         var name = try r.str().trimmingCharacters(in: .whitespaces)
         let version = try r.str()
-        c.viewDistance = max(2, min(16, try r.u8()))
+        c.requestedView = max(2, min(16, try r.u8()))
         pending.removeValue(forKey: c.conn.id)
         guard proto == NET_PROTOCOL else {
-            kick(c, "Version mismatch: host runs Pebble \(PEBBLE_VERSION), you have \(version)")
+            kick(c, "Version mismatch: host runs Pebble \(PEBBLE_BUILD), you have \(version)")
             return
         }
         guard game.inWorld, let rec = game.worldRec else { kick(c, "The host isn't in a world"); return }
@@ -946,6 +951,8 @@ public final class NetHost {
         m.u8(w.difficulty)
         m.json(w.gameRules)
         m.i32(Int(w.spawnX)); m.i32(Int(w.spawnY)); m.i32(Int(w.spawnZ))
+        // guests draw no farther than we load for them (RemoteClient.viewDistance)
+        m.u8(game.settings.renderDistance)
         return m
     }
     private func writeWorldInfo(_ c: RemoteClient) {

@@ -61,6 +61,9 @@ public final class Chunk {
     public var version = 0
     public var status: ChunkStatus = .empty
     public var modified = false
+    /// its record on disk lists entities, so an unload must rewrite it even
+    /// when none stand here now (or they'd come back on the next load)
+    public var savedEntities = false
     /// keyed by cell index
     public var blockEntities: [Int: BlockEntityData] = [:]
     public var portalBlocks = Set<Int>()

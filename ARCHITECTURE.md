@@ -1,11 +1,20 @@
 # Pebble — Architecture
 
-This is the technical tour. The one-paragraph version: **PebbleCore** is a headless, deterministic game engine (no AppKit imports anywhere); **Pebble** is a thin-ish macOS shell that owns the window, the Metal renderer, the synthesized audio engine, and the UI stack; **pebsmoke** is the regression harness that pins the engine to golden files. The app talks to the engine exclusively through the `GameHost` protocol, and the engine never draws, plays, or reads input directly.
+This is the technical tour. The one-paragraph version: **PebbleCore** is a headless, deterministic game engine (no UI framework imports anywhere); **PebbleApp** is the shared app stack — the Metal renderer, the synthesized audio engine, the UI, and input routing — with no AppKit or UIKit either; **Pebble** (macOS, `Sources/Pebble`) and **PebbleiOS** (iPad/iPhone, `ios/`) are thin shells that own a window and translate native events; **pebsmoke** is the regression harness that pins the engine to golden files. The app talks to the engine exclusively through the `GameHost` protocol, and the engine never draws, plays, or reads input directly.
 
 ```
-┌─────────────────────────── Pebble.app ───────────────────────────┐
-│  main.swift        NSWindow + MTKView, NSEvent → DOM key codes,  │
-│                    pointer capture, frame loop, HostBridge       │
+┌──── Pebble.app (macOS) ─────┐   ┌──── Pebble (iPad / iPhone) ────┐
+│ main.swift: NSWindow, menus,│   │ ios/PebbleiOS: UIKit scene,    │
+│ NSEvent → key codes, cursor │   │ touches, HID keys, GCMouse,    │
+│ capture, fullscreen         │   │ soft keyboard, lifecycle saves │
+└──────────────┬──────────────┘   └───────────────┬────────────────┘
+               │   PlatformHooks · InputRouter · TouchControls
+┌──────────────┴──────── PebbleApp (shared library) ┴──────────────┐
+│  GameRuntime       owns game/renderer/UI/audio, the frame loop,  │
+│                    HostBridge, PEBBLE_* test hooks               │
+│  InputRouter       key codes + pointer → open screen or game     │
+│  TouchControls     on-screen stick/look/buttons, touch screens   │
+│  ControllerInput   gamepads (move/look/break/use, menu cursor)   │
 │  WorldRenderer     Metal pipelines, mesh arena, atlas, shadows,  │
 │                    sky/celestials/clouds, bloom, ultra, capture  │
 │  UICanvas/UIManager/Screens/Menus/HUD   canvas-2D-style batcher, │
@@ -61,7 +70,7 @@ CPU/GPU synchronization leans on `CAMetalLayer`'s default 3-drawable back-pressu
 
 ## Audio
 
-No samples. `Audio.swift` is a synthesizer: each sound effect is a recipe that spawns voices (oscillator or filtered noise) with envelopes, pitch sweeps, and vibrato, mixed in an `AVAudioSourceNode` render callback at 48 kHz. Effects: RBJ biquad filters, positional stereo panning, underwater lowpass, and a cave reverb built from two coprime-length feedback delay lines. Music (ambient + jukebox discs) is generated on the fly from scale/tempo configs. The render thread owns the voice list; the main thread communicates through a locked inbox.
+No samples. `Audio.swift` is a synthesizer (on iOS it runs under an `.ambient` audio session and rewires itself after interruptions and route changes): each sound effect is a recipe that spawns voices (oscillator or filtered noise) with envelopes, pitch sweeps, and vibrato, mixed in an `AVAudioSourceNode` render callback at 48 kHz. Effects: RBJ biquad filters, positional stereo panning, underwater lowpass, and a cave reverb built from two coprime-length feedback delay lines. Music (ambient + jukebox discs) is generated on the fly from scale/tempo configs. The render thread owns the voice list; the main thread communicates through a locked inbox.
 
 ## LAN multiplayer (Net/)
 
@@ -79,8 +88,10 @@ One SQLite database (WAL, FULLMUTEX, serial save queue): `worlds(id, json, lastP
 
 ## The test harness (pebsmoke)
 
-461 checks across 16 suites, run with `pebble test`:
+488 checks across 17 suites, run with `pebble test`:
 
-random/noise/math → block & item registries (counts + id spot checks) → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full redstone contraption, explosion crater, interactions, portals) → and a final suite that *independently derives* vanilla physics constants instead of trusting goldens.
+random/noise/math → block & item registries (counts + id spot checks) → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full redstone contraption, explosion crater, interactions, portals) → a suite that *independently derives* vanilla physics constants instead of trusting goldens → and analog (stick/touch) movement checked against the keyboard path through a live headless `GameCore`.
+
+pebsmoke builds and runs on iOS too: `pebble test ios` spawns it inside the iOS Simulator runtime, where the same seeds produce the same worlds.
 
 Golden discipline: reference goldens are frozen (they have no generator); behavior-change goldens (`PEBBLE_REGOLD=1`) are regenerated only deliberately, with each diff justified. Content added after the baseline was frozen (e.g. two appended items) is excluded from reference hashes via fixed prefix ranges, never by regenerating reference baselines.

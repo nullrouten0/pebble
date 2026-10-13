@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/thebriangao
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `461 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `516 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 
@@ -21,16 +21,31 @@ Even better than a report is a PR with the fix — the rest of this file tells y
 xcode-select --install        # Swift toolchain (Swift 6, macOS 14+ SDK)
 git clone https://github.com/thebriangao/pebble.git && cd pebble
 swift build                   # debug build, ~35s clean
-swift run -c release pebsmoke # the test suite — must print "461 passed, 0 failed"
+swift run -c release pebsmoke # the test suite — must print "488 passed, 0 failed"
 ./pebble install              # optional: build + install the real app
 ```
 
-There is no `.xcodeproj` and there never will be — the whole workflow is SwiftPM + the `./pebble` CLI. You can still open the folder in Xcode ("Open Package") if you want an IDE; just don't commit any generated project files.
+The Mac app has no `.xcodeproj` — its whole workflow is SwiftPM + the `./pebble` CLI. You can still open the folder in Xcode ("Open Package") if you want an IDE.
+
+The iOS app is the one exception: `ios/project.yml` is an [XcodeGen](https://github.com/yonaskolb/XcodeGen) spec, and `pebble ios` turns it into `ios/Pebble.xcodeproj`. That project is generated and git-ignored — edit `project.yml` or `ios/Config/*.xcconfig`, never the project. iOS work needs full Xcode (16+) and `brew install xcodegen`; nothing else in the repo does.
+
+```bash
+pebble ios            # generate + open the Xcode project
+pebble ios run        # build + launch in the iPad simulator (PEBBLE_SIM="iPhone 18 Pro" to switch)
+pebble test ios       # the golden suite inside the iOS Simulator
+cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # then add your team ID to run on a device
+```
+
+### Where code goes
+
+- **`PebbleCore`** — the engine. No UI frameworks, ever.
+- **`PebbleApp`** — everything both apps share: renderer, UI, screens, HUD, audio, `GameRuntime` (owns the stack and the frame), `InputRouter`, `TouchControls`, `ControllerInput`. No AppKit or UIKit imports; anything platform-specific goes through the `PlatformHooks` protocol.
+- **`Sources/Pebble/main.swift`** (macOS) and **`ios/PebbleiOS/`** — thin shells: window/view, native events → `InputRouter`, lifecycle, and a `PlatformHooks` implementation.
 
 ## Before you open a PR
 
 1. `swift build -c release` — clean, **zero warnings**. The codebase is warning-free and stays that way.
-2. `swift run -c release pebsmoke` (or `pebble test`) — **461/461**, from the repo root (goldens are found relative to cwd).
+2. `swift run -c release pebsmoke` (or `pebble test`) — **488/488**, from the repo root (goldens are found relative to cwd).
 3. If goldens changed, your PR description must justify **every** changed value (see below).
 4. Keep diffs surgical. Match the style of the file you're in — this codebase has a consistent voice (compact, comment-where-it-matters), and drive-by reformatting makes review impossible.
 
@@ -58,17 +73,23 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 - **Sim code uses the deterministic layer only.** `detSin/detCos/detAtan2` (never `Foundation.sin` in sim paths), `RandomX`/`hash2`/`hash3` (never `Double.random` — cosmetic-only exceptions exist in app-side rendering/audio), `detRound` for half-step rounding.
 - **No unordered iteration in sim decisions.** Swift `Dictionary`/`Set` iteration order is hash-seeded per process. If iteration order can affect world state, use an insertion-ordered array (see `tickingBEList`) or `.sorted()`.
 - **Structure-piece RNG: draw, then check.** Builder RNG must be a pure function of (structure, piece). Draw every random value *before* any chunk-relative `b.get()` test — short-circuiting a draw on local chunk contents desyncs the stream across the chunks that rebuild the same piece. Also: `b.get()` returns **−1 outside the building chunk**; guard before casting.
-- **Threading contract.** Chunks are built on the gen queue and published only via `adoptChunk` on main. AppKit/renderer state is main-thread-only. Saves go through the serial save queue. The audio render thread owns the voice list; talk to it through the inbox. One-time registration uses `let`-initialized globals (dispatch_once), not boolean guards.
+- **Threading contract.** Chunks are built on the gen queue and published only via `adoptChunk` on main. UI/renderer state is main-thread-only. Saves go through the serial save queue. The audio render thread owns the voice list; talk to it through the inbox. One-time registration uses `let`-initialized globals (dispatch_once), not boolean guards.
 - **GPU buffers the CPU rewrites per frame must be ring-buffered** (3 deep — see UICanvas, particles) or staged through blit encoders (see atlas animations). The renderer has no semaphore; it relies on the 3-drawable limit.
-- **Version string** lives in one place: `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift). Bump it there plus `packaging/Info.plist`.
+- **Version string** lives in one place: `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift). Bump it there plus `packaging/Info.plist`. It's major.minor.revision: bump the **minor** for a release that adds features, the **revision** for a small feature or a fix. Builds show it with the commit appended (`1.3.0.2d559e0a`, `+` when built with uncommitted changes), so testers can tell exactly which build they're on; `./pebble` and the iOS project stamp the commit into Info.plist.
 
 ## Testing tips
 
 - `PEBBLE_AUTOLOAD=1 PEBBLE_NEWWORLD=12345 swift run -c release Pebble` — straight into a fresh world.
 - `PEBBLE_CMD="/tp 0 120 0;/time set 1000" PEBBLE_SHOT="/tmp/shot.png@600"` — scripted screenshots.
 - `PEBBLE_BOT=1` — runs the physics bot through the real input path and asserts walk/sprint/jump/fall-damage numbers.
+- `PEBBLE_POWERBENCH=1` (with `PEBBLE_AUTOLOAD=1 PEBBLE_NEWWORLD=12345`) — a hands-free 10-minute power benchmark: explore, revisit, dig, pause menu, idle. Every 10 s it logs fps, CPU %, GPU %, thermal state, battery and memory (`[power]` lines, plus `pebble-power.csv` in the debug output dir), then exits. `=0.2` scales the phases for a quick run. On a device, launch it from the Mac with `xcrun devicectl device process launch --console --environment-variables '{"PEBBLE_POWERBENCH":"1","PEBBLE_AUTOLOAD":"1","PEBBLE_NEWWORLD":"12345","PEBBLE_HOME":"powerbench"}' --device <id> net.stonekitty.pebble`; a relative `PEBBLE_HOME` lands in the app's tmp on iOS, away from real saves.
+- `PEBBLE_HOSTLAN=1` — opens the world to LAN as soon as it loads and prints the address (`[lan] hosting on …`). With `PEBBLE_POWERBENCH=1 PEBBLE_BENCH_PHASES="idle:330"` the host stands still and logs while guests explore: a hosting power/memory benchmark.
+- `PEBBLE_SETTINGS='{"maxFps":30,"shadows":false}'` — overrides settings at launch (after the first-launch device preset), for benching variants. The result is saved to that profile, so pair it with a scratch `PEBBLE_HOME`.
 - `PEBBLE_PHOTOBOOTH=1` (+ `PEBBLE_BOOTH_MOBS=cow,sheep` / `PEBBLE_BOOTH_BLOCKS=-`) — renders every mob/block to PNGs for visual review.
 - `PEBBLE_PROF=1` — per-stage timings for load and tick.
+- `PEBBLE_HOME=/tmp/scratch` — saves and settings go there instead of your real profile.
+- `PEBBLE_TOUCH=1` — shows the touch controls on the Mac. `PEBBLE_CMD` can drive them with `#tdown ID X Y`, `#tmove ID X Y` and `#tup ID X Y` (UI units); `#pos` prints the player's position and the block under the crosshair (with its break progress).
+- On iOS, pass any of these to the app as `SIMCTL_CHILD_<NAME>=…` in front of `xcrun simctl launch`.
 
 ## Scope & conduct
 

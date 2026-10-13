@@ -25,6 +25,8 @@ struct ChunkShared {
     float4 fog;        // start, end, alphaTest, globalAlpha
     float4 fogColor;
     float4 misc;       // x = time
+    float4 lampPos[4]; // worn headlamps: camera-relative eye + intensity (0 = off)
+    float4 lampDir[4]; // look direction
 };
 struct SkyU {
     float4x4 invViewProj;
@@ -109,11 +111,15 @@ struct ChunkVOut {
     float4 shadowPos;
     float skyAmt;
     float3 worldPos;
+    float3 base;       // tint × face shade × AO: what a headlamp beam lights
     uint layer [[flat]];
     uint anim [[flat]];
+    uint normal [[flat]];
 };
 
 constant float FACE_SHADE[6] = {0.55, 1.0, 0.8, 0.8, 0.62, 0.62};
+constant float3 FACE_N[6] = {float3(0, -1, 0), float3(0, 1, 0), float3(0, 0, -1),
+                             float3(0, 0, 1), float3(-1, 0, 0), float3(1, 0, 0)};
 
 // rotated per-pixel for soft ultra shadows
 constant float2 POISSON12[12] = {
@@ -173,6 +179,8 @@ vertex ChunkVOut chunk_vs(ChunkVIn in [[stage_in]],
     out.layer = layer;
     out.anim = anim;
     out.worldPos = wpos;
+    out.base = tint * FACE_SHADE[normal] * aoF;
+    out.normal = normal;
     out.shadowPos = u.shadowMat * float4(rel, 1.0);
     return out;
 }
@@ -239,6 +247,27 @@ fragment float4 chunk_fs(ChunkVOut in [[stage_in]],
 
     float3 col = tex.rgb * in.color * shadow;
     float alpha = tex.a * u.fog.w;
+
+    // headlamps: a warm cone ~22 blocks long, lighting whatever faces it; the
+    // brighter of it and the baked light wins (no lamp = unchanged pixels)
+    float lampL = 0.0;
+    for (int i = 0; i < 4; i++) {
+        float4 lp = u.lampPos[i];
+        if (lp.w <= 0.0) continue;
+        float3 d = in.worldPos - lp.xyz;
+        float dist = length(d);
+        if (dist > 22.0) continue;
+        float3 L = d / max(dist, 0.001);
+        float cone = smoothstep(0.87, 0.965, dot(L, u.lampDir[i].xyz));
+        float facing = clamp(dot(FACE_N[in.normal], -L) * 2.0 + 0.35, 0.0, 1.0);
+        float att = 1.0 - smoothstep(5.0, 22.0, dist);
+        lampL = max(lampL, lp.w * cone * att * facing);
+    }
+    if (lampL > 0.004) {
+        float ll = lampL / (4.0 - 3.0 * lampL);
+        ll = mix(ll, 1.0, u.light.y * 0.35 * lampL);
+        col = max(col, tex.rgb * in.base * ll * float3(1.0, 0.95, 0.84));
+    }
 
     // ultra: specular sun glint + fresnel on water (anim 1)
     if (ultraOn > 0.5 && in.anim == 1u && dayLight > 0.02) {

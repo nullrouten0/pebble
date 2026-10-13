@@ -15,7 +15,9 @@ public let ATTACK_REACH = 3.0
 
 let SAVE_INTERVAL_TICKS = 1200          // 60 s autosave
 let GEN_RADIUS_PAD = 1                  // generate one ring beyond render distance
-let MAX_GEN_INFLIGHT = 24
+// ~2 jobs per core keeps the gen queue fed across the main-thread hand-off
+// (capped at 32 on big Macs; 20 on a 10-core iPad, 12 on a 6-core iPhone)
+let MAX_GEN_INFLIGHT = max(8, min(32, ProcessInfo.processInfo.activeProcessorCount * 2))
 let MAX_MESH_INFLIGHT = 26
 let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 
@@ -237,6 +239,11 @@ public final class GameCore {
     /// sections whose neighborhood isn't ready — parked so the per-frame dirty
     /// scan doesn't rescan the streaming frontier forever; retried once per second
     private var stalledSections: [Dim: Set<SectionPos>] = [:]
+    /// chunks loaded (for a LAN guest) beyond our own sight: not meshed, or
+    /// their meshes freed, until we come within range again
+    private var unmeshedChunks: [Dim: Set<Int64>] = [:]
+    /// the chunk we stood in at the last mesh-range sweep
+    private var meshCenter: (dim: Dim, cx: Int, cz: Int)?
     private var meshJobs: [DimSection: MeshJobState] = [:]
     public private(set) var meshedThisSecond = 0
     public var lastChunkUpdates = 0
@@ -253,6 +260,11 @@ public final class GameCore {
     private var rightDown = false
     private var useCooldown = 0
     private var breakCooldown = 0
+    /// creative dig time when settings.creativeBreakDelay is unset: instant
+    /// with a mouse, a visible erode on touch screens (the shell sets it)
+    public var creativeBreakDelayDefault = 0.0
+    /// seconds a creative-mode block takes to break (0 = instant)
+    public var creativeBreakDelay: Double { settings.creativeBreakDelay ?? creativeBreakDelayDefault }
 
     // infinity wipe (Systems/InfinityWipe.swift)
     /// every wipe fired in this world, saved with it
@@ -269,6 +281,9 @@ public final class GameCore {
     public var targetedBlock: (x: Int, y: Int, z: Int, cell: Int)?
     public var perspective = 0          // 0 first, 1 back, 2 front
     private var sprintHeld = false
+    /// analog movement from a stick or touch pad (forward +1, right +1, each
+    /// -1…1), added to the keyboard intent; nil = keyboard only
+    public var analogMove: (forward: Double, right: Double)? = nil
     private var lastJumpPress = 0.0
     private var lastForwardPress = 0.0
 
@@ -378,6 +393,51 @@ public final class GameCore {
         saveKeybinds(keybinds)
     }
 
+    /// the top of a column, past air and plants, is solid ground (not water,
+    /// lava or a waterlogged block)
+    private func isDryColumn(_ w: World, _ x: Int, _ z: Int) -> Bool {
+        var y = w.info.minY + w.info.height - 1
+        while y > w.info.minY {
+            let c = UInt16(truncatingIfNeeded: w.getBlock(x, y, z))
+            if isWaterlogged(c) || isLavaCell(c) { return false }
+            let id = Int(c >> 4)
+            if id != 0 && blockDefs[id].solid { return true }
+            y -= 1
+        }
+        return false
+    }
+
+    /// The world spawn was picked from a terrain estimate, which can put it
+    /// in a lake or ocean the real terrain has there — and surfaceY looks
+    /// through water, so players landed on the sea floor. Move it to the
+    /// nearest dry land (rings every 4 blocks out to 64) and keep it.
+    func settleSpawn(_ w: World) {
+        guard !w.isRemote, var rec = worldRec else { return }
+        let sx = Int(w.spawnX.rounded(.down)), sz = Int(w.spawnZ.rounded(.down))
+        if isDryColumn(w, sx, sz) { return }
+        for r in stride(from: 4, through: 64, by: 4) {
+            var ring: [(Int, Int)] = []
+            for d in stride(from: -r, through: r, by: 4) {
+                ring += [(d, -r), (d, r)]
+                if abs(d) != r { ring += [(-r, d), (r, d)] }
+            }
+            for (dx, dz) in ring {
+                let x = sx + dx, z = sz + dz
+                ensureChunksLoaded(w, floorDiv(x, 16), floorDiv(z, 16), 0)
+                guard isDryColumn(w, x, z) else { continue }
+                let y = w.surfaceY(x, z)   // the first air, as createWorld sets it
+                for ww in worlds.values {
+                    ww.spawnX = Double(x); ww.spawnY = Double(y); ww.spawnZ = Double(z)
+                }
+                rec.spawnX = x; rec.spawnY = y; rec.spawnZ = z
+                worldRec = rec
+                db.putWorld(rec)
+                ensureChunksLoaded(w, floorDiv(x, 16), floorDiv(z, 16), 1)
+                return
+            }
+        }
+    }
+
     public func respawnPlayer() {
         if traveling { return }
         traveling = true
@@ -409,6 +469,7 @@ public final class GameCore {
             destDim = .overworld
             let w = worlds[.overworld]!
             ensureChunksLoaded(w, floorDiv(Int(w.spawnX), 16), floorDiv(Int(w.spawnZ), 16), 1)
+            settleSpawn(w)
             dest = (w.spawnX + 0.5, Double(w.surfaceY(Int(w.spawnX), Int(w.spawnZ))), w.spawnZ + 0.5)
         }
         if isGuest {
@@ -444,6 +505,8 @@ public final class GameCore {
         worlds.removeAll()
         for d in dirtySections.keys { dirtySections[d]!.removeAll() }
         stalledSections.removeAll()
+        unmeshedChunks.removeAll()
+        meshCenter = nil
         for d in lightQueue.keys { lightQueue[d]!.removeAll() }
         meshJobs.removeAll()
         genInFlight.removeAll()
@@ -517,6 +580,7 @@ public final class GameCore {
     // ===========================================================================
     private func enterWorld(_ rec: WorldRecord, _ playerData: [String: Any]?, _ adv: [String]?) {
         worldRec = rec
+        netHostView = nil
         wipes = rec.wipes ?? []
         wipeFronts = []
         wipeArmedAt = [:]
@@ -568,6 +632,8 @@ public final class GameCore {
         let pcx = floorDiv(ifloor(player.x), 16), pcz = floorDiv(ifloor(player.z), 16)
         ensureChunksLoaded(w, pcx, pcz, 1)
         if playerData == nil {
+            if dim == .overworld { settleSpawn(w) }
+            let rec = worldRec ?? rec
             let sy = w.surfaceY(rec.spawnX, rec.spawnZ)
             player.setPos(Double(rec.spawnX) + 0.5, Double(sy), Double(rec.spawnZ) + 0.5)
         }
@@ -665,6 +731,9 @@ public final class GameCore {
         }
     }
 
+    /// block until queued chunk writes have landed (tests, diagnostics)
+    public func waitForSaves() { saveQueue.sync {} }
+
     /// runs ON the save queue; on failure re-marks the chunks dirty (on main)
     /// so the next autosave retries instead of silently losing the edits
     private func writeChunkBatch(_ records: [ChunkRecord]) {
@@ -707,6 +776,7 @@ public final class GameCore {
             ents.append(ent.save())
         }
         let key = db.chunkKey(worldId, d.rawValue, c.cx, c.cz)
+        c.savedEntities = !ents.isEmpty
         if !c.modified && !savedFullKeys.contains(key) {
             // entity-only record (~KBs): the blocks regenerate from seed
             return ChunkRecord(key: key, worldId: worldId, dim: d.rawValue, cx: c.cx, cz: c.cz, entities: ents)
@@ -829,7 +899,9 @@ public final class GameCore {
             for be in savedBEs {
                 c.setBlockEntity(posMod(be.x, 16), be.y, posMod(be.z, 16), be)
             }
-            c.modified = true // remains a fully-saved chunk
+            // unchanged since it was read: savedFullKeys keeps any rewrite
+            // full (marking it modified re-saved every revisited chunk)
+            c.modified = false
         } else if let beSpecs {
             for spec in beSpecs { resolveBESpec(w, c, spec) }
             c.modified = false
@@ -837,6 +909,7 @@ public final class GameCore {
         w.adoptChunkBlockEntities(c)
         // entities: any saved record (full or entity-only) overrides worldgen spawns
         if let saved {
+            c.savedEntities = !saved.entities.isEmpty
             for ed in saved.entities {
                 if let e = loadEntity(w, ed) {
                     w.addEntity(e)
@@ -1008,9 +1081,15 @@ public final class GameCore {
                     if !captured.contains(CaptureSink.pack(x, y, z)) { put(wx, y + dy, wz, 0) }
                     y += 1
                 }
-                while y + dy < w.info.minY + w.info.height, w.getBlockId(wx, y + dy, wz) != 0,
-                      isTreeOrPlant(w.getBlockId(wx, y + dy, wz)) {
-                    put(wx, y + dy, wz, 0)
+                // trees above that, across air gaps (a tall trunk's canopy
+                // was left floating over the site), up to the first other block
+                let treeTop = min(w.info.minY + w.info.height - 1 - dy, y + 32)
+                while y <= treeTop {
+                    let id = w.getBlockId(wx, y + dy, wz)
+                    if id != 0 {
+                        if !isTreeOrPlant(id) { break }
+                        put(wx, y + dy, wz, 0)
+                    }
                     y += 1
                 }
                 // foundation under columns that rest on the ground
@@ -1313,7 +1392,9 @@ public final class GameCore {
     }
 
     private func unloadChunk(_ w: World, _ c: Chunk) {
-        // persist if edited, if live entities stand in it, or if a stale record exists
+        // persist if edited, if live entities stand in it, or if its record may
+        // be stale: entities have left it, or block entities (chest contents,
+        // furnaces, signs) changed in place, which doesn't mark the chunk
         var hasEntities = false
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
@@ -1324,7 +1405,8 @@ public final class GameCore {
         }
         if let rec = worldRec {
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
-            if c.modified || hasEntities || savedChunkKeys.contains(dbKey) {
+            let stale = c.savedEntities || !c.blockEntities.isEmpty
+            if c.modified || hasEntities || (stale && savedChunkKeys.contains(dbKey)) {
                 let record = chunkRecord(rec.id, w.dim, w, c)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record
@@ -1341,6 +1423,7 @@ public final class GameCore {
         w.removeChunk(c.cx, c.cz)
         if w.dim == dim { host?.removeChunkMeshes(c.cx, c.cz, c.sections) }
         lightQueue[w.dim]!.remove(chunkKey(c.cx, c.cz))
+        unmeshedChunks[w.dim]?.remove(chunkKey(c.cx, c.cz))
         for s in 0..<c.sections {
             dirtySections[w.dim]!.remove(SectionPos(cx: c.cx, sy: s, cz: c.cz))
         }
@@ -1350,15 +1433,25 @@ public final class GameCore {
     private func streamMeshes() {
         guard inWorld else { return }
         let w = world
+        let pcx = floorDiv(ifloor(player.x), 16)
+        let pcz = floorDiv(ifloor(player.z), 16)
+        // the renderer draws out to about renderDistance + 1 chunks; a host
+        // also holds every LAN guest's surroundings, which it never sees
+        let meshRange = settings.renderDistance + 2
+        sweepMeshRange(w, pcx, pcz, meshRange)
         var dirty = dirtySections[dim]!
         if dirty.isEmpty { return }
         // skip the scan entirely while the queue is already full
         if meshJobs.count >= MAX_MESH_INFLIGHT { return }
-        let pcx = floorDiv(ifloor(player.x), 16)
-        let pcz = floorDiv(ifloor(player.z), 16)
         // sort a bounded batch by distance
         var candidates: [(pos: SectionPos, d: Int)] = []
         for pos in dirty {
+            if max(abs(pos.cx - pcx), abs(pos.cz - pcz)) > meshRange {
+                // loaded for a guest, out of our sight: meshed if we come closer
+                unmeshedChunks[dim, default: []].insert(chunkKey(pos.cx, pos.cz))
+                dirty.remove(pos)
+                continue
+            }
             guard let c = w.getChunk(pos.cx, pos.cz), c.status == .lit, w.neighborsReady(pos.cx, pos.cz) else { continue }
             // neighbors must be lit too or the seam light is garbage
             var ok = true
@@ -1412,6 +1505,29 @@ public final class GameCore {
         }
     }
 
+    /// when we cross into another chunk: re-mesh parked chunks now in range,
+    /// and free the meshes of chunks well out of it (two rings of slack, so
+    /// walking back and forth over a border doesn't churn)
+    private func sweepMeshRange(_ w: World, _ pcx: Int, _ pcz: Int, _ range: Int) {
+        if let m = meshCenter, m.dim == dim, m.cx == pcx, m.cz == pcz { return }
+        meshCenter = (dim, pcx, pcz)
+        var parked = unmeshedChunks[dim] ?? []
+        for key in parked {
+            let (cx, cz) = chunkCoords(key)
+            guard max(abs(cx - pcx), abs(cz - pcz)) <= range else { continue }
+            parked.remove(key)
+            if let c = w.getChunk(cx, cz), c.status == .lit {
+                for s in 0..<c.sections { dirtySections[dim]!.insert(SectionPos(cx: cx, sy: s, cz: cz)) }
+            }
+        }
+        for c in w.chunks.values where max(abs(c.cx - pcx), abs(c.cz - pcz)) > range + 2 {
+            if parked.insert(chunkKey(c.cx, c.cz)).inserted {
+                host?.removeChunkMeshes(c.cx, c.cz, c.sections)
+            }
+        }
+        unmeshedChunks[dim] = parked
+    }
+
     private func dispatchMesh(_ w: World, _ pos: SectionPos, _ jobKey: DimSection) {
         let snapOpt = LoadProf.shared.time("snapshot") { buildSnapshot(w, pos.cx, pos.sy, pos.cz) }
         guard var snap = snapOpt else {
@@ -1432,7 +1548,8 @@ public final class GameCore {
                 guard let self else { return }
                 self.meshJobs.removeValue(forKey: jobKey)
                 guard self.inWorld, self.worlds[d] === w else { return }
-                if d == self.dim {
+                // (a chunk parked out of range while this job ran stays unmeshed)
+                if d == self.dim, self.unmeshedChunks[d]?.contains(chunkKey(pos.cx, pos.cz)) != true {
                     self.host?.uploadMesh(pos.cx, pos.sy, pos.cz, minY, mesh)
                     self.meshedThisSecond += 1
                 }
@@ -1492,6 +1609,8 @@ public final class GameCore {
         host?.clearAllSections()
         meshJobs.removeAll()
         stalledSections.removeAll()
+        unmeshedChunks.removeAll()
+        meshCenter = nil
         for c in world.chunks.values where c.status == .lit {
             for s in 0..<c.sections {
                 dirtySections[dim]!.insert(SectionPos(cx: c.cx, sy: s, cz: c.cz))
@@ -1678,6 +1797,10 @@ public final class GameCore {
             // applyInput's strafe basis points +strafe to the LEFT of the view
             // direction (golden baselines shipped the same quirk) — flip here so D=right
             p.moveStrafe = (k("right") ? -1 : 0) + (k("left") ? 1 : 0)
+            if let a = analogMove {
+                p.moveForward = clampD(p.moveForward + a.forward, -1, 1)
+                p.moveStrafe = clampD(p.moveStrafe - a.right, -1, 1)
+            }
             // vanilla: eating / drawing a bow slows movement to 20%
             if p.usingItem {
                 p.moveForward *= 0.2
@@ -2077,10 +2200,36 @@ public final class GameCore {
             return
         }
         if p.gameMode == GameMode.creative {
-            if breakCooldown <= 0 {
+            let delayTicks = Int((creativeBreakDelay * 1000 / TICK_MS).rounded())
+            if delayTicks <= 0 {
+                if breakCooldown <= 0 {
+                    netClient?.sendBreak(hit.x, hit.y, hit.z)
+                    finishBreaking(interactCtx(), hit.x, hit.y, hit.z)
+                    breakCooldown = 5
+                }
+                return
+            }
+            // a short erode with the crack overlay, so the player sees what
+            // they're digging and can look away (resets) or let go to keep it
+            if breakCooldown > 0 {
+                p.breakingProgress = -1
+                return
+            }
+            if p.breakingProgress < 0 || p.breakingX != hit.x || p.breakingY != hit.y || p.breakingZ != hit.z {
+                p.breakingX = hit.x; p.breakingY = hit.y; p.breakingZ = hit.z
+                p.breakingProgress = 0
+            }
+            p.breakingProgress += 1 / Double(delayTicks)
+            p.attackAnim = 1
+            if w.time % 4 == 0 {
+                host?.playSound("block.\(def.sound).hit", Double(hit.x) + 0.5, Double(hit.y) + 0.5, Double(hit.z) + 0.5, 0.25, 0.6)
+                w.hooks.addParticles("block", hit.px, hit.py, hit.pz, 1, 0.12, hit.cell)
+            }
+            if p.breakingProgress >= 1 - 1e-9 {
                 netClient?.sendBreak(hit.x, hit.y, hit.z)
                 finishBreaking(interactCtx(), hit.x, hit.y, hit.z)
-                breakCooldown = 5
+                p.breakingProgress = -1
+                breakCooldown = 1
             }
             return
         }
@@ -2392,6 +2541,7 @@ public final class GameCore {
         guard inWorld, !(host?.hasScreen() ?? false) else { return }
         if button == 0 {
             leftDown = true
+            player?.breakingProgress = -1   // a fresh press starts a fresh crack
             doAttack()
         } else if button == 1 {
             pickBlock()
@@ -2416,6 +2566,21 @@ public final class GameCore {
         p.yaw += dx * sens
         p.pitch += dy * sens * (settings.invertY ? -1 : 1)
         p.pitch = clampD(p.pitch, -Double.pi / 2 + 0.001, Double.pi / 2 - 0.001)
+    }
+
+    /// touch controls: does a tap at the crosshair hit something to attack?
+    public var crosshairOnEntity: Bool {
+        guard inWorld, player != nil else { return false }
+        return crosshairEntity(ATTACK_REACH) != nil
+    }
+
+    /// touch controls: the held item does something while use is HELD (eat,
+    /// drink, draw a bow, raise a shield), so a long press means use, not break
+    public var heldItemUsesOnHold: Bool {
+        guard let p = player, let s = p.mainHand else { return false }
+        let def = itemDefs[s.id]
+        if def.food != nil { return true }
+        return ["potion", "bow", "trident", "crossbow", "shield", "spyglass", "goat_horn", "mining_laser"].contains(def.name)
     }
 
     public func wheelHotbar(_ dir: Int) {
@@ -2489,6 +2654,7 @@ public final class GameCore {
     /// window blur / screen opened — release all held input
     public func clearInput() {
         keys.removeAll()
+        analogMove = nil
         leftDown = false
         rightDown = false
     }
@@ -2708,6 +2874,11 @@ public final class GameCore {
     }
 
     public var lanPort: UInt16? { netHost?.port }
+    /// a LAN host's render distance: it loads no farther around us than that
+    public internal(set) var netHostView: Int?
+    /// how far to draw: our render distance, or a LAN host's if that's shorter
+    /// (beyond it no chunks arrive, so the fog belongs there)
+    public var drawDistance: Int { min(settings.renderDistance, netHostView ?? settings.renderDistance) }
     public var lanGuests: [String] { netHost?.guestNames ?? [] }
     /// everyone in the LAN game, host first
     public var lanPlayers: [String] {
@@ -2733,6 +2904,7 @@ public final class GameCore {
         if inWorld { exitToTitle() }
         netClient?.disconnect()
         netEndMessage = nil
+        netHostView = nil
         let nc = NetClient(game: self, conn: conn, name: playerName)
         netClient = nc
         return nc
@@ -2840,6 +3012,8 @@ public final class GameCore {
             worlds.removeAll()
             for d in dirtySections.keys { dirtySections[d]!.removeAll() }
             stalledSections.removeAll()
+        unmeshedChunks.removeAll()
+        meshCenter = nil
             for d in lightQueue.keys { lightQueue[d]!.removeAll() }
             meshJobs.removeAll()
             host?.clearAllSections()
