@@ -72,7 +72,7 @@ final class TitleScreen: Screen {
             }))
         }
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         let cv = ui.cv
         let now = CACurrentMediaTime() * 1000
         if !ui.titlePhoto {
@@ -123,7 +123,6 @@ final class TitleScreen: Screen {
 final class WorldSelectScreen: Screen {
     var worlds: [WorldRecord] = []
     var selected = -1
-    var loaded = false
     var playBtn: Button!
     var deleteBtn: Button!
     /// "Host LAN Game": the chosen world opens to LAN as soon as it loads
@@ -135,6 +134,13 @@ final class WorldSelectScreen: Screen {
         super.init()
         touchScrolls = true
     }
+    /// built once: a DateFormatter per frame showed up in profiles
+    private static let lastPlayedFormat: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f
+    }()
 
     private func play(_ ui: UIManager, _ game: GameCore, _ i: Int) {
         if hosting { savePlayerName(game, nameField) }
@@ -145,7 +151,6 @@ final class WorldSelectScreen: Screen {
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         worlds = game.listWorlds().sorted { $0.lastPlayed > $1.lastPlayed }
-        loaded = true
         let cx = (ui.width / 2).rounded(.down)
         let by = ui.height - 50
         if hosting {
@@ -185,7 +190,7 @@ final class WorldSelectScreen: Screen {
         max(0, Double(worlds.count) * 30 - (listBottom(ui) - listTop))
     }
 
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDirtBg()
         ui.cv.drawTextCentered(hosting ? "Host a LAN Game - pick a world" : "Select World", ui.width / 2, 10, 1)
         if hosting {
@@ -195,14 +200,10 @@ final class WorldSelectScreen: Screen {
         playBtn.enabled = selected >= 0
         deleteBtn.enabled = selected >= 0
         let listX = (ui.width / 2).rounded(.down) - 130
-        if !loaded {
-            ui.cv.drawTextCentered("Loading...", ui.width / 2, listTop + 30, 1, "#a0a0a0")
-        } else if worlds.isEmpty {
+        if worlds.isEmpty {
             ui.cv.drawTextCentered("No worlds yet - create one!", ui.width / 2, listTop + 30, 1, "#a0a0a0")
         }
-        let fmt = DateFormatter()
-        fmt.dateStyle = .short
-        fmt.timeStyle = .short
+        let fmt = Self.lastPlayedFormat
         scroll = min(max(0, scroll), maxScroll(ui))
         let top = listTop, bottom = listBottom(ui)
         for (i, w) in worlds.enumerated() {
@@ -303,7 +304,7 @@ final class WorldCreateScreen: Screen {
             ui.closeTop(game)
         }))
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDirtBg()
         ui.cv.drawTextCentered(hosting ? "Create a World to Host" : "Create New World", ui.width / 2, 10, 1)
         ui.cv.drawText("World Name", nameField.x, nameField.y - 10, 1, "#a0a0a0")
@@ -353,7 +354,7 @@ final class LoadingScreen: Screen {
         }
         return (n, Self.target, n >= Self.target)
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         let (done, target, ready) = progress(game)
         let elapsed = CACurrentMediaTime() - openedAt
         if (ready && elapsed > 0.4) || elapsed > (game.isGuest ? 30 : 8) {
@@ -422,7 +423,7 @@ final class PauseScreen: Screen {
             game.exitToTitle()
         }))
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.5)
         let titleY = (ui.height / 2).rounded(.down) - (game.isNetworked ? 84 : 70)
         ui.cv.drawTextCentered("Game Menu", ui.width / 2, titleY, 1)
@@ -693,7 +694,7 @@ final class SettingsScreen: Screen {
         }
         return super.onKey(ui, game, key)
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         if game.hasWorld() {
             ui.drawDarkBg(0.65)
         } else {
@@ -738,7 +739,7 @@ final class AdvancementsScreen: Screen {
             ui.closeTop(game)
         }))
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.7)
         let cv = ui.cv
         cv.drawTextCentered("Advancements (\(game.advancements.earnedOrder.count)/\(ADVANCEMENTS.count))", ui.width / 2, 6, 1)
@@ -835,7 +836,7 @@ final class CreditsScreen: Screen {
         "§funmodified, by the Faithful Team.",
         "§efaithfulpack.net",
     ]
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.cv.setFill("#000000")
         ui.cv.fillRect(0, 0, ui.width, ui.height)
         // time-based: a per-frame increment scrolled 2-10× too fast uncapped
@@ -904,7 +905,7 @@ final class MultiplayerScreen: Screen {
     private var listTop: Double { 76 }
     private func listBottom(_ ui: UIManager) -> Double { ui.height - 100 }
 
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDirtBg()
         let cv = ui.cv
         cv.drawTextCentered("Join a LAN Game", ui.width / 2, 10, 1)
@@ -966,7 +967,7 @@ final class JoinScreen: Screen {
             ui.closeTop(game)
         }))
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         if game.hasWorld() {
             ui.closeAll(game)
             ui.open(LoadingScreen(), game)

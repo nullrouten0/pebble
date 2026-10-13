@@ -217,14 +217,10 @@ public func endPillars(_ seed: UInt32) -> [PillarSpec] {
     return out
 }
 
-/// 20 gateway positions on a r=96 ring (activated after dragon kills)
-public func gatewayPositions() -> [(Int, Int)] {
-    var out: [(Int, Int)] = []
-    for i in 0..<20 {
-        let ang = (Double(i) / 20) * Double.pi * 2
-        out.append((Int(detRound(detCos(ang) * 96)), Int(detRound(detSin(ang) * 96))))
-    }
-    return out
+/// gateway `i` of the 20 on a r=96 ring (one opens per dragon kill)
+public func gatewayPosition(_ i: Int) -> (x: Int, z: Int) {
+    let ang = (Double(i) / 20) * Double.pi * 2
+    return (Int(detRound(detCos(ang) * 96)), Int(detRound(detSin(ang) * 96)))
 }
 
 public final class EndGen {

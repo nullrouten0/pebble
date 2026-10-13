@@ -179,13 +179,13 @@ extension ByteReader {
     }
 }
 
-/// chunk payload: blocks + biomes + block entities, compressed together
-func encodeChunkPayload(_ c: Chunk) -> Data {
-    var w = ByteWriter(capacity: c.blocks.count * 2 + c.biomes.count + 64)
-    c.blocks.withUnsafeBytes { w.data.append(contentsOf: $0) }  // UInt16, host byte order (LE on every Mac)
-    w.data.append(contentsOf: c.biomes)
-    let bes = Array(c.blockEntities.values)
-    w.blob((try? JSONEncoder().encode(bes)) ?? Data("[]".utf8))
+/// chunk payload: blocks + biomes + block-entity JSON, compressed together.
+/// Takes snapshots, not the chunk, so the host can build it on its send queue.
+func encodeChunkPayload(_ blocks: [UInt16], _ biomes: [UInt8], _ besJSON: Data) -> Data {
+    var w = ByteWriter(capacity: blocks.count * 2 + biomes.count + besJSON.count + 8)
+    blocks.withUnsafeBytes { w.data.append(contentsOf: $0) }  // UInt16, host byte order (LE on every Mac)
+    w.data.append(contentsOf: biomes)
+    w.blob(besJSON)
     return netCompress(w.data)
 }
 

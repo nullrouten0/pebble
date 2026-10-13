@@ -101,7 +101,6 @@ open class Entity: EntityRef {
         return AABB(x - hw, y, z - hw, x + hw, y + height, z + hw)
     }
     public func eyeY() -> Double { y + height * 0.85 }
-    public func centerY() -> Double { y + height / 2 }
 
     public func setPos(_ x: Double, _ y: Double, _ z: Double) {
         self.x = x; self.y = y; self.z = z
@@ -313,7 +312,6 @@ open class Entity: EntityRef {
         let dx = x - e.x, dy = y - e.y, dz = z - e.z
         return dx * dx + dy * dy + dz * dz
     }
-    public func distanceTo(_ e: Entity) -> Double { distanceToSq(e).squareRoot() }
 
     public func lookAt(_ tx: Double, _ ty: Double, _ tz: Double, _ maxYawStep: Double = 0.5, _ maxPitchStep: Double = 0.5) {
         let dx = tx - x, dy = ty - eyeY(), dz = tz - z

@@ -49,19 +49,8 @@ public func hash3(_ seed: UInt32, _ x: Int, _ y: Int, _ z: Int, _ salt: UInt32 =
     return h
 }
 
-@inline(__always)
-public func hashFloat2(_ seed: UInt32, _ x: Int, _ z: Int, _ salt: UInt32 = 0) -> Double {
-    Double(hash2(seed, x, z, salt)) / 4294967296.0
-}
-
-@inline(__always)
-public func hashFloat3(_ seed: UInt32, _ x: Int, _ y: Int, _ z: Int, _ salt: UInt32 = 0) -> Double {
-    Double(hash3(seed, x, y, z, salt)) / 4294967296.0
-}
-
 /// mutable PRNG (sfc32) — identical sequence for any seed, on any machine
 public struct RandomX {
-    public var debugStateA: UInt32 { a }
     private var a: UInt32
     private var b: UInt32
     private var c: UInt32
@@ -88,8 +77,6 @@ public struct RandomX {
 
     @inline(__always)
     public mutating func nextFloat() -> Double { Double(next()) / 4294967296.0 }
-    @inline(__always)
-    public mutating func nextDouble() -> Double { nextFloat() }
     /// floor(float * bound) — must match deterministic for permutation shuffles to agree
     @inline(__always)
     public mutating func nextInt(_ bound: Int) -> Int { Int((nextFloat() * Double(bound)).rounded(.down)) }
@@ -101,13 +88,6 @@ public struct RandomX {
     public mutating func nextBoolean() -> Bool { (next() & 1) == 0 }
     @inline(__always)
     public mutating func chance(_ p: Double) -> Bool { nextFloat() < p }
-
-    public mutating func nextGaussian() -> Double {
-        var u = 0.0, v = 0.0
-        while u == 0 { u = nextFloat() }
-        while v == 0 { v = nextFloat() }
-        return (-2.0 * Foundation.log(u)).squareRoot() * detCos(2.0 * .pi * v)
-    }
 
     /// triangular distribution used by vanilla ore placement
     public mutating func nextTriangular(_ mode: Double, _ deviation: Double) -> Double {

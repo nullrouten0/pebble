@@ -114,7 +114,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int) -> G
         let gen = overworldGen(seed)
         let res = gen.fillTerrain(cx, cz, &blocks, &biomes)
         gen.carve(cx, cz, &blocks)
-        gen.applySurface(cx, cz, &blocks, res.heights, res.surfaceBiomes)
+        gen.applySurface(cx, cz, &blocks, res.surfaceBiomes)
         gen.placeOres(cx, cz, &blocks, res.surfaceBiomes)
 
         // refined estimate (incl. 3D detail) — the spline-only one diverged ±34
@@ -220,8 +220,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int) -> G
 
     // End
     let gen = endGen(seed)
-    let surfaceBiomes = gen.fillTerrain(cx, cz, &blocks, &biomes)
-    _ = surfaceBiomes
+    _ = gen.fillTerrain(cx, cz, &blocks, &biomes)   // the End has no surface pass
     let sink = ArraySink(cx: cx, cz: cz, blocks: blocks, minY: 0, maxY: END_H, heightFallback: { _, _ in 60 })
     var fixtureBlocks = sink.blocks
     gen.placeFixtures(cx, cz, &fixtureBlocks) { mob, x, y, z, data in

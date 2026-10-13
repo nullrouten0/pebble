@@ -165,7 +165,6 @@ open class Villager: Mob {
     public var offers: [TradeOffer] = []
     public var restockTimer = 0
     public var workstation: (Int, Int, Int)? = nil
-    public var homeBed: (Int, Int, Int)? = nil
     public override init(world: World) {
         super.init(world: world)
         category = "creature"

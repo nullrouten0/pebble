@@ -346,7 +346,7 @@ public final class GameCore {
         }
         onPlacedHandlers[Int(B.carved_pumpkin)] = { w, x, y, z, _ in tryBuildGolem(w, x, y, z) }
         onPlacedHandlers[Int(B.wither_skeleton_skull)] = { w, x, y, z, _ in tryBuildWither(w, x, y, z) }
-        bindCrystalDestroyed { [weak self] crystal, attacker in
+        bindCrystalDestroyed { crystal, _ in
             let dragon = crystal.world.entities.first {
                 ($0 as? Entity)?.type == "ender_dragon" && !$0.dead
             } as? EnderDragon
@@ -354,13 +354,11 @@ public final class GameCore {
                 _ = dragon.hurt(10, "explosion")
                 dragon.pathAngle += 1.5
             }
-            if attacker is Player { self?.advance("free_the_end_crystal") }
         }
         // screen-opening hooks fired from entity interactions
         bindOpenTrading { [weak self] player, villager in
             guard let self, player === self.player else { return }
-            self.host?.openTrading(villager)
-            self.advanceLater("trade_villager")
+            self.host?.openTrading(villager)   // "What a Deal!" waits for an actual trade
         }
         openContainerScreenFn = { [weak self] player, kind, vehicle in
             guard let self, player === self.player else { return }
@@ -383,10 +381,6 @@ public final class GameCore {
         if advancements.grant(id) {
             playUISound("ui.toast.challenge_complete")
         }
-    }
-    /// queue an advancement next runloop turn (screens may open before tracker updates)
-    private func advanceLater(_ id: String) {
-        DispatchQueue.main.async { [weak self] in self?.advance(id) }
     }
 
     public func applySettings() {
@@ -2424,7 +2418,6 @@ public final class GameCore {
             nc.sendAttack(target)
             if target is LivingEntity {
                 playerAttack(p, target)
-                advance("kill_mob_attempt")
             } else {
                 p.resetAttackCooldown()
             }
@@ -2433,7 +2426,6 @@ public final class GameCore {
         if let target {
             if target is LivingEntity || target.type == "end_crystal" {
                 playerAttack(p, target)
-                advance("kill_mob_attempt")
             } else if target.type == "boat" || target.type == "minecart" {
                 _ = target.hurt(2, "player", p)
             }

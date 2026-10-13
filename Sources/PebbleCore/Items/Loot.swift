@@ -117,7 +117,6 @@ public func rollLoot(_ name: String, _ rng: inout RandomX, luck: Double = 0) -> 
     return out
 }
 
-public func hasLootTable(_ name: String) -> Bool { LOOT_TABLES[name] != nil }
 public func allLootTables() -> [String] { lootTableOrder }
 
 // MARK: - tables

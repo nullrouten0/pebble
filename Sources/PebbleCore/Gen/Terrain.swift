@@ -299,10 +299,8 @@ public final class OverworldGen {
                             // lava aquifers are lava throughout — the old `y < 0`
                             // condition capped them with a layer of water
                             blocks[idx] = aq.lava ? LAVA : WATER
-                        } else if y <= GEN_MIN_Y + 10 && y < -54 {
-                            blocks[idx] = y <= -56 ? LAVA : AIR
                         } else {
-                            blocks[idx] = AIR
+                            blocks[idx] = y <= -56 ? LAVA : AIR   // lava sea at the bottom
                         }
                     }
                 }
@@ -376,8 +374,8 @@ public final class OverworldGen {
                             let r = radius * (1 + detSin(Double(i) / Double(length) * Double.pi) * 0.8)
                             if rng.nextFloat() < 0.02 { radius = 1.2 + rng.nextFloat() * 2.2 }
                             carveSphere(cx, cz, &blocks, x, y, z, r)
-                            // occasional branching
-                            if i > 10 && rng.nextFloat() < 0.02 && tunnels < 4 {
+                            // occasional sharp turn
+                            if i > 10 && rng.nextFloat() < 0.02 {
                                 yaw += (rng.nextBoolean() ? 1 : -1) * (0.8 + rng.nextFloat())
                             }
                         }
@@ -459,9 +457,8 @@ public final class OverworldGen {
     }
 
     /// surface pass: biome top/under blocks, deepslate, bedrock, snow/ice
-    public func applySurface(_ cx: Int, _ cz: Int, _ blocks: inout [UInt16], _ heights: [Int16], _ surfaceBiomes: [UInt8]) {
+    public func applySurface(_ cx: Int, _ cz: Int, _ blocks: inout [UInt16], _ surfaceBiomes: [UInt8]) {
         let baseX = cx * 16, baseZ = cz * 16
-        _ = heights
         let TERRA_BANDS: [UInt16] = [
             B.terracotta, B.orange_terracotta, B.terracotta, B.yellow_terracotta,
             B.white_terracotta, B.light_gray_terracotta, B.orange_terracotta, B.red_terracotta,
@@ -488,7 +485,7 @@ public final class OverworldGen {
                 while y >= GEN_MIN_Y {
                     let idx = ((y - GEN_MIN_Y) * 16 + z) * 16 + x
                     let c = blocks[idx]
-                    if c == AIR || c == WATER || c == LAVA { depth = -1; y -= 1; continue }
+                    // only stone takes a surface; air, fluids or anything else resets the depth
                     if c != STONE { depth = -1; y -= 1; continue }
                     depth += 1
                     // deepslate transition

@@ -403,7 +403,7 @@ if let g = loadJSON("terrain-goldens.json") {
         let hBiomes = fnvU8(biomes)
         gen.carve(cx, cz, &blocks)
         let hCarve = fnvU16(blocks)
-        gen.applySurface(cx, cz, &blocks, res.heights, res.surfaceBiomes)
+        gen.applySurface(cx, cz, &blocks, res.surfaceBiomes)
         let hSurface = fnvU16(blocks)
         gen.placeOres(cx, cz, &blocks, res.surfaceBiomes)
         let hOres = fnvU16(blocks)

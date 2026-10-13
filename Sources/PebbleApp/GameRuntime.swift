@@ -574,12 +574,12 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         applyTouchZoom()   // a screen may have opened during the tick
         ui.beginFrame()
         let screen = ui.current()
-        if game.hasWorld() && (screen == nil || screen!.showHUD || !screen!.pausesGame) {
-            hud.draw(ui, game, 0)
+        if game.hasWorld() && !(screen?.pausesGame ?? false) {
+            hud.draw(ui, game)
             if !(screen is ChatScreen) { drawChatOverlay(ui) }
             if screen == nil { touch.drawWorld(ui) }
         }
-        screen?.draw(ui, game, 0)
+        screen?.draw(ui, game)
         touch.drawScreen(ui)
         ui.endFrame()
         controller.drawCursor(ui)

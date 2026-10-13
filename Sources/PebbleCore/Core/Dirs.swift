@@ -15,8 +15,6 @@ public let DIR_X = [0, 0, 0, 0, -1, 1]
 public let DIR_Y = [-1, 1, 0, 0, 0, 0]
 public let DIR_Z = [0, 0, -1, 1, 0, 0]
 public let DIR_OPPOSITE = [1, 0, 3, 2, 5, 4]
-public let HORIZONTALS = [Dir.north, Dir.south, Dir.west, Dir.east]
-public let DIR_NAMES = ["down", "up", "north", "south", "west", "east"]
 
 /// yaw (degrees) → horizontal dir the entity FACES: 0=south,90=west,180=north,270=east
 public func yawToDir(_ yawDeg: Double) -> Int {
@@ -27,4 +25,3 @@ public func yawToDir(_ yawDeg: Double) -> Int {
     return Dir.east
 }
 
-public let DIR_YAW: [Int: Double] = [Dir.south: 0, Dir.west: 90, Dir.north: 180, Dir.east: 270]

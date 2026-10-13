@@ -50,7 +50,6 @@ public final class Player: LivingEntity {
     public var bedPos: (Int, Int, Int)? = nil
     public var spawnPoint: (Int, Int, Int)? = nil
     public var spawnDim = 0
-    public var spawnForced = false
     /// mining state
     public var breakingX = 0, breakingY = 0, breakingZ = 0
     public var breakingProgress = -1.0
@@ -593,7 +592,7 @@ public final class Player: LivingEntity {
     public func damageStack(_ s: ItemStack, _ amount: Int) {
         if gameMode == GameMode.creative { return }
         let def = itemDef(s.id)
-        let maxD = def.tool?.durability ?? def.armor?.durability ?? 0
+        let maxD = def.maxDamage
         if maxD <= 0 { return }
         let unb = enchLevel(s, "unbreaking")
         for _ in 0..<amount {

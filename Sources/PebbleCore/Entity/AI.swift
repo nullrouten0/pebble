@@ -257,10 +257,6 @@ public final class GoalSelector {
         }
         for g in active { g.tick() }
     }
-    public func stopAll() {
-        for g in active { g.stop() }
-        active.removeAll()
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -583,7 +579,7 @@ public final class NearestTargetGoal: Goal {
         var best: LivingEntity? = nil
         var bestD = Double.infinity
         for c in candidates {
-            if c.isPlayer && (c.gameMode == 1 || c.invisibleToMobs) { continue }
+            if c.isPlayer && c.gameMode == GameMode.creative { continue }
             let d = m.distanceToSq(c)
             if d < bestD && (!needSight || m.canSee(c)) { bestD = d; best = c }
         }

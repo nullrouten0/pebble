@@ -68,7 +68,6 @@ open class LivingEntity: Entity {
     public var breathesWaterOnly = false
     /// player-only props read through `(e as any)` in baseline goal filters
     open var gameMode: Int { 0 }
-    open var invisibleToMobs: Bool { false }
     /// player-only inventory hooks called from mob interactions (no-ops here)
     open func consumeHeld(_ n: Int) {}
     open func replaceHeld(_ stack: ItemStack) {}

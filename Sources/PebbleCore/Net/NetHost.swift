@@ -163,13 +163,9 @@ final class RemoteClient: NetPlayerLink {
         let cx = c.cx, cz = c.cz
         let conn = self.conn
         sendQueue.async {
-            var raw = ByteWriter(capacity: blocks.count * 2 + biomes.count + besJSON.count + 8)
-            blocks.withUnsafeBytes { raw.data.append(contentsOf: $0) }
-            raw.data.append(contentsOf: biomes)
-            raw.blob(besJSON)
             var w = ByteWriter(capacity: 32 << 10)
             w.u8(dim); w.i32(cx); w.i32(cz)
-            w.blob(netCompress(raw.data))
+            w.blob(encodeChunkPayload(blocks, biomes, besJSON))
             conn.send(w.frame(.chunk))
         }
     }
@@ -240,7 +236,6 @@ public final class NetHost {
     private var activity: NSObjectProtocol?
 
     public var guestNames: [String] { clients.filter { $0.joined }.map { $0.name } }
-    public var guestCount: Int { clients.filter { $0.joined }.count }
 
     init(game: GameCore) {
         self.game = game
@@ -634,7 +629,6 @@ public final class NetHost {
     }
     var proxies: [Player] { clients.compactMap { $0.joined ? $0.proxy : nil } }
     var liveProxies: [Player] { clients.compactMap { $0.joined && !$0.st.has(GuestState.DEAD) ? $0.proxy : nil } }
-    func isProxy(_ e: EntityRef) -> Bool { (e as? Player)?.netLink != nil }
     /// every guest is in bed (the host sleeping alone doesn't skip the night)
     var allGuestsSleeping: Bool { clients.allSatisfy { !$0.joined || $0.st.sleepTicks > 100 } }
 

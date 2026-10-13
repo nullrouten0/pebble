@@ -43,7 +43,7 @@ class ContainerScreen: Screen {
         return ui.blitSheet(sheet, 0, 0, panelW, panelH, panelX, panelY)
     }
 
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.55)
         textured = drawSheetPanel(ui)
         if !textured { ui.drawPanel(panelX, panelY, panelW, panelH) }
@@ -61,9 +61,7 @@ class ContainerScreen: Screen {
         guard let s = slot.get() else { return }
         let fromContainer = containerSlots.contains { $0 === slot }
         let targets = fromContainer ? playerSlots : containerSlots.filter { !$0.output }
-        if quickMoveInto(s, targets) {
-            if s.count <= 0 { slot.set(nil) }
-        }
+        _ = quickMoveInto(s, targets)
         if s.count <= 0 { slot.set(nil) }
         slot.onChange?()
     }
@@ -120,11 +118,10 @@ final class InventoryScreen: ContainerScreen {
             get: { [weak self] in self?.craftResult },
             set: { _ in },
             output: true,
-            onTake: { [weak self, weak game] _ in
+            onTake: { [weak self] _ in
                 guard let self else { return }
                 _ = consumeCraftingGrid(&self.craftGrid)
                 self.updateResult()
-                game?.advance("craft_any")
             }))
     }
     func updateResult() {
@@ -137,8 +134,8 @@ final class InventoryScreen: ContainerScreen {
         super.initScreen(ui, game)
         tabs.layout(ui, panelX, panelY, panelW, panelH)
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
-        super.draw(ui, game, partial)
+    override func draw(_ ui: UIManager, _ game: GameCore) {
+        super.draw(ui, game)
         if creativeTabs { tabs.draw(ui, selected: CREATIVE_INVENTORY_TAB) }
     }
     override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
@@ -521,8 +518,8 @@ final class EnchantingScreen: ContainerScreen {
     func refresh() {
         options = enchantingOptions(item, bookshelves, seed)
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
-        super.draw(ui, game, partial)
+    override func draw(_ ui: UIManager, _ game: GameCore) {
+        super.draw(ui, game)
         let cv = ui.cv
         let px = panelX, py = panelY
         let lapisCount = lapis?.count ?? 0
@@ -669,8 +666,8 @@ final class AnvilScreen: ContainerScreen {
         if r { refresh() }
         return r
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
-        super.draw(ui, game, partial)
+    override func draw(_ ui: UIManager, _ game: GameCore) {
+        super.draw(ui, game)
         if cost > 0 {
             // anvilCombine caps cost at 39, so vanilla's "Too Expensive!" never applies
             let ok = game.player.gameMode == GameMode.creative || game.player.xpLevel >= cost
@@ -814,8 +811,8 @@ final class StonecutterScreen: ContainerScreen {
     private var gridY: Double { panelY + (textured ? 15 : 14) }
     private var cellW: Double { textured ? 16 : 18 }
 
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
-        super.draw(ui, game, partial)
+    override func draw(_ ui: UIManager, _ game: GameCore) {
+        super.draw(ui, game)
         let cv = ui.cv
         for i in 0..<min(12, options.count) {
             let ox = gridX + Double(i % 4) * cellW, oy = gridY + Double(i / 4) * 18
@@ -941,7 +938,7 @@ final class BeaconScreen: Screen {
             canPlace: { ["iron_ingot", "gold_ingot", "diamond", "emerald", "netherite_ingot"].contains(itemDef($0.id).name) }))
         pendingPrimary = be.primary
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.55)
         ui.drawPanel(panelX, panelY, 200, 120)
         let cv = ui.cv
@@ -1065,7 +1062,7 @@ final class TradingScreen: ContainerScreen {
         game.playUISound("entity.villager.yes")
         game.advance("trade_villager")
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.55)
         ui.drawPanel(panelX, panelY, panelW, panelH)
         let cv = ui.cv
@@ -1160,7 +1157,7 @@ struct CreativeTabs {
             var y = r.y, hgt = Self.h
             if sel && !side { hgt += 2; if i >= 6 { y -= 2 } }
             var x = r.x, w = r.w
-            if sel && side { w += 2; if i < 6 { } else { x -= 2 } }
+            if sel && side { w += 2; if i >= 6 { x -= 2 } }
             cv.setFill(sel ? "#c6c6c6" : "#8b8b8b")
             cv.fillRect(x, y, w, hgt)
             cv.setStroke(sel ? "#ffffff" : "#555555")
@@ -1227,7 +1224,7 @@ final class CreativeScreen: ContainerScreen {
     /// room for the tabs beside the panel when a phone zooms up
     override var zoomExtent: (w: Double, h: Double) { CreativeTabs.extent(panelW, panelH) }
 
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.55)
         let cv = ui.cv
         ui.drawPanel(panelX, panelY, panelW, panelH)
@@ -1320,7 +1317,7 @@ final class SignScreen: Screen {
         super.init()
         if let l = be?.lines { lines = l }
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.drawDarkBg(0.5)
         let w = 140.0, h = 80.0
         let px = ((ui.width - w) / 2).rounded(.down)
@@ -1390,7 +1387,7 @@ final class DeathScreen: Screen {
             game?.exitToTitle()
         }))
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.cv.setFill("rgba(120,0,0,0.45)")
         ui.cv.fillRect(0, 0, ui.width, ui.height)
         ui.cv.drawTextCentered("You Died!", ui.width / 2, ui.height / 2 - 50, 3)
@@ -1428,7 +1425,7 @@ final class ChatScreen: Screen {
         input = prefill
         super.init()
     }
-    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    override func draw(_ ui: UIManager, _ game: GameCore) {
         let cv = ui.cv
         let s = chatScale
         // sit on top of the on-screen keyboard / home indicator when there is one

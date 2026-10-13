@@ -3,6 +3,21 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.5 — 2026-10-13 — dead code out
+
+Mostly invisible: about 500 lines that nothing called are gone (an unused
+vector/matrix/easing library, an old chunk-lighting path, three HDR render
+pipelines that were compiled at every launch and never used, helpers that
+were never wired up). Worlds generate exactly as before. What you might
+notice:
+
+- **"What a Deal!"** is granted when you actually trade, not when you open
+  a villager's trade screen.
+- The renderer culls chunks with the same tested frustum code the test
+  suite checks, with Metal's near plane, and without allocating every
+  frame.
+- The world list no longer builds a date formatter every frame.
+
 ## 1.4.4 — 2026-10-13 — crash and exploit fixes from a code review
 
 - **Anvils charge you.** Taking an anvil result when you couldn't afford

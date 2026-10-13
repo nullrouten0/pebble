@@ -260,23 +260,6 @@ final class UICanvas {
              SIMD4<Float>(1, 1, 1, 1), SIMD4<Float>(1, 1, 1, 1))
     }
 
-    /// draw a terrain atlas tile (dirt background etc.), tinted
-    func drawTile(_ name: String, _ x: Double, _ y: Double, _ w: Double, _ h: Double, brightness: Float = 1) {
-        let key = "t" + name
-        let origin: (Int, Int)
-        if let s = slots[key] {
-            origin = s
-        } else {
-            let id = tileId(name)
-            let built = uiAtlasPixels(id)
-            origin = allocSlot(key, built)
-        }
-        let c = SIMD4<Float>(brightness, brightness, brightness, 1)
-        quad(Float(x), Float(y), Float(w), Float(h),
-             Float(origin.0) / 1024, Float(origin.1) / 1024,
-             Float(origin.0 + 16) / 1024, Float(origin.1 + 16) / 1024, c, c)
-    }
-
     // ---- pixel font ----------------------------------------------
     @discardableResult
     func drawText(_ text: String, _ x: Double, _ y: Double, _ s: Double, _ color: String = "#FFFFFF", shadow: Bool = true) -> Double {
@@ -390,28 +373,6 @@ final class UICanvas {
             enc.drawPrimitives(type: .triangle, vertexStart: seg.start / 8, vertexCount: count)
         }
     }
-}
-
-/// 16×16 RGBA pixels of a terrain atlas tile, for UI blits (dirt bg etc.)
-private var uiAtlasCache: BuiltAtlas?
-func setUIAtlas(_ atlas: BuiltAtlas) { uiAtlasCache = atlas }
-func uiAtlasPixels(_ tile: Int) -> [UInt8] {
-    if uiAtlasCache == nil { uiAtlasCache = buildAtlas() }
-    let atlas = uiAtlasCache!
-    guard tile >= 0, tile < atlas.pixels.count else { return [UInt8](repeating: 255, count: 16 * 16 * 4) }
-    // tiles are TILE×TILE; downsample to 16×16 by stride
-    let src = atlas.pixels[tile]
-    if TILE == 16 { return src }
-    var out = [UInt8](repeating: 0, count: 16 * 16 * 4)
-    let step = TILE / 16
-    for y in 0..<16 {
-        for x in 0..<16 {
-            let si = ((y * step) * TILE + x * step) * 4
-            let di = (y * 16 + x) * 4
-            out[di] = src[si]; out[di + 1] = src[si + 1]; out[di + 2] = src[si + 2]; out[di + 3] = src[si + 3]
-        }
-    }
-    return out
 }
 
 // ---------------------------------------------------------------------------

@@ -222,9 +222,9 @@ public func canMerge(_ a: ItemStack?, _ b: ItemStack?) -> Bool {
     return stacksEqual(a, b)
 }
 public func maxStackOf(_ s: ItemStack) -> Int { itemDefs[s.id].maxStack }
-public func maxDamageOf(_ s: ItemStack) -> Int {
-    let d = itemDefs[s.id]
-    return d.tool?.durability ?? d.armor?.durability ?? 0
+extension ItemDef {
+    /// uses before it breaks (0 = doesn't wear)
+    public var maxDamage: Int { tool?.durability ?? armor?.durability ?? 0 }
 }
 public func enchLevel(_ s: ItemStack?, _ ench: String) -> Int {
     guard let s else { return 0 }

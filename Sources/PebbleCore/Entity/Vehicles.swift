@@ -113,7 +113,6 @@ public final class Boat: Entity {
 
 /// late-bound container UI hook (player.openContainerScreen in baseline)
 public var openContainerScreenFn: ((Entity, String, Entity) -> Void)?
-public func bindOpenContainerScreen(_ fn: ((Entity, String, Entity) -> Void)?) { openContainerScreenFn = fn }
 
 // rails ----------------------------------------------------------------------
 private let RAIL_DIRS: [Int: (Int, Int, Int, Int)] = [

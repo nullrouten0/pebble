@@ -626,7 +626,7 @@ public final class World {
             let id = cell >> 4
             if id != 0 {
                 let isFluid = id == Int(B.water) || id == Int(B.lava)
-                if (isFluid && fluid) || (!isFluid && blockDefs[id].hardness != 100) {
+                if !isFluid || fluid {
                     scratch.removeAll(keepingCapacity: true)
                     if isFluid {
                         scratch.append(aabb(0, 0, 0, 1, 14.0 / 16, 1))
@@ -673,12 +673,6 @@ public final class World {
     }
 
     // MARK: - fluid helpers
-    public func isWaterAt(_ x: Int, _ y: Int, _ z: Int) -> Bool {
-        isWaterlogged(UInt16(getBlock(x, y, z)))
-    }
-    public func isLavaAt(_ x: Int, _ y: Int, _ z: Int) -> Bool {
-        (getBlock(x, y, z) >> 4) == Int(B.lava)
-    }
     public func fluidHeight(_ x: Int, _ y: Int, _ z: Int) -> Double {
         let cell = getBlock(x, y, z)
         let id = cell >> 4

@@ -353,15 +353,7 @@ public var IS_LEAVES = [UInt8]()
 // MARK: - cells
 
 @inline(__always) public func cell(_ id: UInt16, _ meta: Int = 0) -> UInt16 { (id << 4) | UInt16(meta & 15) }
-@inline(__always) public func cellId(_ c: UInt16) -> Int { Int(c >> 4) }
 @inline(__always) public func cellMeta(_ c: UInt16) -> Int { Int(c & 15) }
-@inline(__always) public func defOf(_ c: UInt16) -> BlockDef { blockDefs[Int(c >> 4)] }
-
-public func isAir(_ c: UInt16) -> Bool {
-    let id = c >> 4
-    return id == B.air || id == B.cave_air || id == B.void_air
-}
-@inline(__always) public func isWaterCell(_ c: UInt16) -> Bool { (c >> 4) == B.water }
 @inline(__always) public func isLavaCell(_ c: UInt16) -> Bool { (c >> 4) == B.lava }
 @inline(__always) public func isLiquid(_ c: UInt16) -> Bool {
     let id = c >> 4

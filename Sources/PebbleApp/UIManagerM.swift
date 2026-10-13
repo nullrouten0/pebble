@@ -40,7 +40,6 @@ final class SlotDef {
 
 class Button {
     var enabled = true
-    var visible = true
     var x: Double, y: Double, w: Double, h: Double
     var label: String
     var onClick: () -> Void
@@ -51,7 +50,7 @@ class Button {
         self.onClick = onClick
     }
     func contains(_ mx: Double, _ my: Double) -> Bool {
-        visible && enabled && mx >= x && mx < x + w && my >= y && my < y + h
+        enabled && mx >= x && mx < x + w && my >= y && my < y + h
     }
 }
 
@@ -108,7 +107,6 @@ final class TextField {
 
 class Screen {
     var closeOnEsc = true
-    var showHUD = false
     var pausesGame = false
     /// a vertical finger drag scrolls this screen (sent as wheel notches)
     var touchScrolls = false
@@ -118,7 +116,7 @@ class Screen {
     var slots: [SlotDef] = []
 
     func initScreen(_ ui: UIManager, _ game: GameCore) {}
-    func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {}
+    func draw(_ ui: UIManager, _ game: GameCore) {}
     func onClose(_ ui: UIManager, _ game: GameCore) {}
 
     @discardableResult
@@ -338,7 +336,7 @@ final class UIManager {
             cv.fillRect(x + 1, y + 1, 16, 16)
         }
         // durability bar
-        let maxD = itemDef(s.id).tool?.durability ?? itemDef(s.id).armor?.durability ?? 0
+        let maxD = itemDef(s.id).maxDamage
         if maxD > 0 && s.damage > 0 {
             let f = 1 - Double(s.damage) / Double(maxD)
             cv.setFill("#000000")
@@ -367,7 +365,6 @@ final class UIManager {
         }
     }
     func drawButton(_ b: Button, _ hover: Bool) {
-        if !b.visible { return }
         // vanilla widgets.png strips: 46 disabled / 66 normal / 86 hover, 200×20,
         // blitted as left+right halves so any width keeps both end caps
         if b.w <= 200, hasSheet("widgets") {
@@ -512,7 +509,7 @@ final class UIManager {
         if let food = def.food {
             lines.append("§2+\(food.hunger) hunger")
         }
-        let maxD = def.tool?.durability ?? def.armor?.durability ?? 0
+        let maxD = def.maxDamage
         if maxD > 0 { lines.append("§7Durability: \(maxD - s.damage) / \(maxD)") }
         return lines
     }

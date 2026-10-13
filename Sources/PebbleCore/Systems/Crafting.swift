@@ -235,7 +235,7 @@ public func anvilCombine(_ left: ItemStack?, _ right: ItemStack?, _ rename: Stri
             out.ench = newEnch
         } else if let material, rName == material {
             // unit repair: each mat repairs 25%
-            let maxD = ldef.tool?.durability ?? ldef.armor?.durability ?? 0
+            let maxD = ldef.maxDamage
             if maxD == 0 || left.damage == 0 { return nil }
             let quarter = Int((Double(maxD) / 4).rounded(.up))
             let units = min(right.count, Int((Double(left.damage) / (Double(maxD) / 4)).rounded(.up)))
@@ -244,7 +244,7 @@ public func anvilCombine(_ left: ItemStack?, _ right: ItemStack?, _ rename: Stri
             out.data.repairUnits = units
         } else if right.id == left.id {
             // combine same items
-            let maxD = ldef.tool?.durability ?? ldef.armor?.durability ?? 0
+            let maxD = ldef.maxDamage
             if maxD != 0 {
                 let totalLife = (maxD - left.damage) + (maxD - right.damage) + Int((Double(maxD) * 0.12).rounded(.down))
                 out.damage = max(0, maxD - totalLife)
@@ -291,7 +291,7 @@ public func grindstoneResult(_ a: ItemStack?, _ b: ItemStack?) -> (out: ItemStac
         out.ench = out.ench.filter { enchDef($0.id).curse }
     }
     if let a, let b {
-        let maxD = def.tool?.durability ?? def.armor?.durability ?? 0
+        let maxD = def.maxDamage
         if maxD != 0 {
             let totalLife = (maxD - a.damage) + (maxD - b.damage) + Int((Double(maxD) * 0.05).rounded(.down))
             out.damage = max(0, maxD - totalLife)

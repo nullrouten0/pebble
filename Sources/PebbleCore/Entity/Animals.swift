@@ -804,7 +804,6 @@ public final class Turtle: Animal {
 
 public final class Dolphin: Animal {
     public override var type: String { "dolphin" }
-    public var treasureHunting = false
     public override init(world: World) {
         super.init(world: world)
         width = 0.9; height = 0.6
@@ -821,10 +820,8 @@ public final class Dolphin: Animal {
         let name = stack.map { itemDef($0.id).name }
         if name == "cod" || name == "salmon" {
             (player as? LivingEntity)?.consumeHeld(1)
-            // grant dolphin's grace & lead toward treasure
             (player as? LivingEntity)?.addEffect("dolphins_grace", 2400, 0)
             world.hooks.playSound("entity.dolphin.eat", x, y, z, 1, 1)
-            treasureHunting = true
             return true
         }
         return false

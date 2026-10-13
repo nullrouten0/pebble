@@ -11,9 +11,6 @@ private func rpart(_ name: String, _ pivot: (Double, Double, Double), _ rot: (Do
 private func part(_ name: String, _ pivot: (Double, Double, Double), _ boxes: ModelBox...) -> ModelPart {
     ModelPart(name: name, pivot: pivot, boxes: boxes)
 }
-private func partList(_ name: String, _ pivot: (Double, Double, Double), _ boxes: [ModelBox]) -> ModelPart {
-    ModelPart(name: name, pivot: pivot, boxes: boxes)
-}
 private func box(_ x: Double, _ y: Double, _ z: Double, _ w: Double, _ h: Double, _ d: Double, _ u: Double, _ v: Double, _ grow: Double = 0) -> ModelBox {
     ModelBox(x, y, z, w, h, d, u, v, grow)
 }
@@ -913,16 +910,6 @@ private func registerModels2() {
             s.rect(12 + 2, 12 + 5, 2, 2, 0xc8fff0); s.rect(12 + 8, 12 + 5, 2, 2, 0xc8fff0)
             s.box(48, 0, 2, 18, 2, 0x257575, 0.12)
         }, packTex: ["entity/squid/glow_squid.png"]))
-    func fishModel(_ paint: @escaping (EntitySkin) -> Void, _ scale: Double = 1) -> MobModel {
-        MobModel(
-            texW: 32, texH: 32,
-            parts: [
-                part("body", (0, 2, 0), box(-1, 0, -3, 2, 3, 6, 0, 0)),
-                part("tail", (0, 2, 3), box(0, 0, 0, 0.01, 3, 3, 14, 0), box(-0.5, 1, 0, 1, 1, 2, 14, 8)),
-                part("finTop", (0, 5, 0), box(0, 0, -1, 0.01, 2, 3, 20, 0)),
-            ],
-            anim: "fish", scale: scale, paint: paint)
-    }
     M2("cod", MobModel(
         texW: 32, texH: 32,
         parts: [

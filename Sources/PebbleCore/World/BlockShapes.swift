@@ -19,14 +19,6 @@ public let FACE_OPP = [1, 0, 3, 2]
 
 @inline(__always) private func shapeOf(_ id: Int) -> Shape { Shape(rawValue: SHAPE_OF[id])! }
 
-/// Is the given face (Dir: 0=bottom, 1=top, 2-5 sides) of this block solid/full?
-public func sturdyFace(_ cell: Int, _ face: Int) -> Bool {
-    let id = cell >> 4
-    if FULL_CUBE[id] == 1 { return blockDefs[id].solid }
-    if face == 1 { return sturdyTop(cell) }
-    if face == 0 { return sturdyBottom(cell) }
-    return sturdySide(cell)
-}
 /// can a torch/plant/etc stand on top of this cell?
 public func sturdyTop(_ cell: Int) -> Bool {
     let id = cell >> 4, meta = cell & 15
@@ -81,7 +73,7 @@ public func wallConnects(_ other: Int, _ dirFacing: Int) -> Bool {
     }
     return sturdySide(other)
 }
-public func paneConnects(_ selfId: Int, _ other: Int) -> Bool {
+public func paneConnects(_ other: Int) -> Bool {
     let oid = other >> 4
     let oshape = shapeOf(oid)
     if oshape == .pane || oshape == .bars || oshape == .wall { return true }
@@ -100,7 +92,7 @@ public func connMask(_ cell: Int, _ get: CellGetter, _ kind: ConnKind) -> Int {
         switch kind {
         case .fence: ok = fenceConnects(id, other, f)
         case .wall: ok = wallConnects(other, f)
-        case .pane: ok = paneConnects(id, other)
+        case .pane: ok = paneConnects(other)
         }
         if ok { m |= 1 << f }
     }
@@ -558,10 +550,4 @@ public func shapeBoxes(_ cell: Int, _ get: CellGetter, _ out: inout [AABB], _ fo
     case .pointedAttach, .muddyMangroveRoots, .structureVoid:
         out.append(FULL)
     }
-}
-
-public func hasAnyCollision(_ cell: Int, _ get: CellGetter) -> Bool {
-    var scratch: [AABB] = []
-    shapeBoxes(cell, get, &scratch, true)
-    return !scratch.isEmpty
 }

@@ -172,11 +172,6 @@ public final class Builder {
         s.addBlockEntity(BESpec(x: x, y: y, z: z, kind: "chest_loot",
                                 data: ["lootTable": .str(lootTable), "seed": .num(Double(hash2(0, x, z, UInt32(truncatingIfNeeded: y))))]))
     }
-    public func barrelLoot(_ x: Int, _ y: Int, _ z: Int, _ lootTable: String) {
-        s.set(x, y, z, cell(B.barrel, 1))
-        s.addBlockEntity(BESpec(x: x, y: y, z: z, kind: "chest_loot",
-                                data: ["lootTable": .str(lootTable), "seed": .num(Double(hash2(0, x, z, UInt32(truncatingIfNeeded: y))))]))
-    }
     public func spawner(_ x: Int, _ y: Int, _ z: Int, _ mob: String) {
         s.set(x, y, z, cell(B.spawner))
         s.addBlockEntity(BESpec(x: x, y: y, z: z, kind: "spawner", data: ["mob": .str(mob)]))

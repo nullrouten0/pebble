@@ -63,7 +63,7 @@ func registerUndergroundStructures() {
                             b.set(lx, y, lz, F); b.set(lx, y + 1, lz, F)
                             b.set(rx, y, rz, F); b.set(rx, y + 1, rz, F)
                             b.set(lx, y + 2, lz, P); b.set(px, y + 2, pz, P); b.set(rx, y + 2, rz, P)
-                            if b.rng.nextFloat() < 0.25 { b.set(px, y + 2, pz, P) }
+                            _ = b.rng.nextFloat()   // this draw used to re-place the beam set above; kept so worlds don't change
                             if b.rng.nextFloat() < 0.15 { b.set(px, y + 1, pz, Int(cell(B.torch, 0))) }
                         }
                         // rails
@@ -223,7 +223,6 @@ func registerUndergroundStructures() {
                     }
                 } else if kind == "fountain" {
                     room(px - 3, py - 1, pz - 3, 7, 5, 7) { b, x, y, z in
-                        b.set(x + 3, y, z + 3, Int(cell(B.water, 0)))
                         b.fill(x + 2, y, z + 2, x + 4, y, z + 4, Int(cell(B.stone_brick_slab, 0)))
                         b.set(x + 3, y, z + 3, Int(cell(B.water, 0)))
                     }

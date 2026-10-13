@@ -132,13 +132,6 @@ public final class RaidManager {
         }
     }
 
-    public func activeRaidNear(_ world: World, _ x: Double, _ z: Double) -> Raid? {
-        for r in raids {
-            let dx = Double(r.cx) - x, dz = Double(r.cz) - z
-            if r.world === world && r.active && dx * dx + dz * dz < 96 * 96 { return r }
-        }
-        return nil
-    }
 }
 
 public let raidManager = RaidManager()

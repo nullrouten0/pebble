@@ -8,16 +8,8 @@ using namespace metal;
 // ---------------------------------------------------------------------------
 // uniforms (Swift structs mirror these layouts exactly)
 // ---------------------------------------------------------------------------
-struct ChunkU {
-    float4x4 viewProj;
-    float4x4 shadowMat;
-    float4 origin;     // xyz = section origin (camera-relative), w = time
-    float4 light;      // dayLight, gamma, ambient, shadowsOn
-    float4 fog;        // start, end, alphaTest, globalAlpha
-    float4 fogColor;
-};
-// split form: shared once per pass + a 16-byte per-draw origin — uniform
-// copies per draw call dominated CPU encode time at thousands of sections
+// chunk uniforms are split: shared once per pass + a 16-byte per-draw origin —
+// a full uniform copy per draw call dominated CPU encode time at thousands of sections
 struct ChunkShared {
     float4x4 viewProj;
     float4x4 shadowMat;

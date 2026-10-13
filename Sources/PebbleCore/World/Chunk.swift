@@ -29,8 +29,6 @@ public let DIMS: [DimInfo] = [
     DimInfo(minY: 0, height: 256, seaLevel: 0, hasSky: false, ambientLight: 9, coordScale: 1, bedrockFloor: false, bedrockCeil: false, fogColor: (0.04, 0.03, 0.06)),
 ]
 
-@inline(__always) public func dimInfo(_ d: Dim) -> DimInfo { DIMS[d.rawValue] }
-
 @inline(__always) public func floorDiv(_ a: Int, _ b: Int) -> Int {
     let q = a / b
     return (a % b != 0 && (a ^ b) < 0) ? q - 1 : q
@@ -156,18 +154,10 @@ public final class Chunk {
         let qy = max(0, min((height >> 2) - 1, (y - minY) >> 2))
         return Int(biomes[(qy * 4 + (z >> 2)) * 4 + (x >> 2)])
     }
-    @inline(__always)
-    public func setBiome(_ qx: Int, _ qy: Int, _ qz: Int, _ biome: Int) {
-        biomes[(qy * 4 + qz) * 4 + qx] = UInt8(biome)
-    }
 
     public func markDirtyAt(_ y: Int) {
         let s = max(0, min(sections - 1, (y - minY) >> 4))
         dirty[s] = true
-        version += 1
-    }
-    public func markAllDirty() {
-        for i in 0..<sections { dirty[i] = true }
         version += 1
     }
 

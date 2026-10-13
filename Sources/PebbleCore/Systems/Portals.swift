@@ -141,9 +141,7 @@ public func activateEndPortal(_ world: World) {
 
 /// spawn an end gateway after a dragon kill
 public func spawnEndGateway(_ world: World, _ index: Int) {
-    let ang = Double(index) / 20 * .pi * 2
-    let gx = Int(detRound(detCos(ang) * 96))
-    let gz = Int(detRound(detSin(ang) * 96))
+    let (gx, gz) = gatewayPosition(index)
     let gy = 75
     // bedrock shell with gateway core
     for (dx, dy, dz) in [(0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1)] {

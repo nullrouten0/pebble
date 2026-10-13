@@ -77,8 +77,6 @@ public let DEFAULT_KEYBINDS: [String: String] = [
     "swapOffhand": "KeyF",
 ]
 
-public func defaultSettings() -> Settings { Settings() }
-
 /// ~/Library/Application Support/Pebble — created on first touch.
 /// Test hook: PEBBLE_HOME=<dir> keeps saves/settings out of the real profile.
 /// On iOS a relative dir lands in the app's tmp (a launch from the Mac can't

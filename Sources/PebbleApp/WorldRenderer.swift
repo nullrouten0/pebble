@@ -215,11 +215,6 @@ final class WorldRenderer {
     var starsPipeline: MTLRenderPipelineState!
     var cloudPipeline: MTLRenderPipelineState!
     var entityPipeline: MTLRenderPipelineState!
-    var entityPipelineHDR: MTLRenderPipelineState!
-    var particlePipelineHDR: MTLRenderPipelineState!
-    var spritePipelineHDR: MTLRenderPipelineState!
-    /// pack mode: entity/sprite passes target rgba16F colortex instead of the drawable formats
-    var packTargets = false
     var particlePipeline: MTLRenderPipelineState!
     var linePipeline: MTLRenderPipelineState!
     var spritePipeline: MTLRenderPipelineState!
@@ -263,11 +258,6 @@ final class WorldRenderer {
     private var animAccumMs = 0.0
     private var animScratch: [UInt8] = []
     var packFluidDamp: Float = 0               // 1 = pack animates fluids, damp UV scroll
-    private var shaderPackFailed: Set<String> = []
-    private var frameCounter: Int32 = 0
-    private var prevViewM = matrix_identity_float4x4
-    private var prevProj = matrix_identity_float4x4
-    private var prevCamPos = SIMD3<Float>(0, 0, 0)
     var shadowTexture: MTLTexture!
     var shadowSampler: MTLSamplerState!
     var cloudTexture: MTLTexture!
@@ -303,8 +293,7 @@ final class WorldRenderer {
     var spriteTex: MTLTexture!
     var spriteSlots: [String: Int] = [:]
 
-    // scratch GPU meshes for cubes/crack
-    private var cubeMesh: (vb: MTLBuffer, ib: MTLBuffer, count: Int)?
+    // crack overlay mesh, rebuilt when the target or stage changes
     private var overlayMesh: (vb: MTLBuffer, ib: MTLBuffer, count: Int)?
     private var overlayStage = -1
 
@@ -395,7 +384,6 @@ final class WorldRenderer {
         entityVD.attributes[3].bufferIndex = 0
         entityVD.layouts[0].stride = 36
         entityPipeline = pipe("entity_vs", "entity_fs", vd: entityVD, blend: true)
-        entityPipelineHDR = pipe("entity_vs", "entity_fs", vd: entityVD, blend: true, color: .rgba16Float)
 
         let particleVD = MTLVertexDescriptor()
         particleVD.attributes[0].format = .float2
@@ -417,11 +405,9 @@ final class WorldRenderer {
         particleVD.layouts[1].stride = 48
         particleVD.layouts[1].stepFunction = .perInstance
         particlePipeline = pipe("particle_vs", "particle_fs", vd: particleVD, blend: true)
-        particlePipelineHDR = pipe("particle_vs", "particle_fs", vd: particleVD, blend: true, color: .rgba16Float)
 
         linePipeline = pipe("line_vs", "line_fs", vd: nil, blend: true)
         spritePipeline = pipe("sprite_vs", "sprite_fs", vd: nil, blend: true)
-        spritePipelineHDR = pipe("sprite_vs", "sprite_fs", vd: nil, blend: true, color: .rgba16Float)
         bloomExtractPipeline = pipe("fs_vs", "bloom_extract_fs", vd: nil, depth: .invalid)
         blurPipeline = pipe("fs_vs", "blur_fs", vd: nil, depth: .invalid)
         compositePipeline = pipe("fs_vs", "composite_fs", vd: nil, depth: .invalid)
@@ -503,7 +489,6 @@ final class WorldRenderer {
     func installProceduralAtlas() {
         let atlas = PebbleCore.buildAtlas()
         initIcons(atlas)      // item icons sample atlas tiles
-        setUIAtlas(atlas)     // UI dirt-background blits reuse the same build
         makeAtlasTexture(atlas.pixels, res: TILE)
         tileAnimations = []
         animState = []
@@ -682,8 +667,6 @@ final class WorldRenderer {
                                  withBytes: raw.baseAddress!, bytesPerRow: size * 4)
         }
     }
-
-    private func buildClouds_sampler() {}
 
     private func buildStars() {
         let N = 1300
@@ -946,8 +929,6 @@ final class WorldRenderer {
         let shadowOK = settings.shadows && settings.batterySaver != true && world.dim == .overworld && sky.dayLight > 0.1 && sunDir.y > 0.05
 
         var shadowMat = matrix_identity_float4x4
-        var lightViewM = matrix_identity_float4x4
-        var lightProjM = matrix_identity_float4x4
         // --- shadow pass ---
         if shadowOK {
             let r: Float = 72
@@ -963,8 +944,6 @@ final class WorldRenderer {
             snap.columns.3.x = -anchorClip.x.truncatingRemainder(dividingBy: texel)
             snap.columns.3.y = -anchorClip.y.truncatingRemainder(dividingBy: texel)
             shadowMat = snap * shadowMat
-            lightViewM = lightView
-            lightProjM = lightProj
             let spd = MTLRenderPassDescriptor()
             spd.depthAttachment.texture = shadowTexture
             spd.depthAttachment.loadAction = .clear
@@ -1409,7 +1388,7 @@ final class WorldRenderer {
                                ent.width * 0.5 + 0.18, 0.34 * fade)
             }
             enc.setDepthStencilState(depthWrite)
-            entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
+            entityRenderer.draw(enc, pipeline: entityPipeline, sampler: atlasSampler,
                                 viewProj: viewProj, camPos: camPos, name: name, p: pose,
                                 time: timeSec, dayLight: dayLight,
                                 fog: (fog.0, fog.1, fog.2),
@@ -1417,7 +1396,7 @@ final class WorldRenderer {
             if let player = ent as? Player, player.headlampOn {
                 var lit = pose
                 lit.block = 15   // a lit lamp glows, day or night
-                entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
+                entityRenderer.draw(enc, pipeline: entityPipeline, sampler: atlasSampler,
                                     viewProj: viewProj, camPos: camPos, name: "headlamp", p: lit,
                                     time: timeSec, dayLight: dayLight,
                                     fog: (fog.0, fog.1, fog.2),
@@ -1425,7 +1404,7 @@ final class WorldRenderer {
             }
             if let player = ent as? Player, let chest = player.armor[1],
                itemDef(chest.id).name == "elytra" {
-                entityRenderer.draw(enc, pipeline: packTargets ? entityPipelineHDR : entityPipeline, sampler: atlasSampler,
+                entityRenderer.draw(enc, pipeline: entityPipeline, sampler: atlasSampler,
                                     viewProj: viewProj, camPos: camPos, name: "elytra", p: pose,
                                     time: timeSec, dayLight: dayLight,
                                     fog: (fog.0, fog.1, fog.2),
@@ -1582,7 +1561,7 @@ final class WorldRenderer {
                           min(1, max(0.12, light / 15)), emissive))
         }
         if items.isEmpty { return }
-        enc.setRenderPipelineState(packTargets ? spritePipelineHDR : spritePipeline)
+        enc.setRenderPipelineState(spritePipeline)
         enc.setDepthStencilState(depthWrite)
         enc.setFragmentTexture(spriteTex, index: 0)
         enc.setFragmentSamplerState(atlasSampler, index: 0)
@@ -1680,7 +1659,6 @@ final class WorldRenderer {
         guard !idx.isEmpty else { return }
         let vb = verts.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
         let ib = idx.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
-        cubeMesh = (vb, ib, idx.count)
         uni.fog.z = 0.1
         var origin = SIMD4<Float>(0, 0, 0, 0)
         enc.setRenderPipelineState(opaquePipeline)

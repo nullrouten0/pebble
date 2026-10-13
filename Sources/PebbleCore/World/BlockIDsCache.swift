@@ -62,7 +62,6 @@ public struct ResolvedBlockIDs {
     public var cartography_table: UInt16 = 0
     public var carved_pumpkin: UInt16 = 0
     public var cauldron: UInt16 = 0
-    public var cave_air: UInt16 = 0
     public var cave_vines: UInt16 = 0
     public var cave_vines_plant: UInt16 = 0
     public var cherry_leaves: UInt16 = 0
@@ -366,7 +365,6 @@ public struct ResolvedBlockIDs {
     public var turtle_egg: UInt16 = 0
     public var twisting_vines: UInt16 = 0
     public var vine: UInt16 = 0
-    public var void_air: UInt16 = 0
     public var warped_fungus: UInt16 = 0
     public var warped_nylium: UInt16 = 0
     public var warped_roots: UInt16 = 0
@@ -444,7 +442,6 @@ public func populateBlockIDs() {
     b.cartography_table = bid("cartography_table")
     b.carved_pumpkin = bid("carved_pumpkin")
     b.cauldron = bid("cauldron")
-    b.cave_air = bid("cave_air")
     b.cave_vines = bid("cave_vines")
     b.cave_vines_plant = bid("cave_vines_plant")
     b.cherry_leaves = bid("cherry_leaves")
@@ -748,7 +745,6 @@ public func populateBlockIDs() {
     b.turtle_egg = bid("turtle_egg")
     b.twisting_vines = bid("twisting_vines")
     b.vine = bid("vine")
-    b.void_air = bid("void_air")
     b.warped_fungus = bid("warped_fungus")
     b.warped_nylium = bid("warped_nylium")
     b.warped_roots = bid("warped_roots")

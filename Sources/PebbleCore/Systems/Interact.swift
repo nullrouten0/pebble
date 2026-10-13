@@ -487,7 +487,6 @@ public func useBlock(_ ctx: InteractCtx, _ hit: RaycastHit) -> Bool {
             player.consumeHeld(1)
             world.hooks.playSound("block.end_portal_frame.fill", Double(x) + 0.5, Double(y) + 0.5, Double(z) + 0.5, 1, 1)
             checkEndPortalComplete(world, x, y, z)
-            ctx.advance("eye_for_an_eye")
             return true
         }
         return false

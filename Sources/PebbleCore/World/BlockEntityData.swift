@@ -194,9 +194,3 @@ public func makeBrushableBE(_ x: Int, _ y: Int, _ z: Int, _ lootTable: String, _
     be.dusted = 0
     return be
 }
-public func containerSizeFor(_ blockName: String) -> Int {
-    if blockName.contains("shulker_box") { return 27 }
-    if blockName == "chest" || blockName == "trapped_chest" || blockName == "barrel" { return 27 }
-    if blockName == "dispenser" || blockName == "dropper" { return 9 }
-    return 27
-}

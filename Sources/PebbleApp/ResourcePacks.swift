@@ -343,7 +343,6 @@ func resourcePacksDir() -> URL {
 // it (packaging/FAITHFUL-LICENSE.txt, in-game credits, README).
 // =============================================================================
 let DEFAULT_PACK_FILE = "Faithful 32x - 1.20.1.zip"
-let DEFAULT_PACK_LABEL = "Default (Faithful 32x)"
 
 /// restore the default pack into the packs folder if it went missing
 func ensureDefaultPack() {
@@ -845,7 +844,6 @@ func applyResourcePacks(_ userPacks: [String], game: GameCore, renderer: WorldRe
     if let result = buildPackAtlas(enabledFileNames: enabled) {
         renderer.installPackAtlas(result)
         initIcons(result.icon16)
-        setUIAtlas(result.icon16)
         PACK_TINT_GATE = result.tintGate
         let items = result.itemIcons
         itemIconOverride = items.isEmpty ? nil : { name in items[name] }

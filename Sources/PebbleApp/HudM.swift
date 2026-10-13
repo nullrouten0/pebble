@@ -46,7 +46,7 @@ final class HUD {
         if subtitles.count > 5 { subtitles.removeFirst() }
     }
 
-    func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+    func draw(_ ui: UIManager, _ game: GameCore) {
         if hideGui { return }
         let nowT = CACurrentMediaTime()
         timerAccum += min(0.25, nowT - lastTimerTime)

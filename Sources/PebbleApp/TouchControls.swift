@@ -441,7 +441,7 @@ public final class TouchControls {
         case .close:
             // screens that only close with Escape get a ×; menus with their
             // own Done/Back buttons don't need one
-            guard s.closeOnEsc, !s.buttons.contains(where: { $0.visible && ["Done", "Back", "Cancel", "Back to Game"].contains($0.label) })
+            guard s.closeOnEsc, !s.buttons.contains(where: { ["Done", "Back", "Cancel", "Back to Game"].contains($0.label) })
             else { return nil }
             return Rect(x: right - 22, y: top + 4, w: 18, h: 18)
         case .quickMove:

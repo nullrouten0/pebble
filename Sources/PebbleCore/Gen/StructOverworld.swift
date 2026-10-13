@@ -58,7 +58,7 @@ private func styleFor(_ biomeId: Int) -> VillageStyle? {
     }
 }
 
-private func houseSmall(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ st: VillageStyle, _ rot: Int, _ sink: ChunkSink) {
+private func houseSmall(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ st: VillageStyle, _ sink: ChunkSink) {
     // 5×5 footprint, walls 3 high, stair roof
     for dz in 0..<5 { for dx in 0..<5 { b.foundation(x + dx, y - 1, z + dz, st.wall) } }
     b.fill(x, y, z, x + 4, y + 2, z + 4, AIR)
@@ -81,8 +81,7 @@ private func houseSmall(_ b: Builder, _ x: Int, _ y: Int, _ z: Int, _ st: Villag
     } }
     b.set(x + 2, y + 4, z + 2, st.slab)
     // door (south face center)
-    let doorFace = rotF(0, rot)
-    b.set(x + 2, y, z, Int(cell(st.door, doorFace)))
+    b.set(x + 2, y, z, Int(cell(st.door, 0)))
     b.set(x + 2, y + 1, z, Int(cell(st.door, 8)))
     // interior: bed + crafting
     b.set(x + 3, y, z + 3, Int(cell(B.red_bed, 2 | 4)))
@@ -331,7 +330,7 @@ func registerOverworldStructures() {
                     let kind = rng.nextFloat()
                     if kind < 0.4 {
                         pieces.append(piece(bx - 1, by - 8, bz - 1, bx + 6, by + 6, bz + 6) { b in
-                            houseSmall(b, bx, by, bz, st, 0, b.s)
+                            houseSmall(b, bx, by, bz, st, b.s)
                         })
                     } else if kind < 0.62 {
                         pieces.append(piece(bx - 1, by - 8, bz - 1, bx + 10, by + 3, bz + 8) { b in
