@@ -171,15 +171,15 @@ final class RemoteClient: NetPlayerLink {
     }
 
     // ---- NetPlayerLink: the host world acting on this guest's player ----
-    func netHurt(_ amount: Double, _ source: String, _ attacker: Entity?) -> Bool {
+    func netHurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity?) -> Bool {
         guard let p = proxy, joined else { return false }
         if p.dead || st.has(GuestState.DEAD) || amount <= 0 { return false }
-        if st.gameMode == GameMode.creative && source != "void" { return false }
+        if st.gameMode == GameMode.creative && source != .void { return false }
         if p.invulnTicks > 0 { return false }
         p.invulnTicks = 10
         p.hurtTime = 10
         var w = ByteWriter()
-        w.f32(amount); w.str(source); w.i32(attacker?.id ?? 0)
+        w.f32(amount); w.str(source.rawValue); w.i32(attacker?.id ?? 0)
         queue(.hurt, w)
         return true
     }
@@ -383,7 +383,7 @@ public final class NetHost {
                 if target is LivingEntity || target.type == "end_crystal" {
                     playerAttack(p, target)
                 } else if target.type == "boat" || target.type == "minecart" {
-                    _ = target.hurt(2, "player", p)
+                    _ = target.hurt(2, .player, p)
                 }
             }
         case .actBrush:

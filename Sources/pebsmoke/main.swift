@@ -2620,6 +2620,78 @@ do {
 }
 
 // ---------------------------------------------------------------------------
+section("code-review fixes")
+do {
+    let home = NSTemporaryDirectory() + "pebsmoke-review-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    g.createWorld(name: "review", seedText: "12345", mode: GameMode.survival, difficulty: 2)
+    let w = g.world
+    let p = g.player!
+    func mob(_ type: String) -> LivingEntity {
+        let e = createEntity(type, w) as! LivingEntity
+        e.setPos(p.x + 3, p.y, p.z)
+        return e
+    }
+    // long falls used to arrive as "fall_high", which no fall rule matched
+    let chicken = mob("chicken")
+    chicken.onLand(12)
+    check("a chicken takes no damage from a 12-block fall", chicken.health == chicken.maxHealth)
+    let zombie = mob("zombie")
+    zombie.onLand(12)
+    checkD("a zombie takes 9 from a 12-block fall", zombie.maxHealth - zombie.health, 9)
+    p.armor[3] = ItemStack(iid("diamond_boots"), 1, ench: [EnchInstance("feather_falling", 4)])
+    let before = p.health
+    p.onLand(12)
+    check("Feather Falling IV cuts a 12-block fall", before - p.health > 0 && before - p.health < 5,
+          "took \(before - p.health)")
+    p.armor[3] = nil
+    check("death text: high fall", deathCauseText("fall_high") == "fell from a high place")
+    check("death text: arrows", deathCauseText("projectile", "Skeleton") == "was shot by Skeleton")
+    // state that used to be lost on save and reload
+    func reload(_ e: Entity) -> Entity { loadEntity(w, e.save())! }
+    let slime = mob("slime") as! Slime
+    slime.setSize(4)
+    slime.health = 5
+    let slime2 = reload(slime) as! Slime
+    check("a slime keeps its size and health", slime2.size == 4 && slime2.health == 5)
+    let strider = mob("strider") as! Strider
+    strider.saddled = true
+    check("a strider keeps its saddle", (reload(strider) as! Strider).saddled)
+    let camel = mob("camel") as! Camel
+    camel.saddled = true
+    check("a camel keeps its saddle", (reload(camel) as! Camel).saddled)
+    let vind = mob("vindicator") as! Vindicator
+    vind.isCaptain = true
+    check("a vindicator captain stays captain", (reload(vind) as! Vindicator).isCaptain)
+    let bee = mob("bee") as! Bee
+    bee.doMeleeAttack(zombie)
+    check("a bee that stung is still doomed after a reload", (reload(bee) as! Bee).hasStung)
+    let creeper = mob("creeper") as! Creeper
+    creeper.charged = true
+    check("a charged creeper stays charged", (reload(creeper) as! Creeper).charged)
+    // stacks from a newer build or a bad LAN peer
+    // stone is item 0: the old LAN check (id > 0) silently dropped stacks of it
+    check("stone (item 0) is a known stack", ItemStack(iid("stone"), 1).isKnown)
+    check("an unknown item id isn't", !ItemStack(itemDefs.count + 5, 1).isKnown)
+    check("an unknown enchantment isn't", !ItemStack(iid("diamond_sword"), 1, ench: [EnchInstance("smite_2", 1)]).isKnown)
+    check("knownStacks empties only the bad slot",
+          knownStacks([ItemStack(iid("stone"), 1), ItemStack(9999, 1), nil]).map { $0 != nil } == [true, false, false])
+    check("leather boots count as leather boots", { p.armor[3] = ItemStack(iid("leather_boots"), 1); defer { p.armor[3] = nil }; return p.wearsLeatherBoots }())
+    // a player's death records the high-fall wording
+    p.health = 1
+    p.invulnTicks = 0   // the Feather Falling check above just hurt it
+    p.fallDistance = 20
+    p.onLand(20)
+    check("dying from a long fall reads \"fell from a high place\"", p.data.deathCause == "fall_high")
+    g.exitToTitle()
+}
+
+// ---------------------------------------------------------------------------
 section("chunk saves (VCK1 plain, VCK2 compressed)")
 do {
     let home = NSTemporaryDirectory() + "pebsmoke-db-\(getpid())"

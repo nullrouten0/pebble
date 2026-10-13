@@ -52,7 +52,7 @@ public final class Warden: Monster {
         }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         let r = super.hurt(amount, source, attacker)
         if r, let attacker { addAnger(attacker, 100) }
         return r
@@ -111,7 +111,7 @@ public final class Warden: Monster {
                         world.hooks.addParticles("sculk_soul",
                                                  x + (t.x - x) * f, y + 1.6 + (t.eyeY() - y - 1.6) * f, z + (t.z - z) * f, 1, 0.05, 0)
                     }
-                    t.hurt(10, "sonic", self)
+                    t.hurt(10, .sonic, self)
                     t.vx += (t.x - x) * 0.15
                     t.vy += 0.5
                     t.vz += (t.z - z) * 0.15
@@ -246,7 +246,7 @@ public final class EnderDragon: LivingEntity {
                     let pz = z + dz / d * 6
                     world.hooks.addParticles("dragon_breath", px, 65, pz, 6, 1.2, 0)
                     for pp in world.getEntitiesNear(px, 64, pz, 3, filter: { ($0 as? Entity)?.isPlayer ?? false }) {
-                        (pp as? Entity)?.hurt(3, "magic", self)
+                        (pp as? Entity)?.hurt(3, .magic, self)
                     }
                 }
             }
@@ -262,7 +262,7 @@ public final class EnderDragon: LivingEntity {
             // damage players hit
             for pp in world.getEntitiesNear(x, y, z, 5, filter: { ($0 as? Entity)?.isPlayer ?? false }) {
                 guard let pe = pp as? Entity else { continue }
-                pe.hurt(10, "mob", self)
+                pe.hurt(10, .mob, self)
                 pe.vx += vx * 2
                 pe.vy += 0.6
                 pe.vz += vz * 2
@@ -321,12 +321,12 @@ public final class EnderDragon: LivingEntity {
         return best
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if invulnTicks > 0 || phase == "dying" { return false }
         // reduced damage while flying (head hits are full — simplified: 50% while airborne)
         var dmg = amount
         if phase != "perched" { dmg *= 0.5 }
-        if source == "explosion" { dmg *= 0.25 }
+        if source == .explosion { dmg *= 0.25 }
         health -= dmg
         hurtTime = 10
         invulnTicks = 10
@@ -443,10 +443,10 @@ public final class WitherBoss: Monster {
         if age % 20 == 0 { heal(1) }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if chargeTime > 0 { return false }
         // armored below half health: immune to projectiles
-        if health < maxHealth / 2 && source == "projectile" { return false }
+        if health < maxHealth / 2 && source == .projectile { return false }
         return super.hurt(amount, source, attacker)
     }
     public override func drops() -> [DropEntry] { [DropEntry("nether_star")] }

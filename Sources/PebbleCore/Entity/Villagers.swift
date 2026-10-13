@@ -226,7 +226,7 @@ open class Villager: Mob {
         return true
     }
     @discardableResult
-    open override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    open override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         let r = super.hurt(amount, source, attacker)
         if r, let attacker, attacker.isPlayer {
             // gossip: minor reputation hit — golems may aggro
@@ -355,7 +355,7 @@ public final class IronGolem: Mob {
     }
     public override func doMeleeAttack(_ target: LivingEntity) {
         attackAnim = 1
-        target.hurt(attackDamage + Double(rng.nextInt(8)), "mob", self)
+        target.hurt(attackDamage + Double(rng.nextInt(8)), .mob, self)
         target.vy += 0.5 // launch!
         world.hooks.playSound("entity.iron_golem.attack", x, y, z, 1, 1)
     }
@@ -399,7 +399,7 @@ public final class SnowGolem: Mob {
             }
         }
         // melt in hot/wet
-        if inWater { hurt(1, "drown") }
+        if inWater { hurt(1, .drown) }
     }
     public override func drops() -> [DropEntry] { [DropEntry("snowball", min: 0, max: 15)] }
 }

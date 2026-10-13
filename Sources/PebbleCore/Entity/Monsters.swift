@@ -19,14 +19,14 @@ open class Monster: Mob {
         category = "monster"
         xpReward = 5
     }
-    public func addMonsterGoals(_ speed: Double = 1.05) {
+    public func addMonsterGoals(_ speed: Double = 1.05, lightGate: ((World, Int, Int, Int) -> Bool)? = nil) {
         goals.add(FloatGoal(self, 0))
         goals.add(MeleeAttackGoal(self, 2, speed))
         goals.add(StrollGoal(self, 6, 0.8))
         goals.add(LookAtPlayerGoal(self, 7))
         goals.add(RandomLookGoal(self, 8))
         targetGoals.add(HurtByTargetGoal(self, 1))
-        targetGoals.add(NearestTargetGoal(self, 2, isPlayerTarget, followRange))
+        targetGoals.add(NearestTargetGoal(self, 2, isPlayerTarget, followRange, true, lightGate))
     }
 }
 
@@ -173,7 +173,11 @@ public final class Stray: Skeleton {
 public final class Creeper: Monster {
     public override var type: String { "creeper" }
     public var swellTicks = 0
-    public var charged = false
+    /// struck by lightning: a bigger blast. Lives in `data`, so it's saved
+    public var charged: Bool {
+        get { data.charged ?? false }
+        set { data.charged = newValue }
+    }
     public override init(world: World) {
         super.init(world: world)
         width = 0.6; height = 1.7
@@ -201,7 +205,7 @@ public final class Creeper: Monster {
                 explodeFn?(world, x, y + 0.5, z, charged ? 6 : 3, false, self)
             }
         } else {
-            data.swelling = 0
+            data.swelling = nil   // absent from saves and LAN updates unless lit
         }
     }
     public override func drops() -> [DropEntry] {
@@ -234,16 +238,14 @@ open class Spider: Monster {
         maxHealth = 16; health = 16
         speed = 0.13
         attackDamage = 2
-        addMonsterGoals(1.1)
+        // neutral in the light: they only go looking for you in the dark
+        // (hitting one still makes it fight back, via HurtByTargetGoal)
+        addMonsterGoals(1.1, lightGate: { w, x, y, z in w.lightAt(x, y, z) <= 7 })
     }
     open override func tick() {
         super.tick()
         // wall climbing
         if horizontalCollision { vy = 0.2 }
-    }
-    public func canTargetInLight() -> Bool {
-        // spiders neutral in daylight
-        world.lightAt(ifloor(x), ifloor(y), ifloor(z)) <= 7
     }
     open override func drops() -> [DropEntry] {
         [
@@ -278,6 +280,7 @@ open class Slime: Monster {
     }
     public func setSize(_ s: Int) {
         size = s
+        data.size = s   // saved: a natural spawn re-rolled its size on every reload
         width = 0.51 * Double(s)
         height = 0.51 * Double(s)
         maxHealth = Double(s * s); health = Double(s * s)
@@ -316,10 +319,10 @@ open class Slime: Monster {
         vy *= 0.98
         // damage on touch
         if let t = target, !t.dead, distanceToSq(t) < (width * 0.8) * (width * 0.8) + 1, age % 20 == 0 {
-            t.hurt(attackDamage, "mob", self)
+            t.hurt(attackDamage, .mob, self)
         }
     }
-    open override func die(_ source: String, _ attacker: Entity? = nil) {
+    open override func die(_ source: DamageSource, _ attacker: Entity? = nil) {
         super.die(source, attacker)
         if size > 1 {
             // baseline: `for (let i = 0; i < 2 + this.rng.nextInt(2); i++)` — the
@@ -337,7 +340,9 @@ open class Slime: Monster {
     open override func load(_ d: [String: Any]) {
         super.load(d)
         if let dd = d["data"] as? [String: Any], let s = (dd["size"] as? NSNumber)?.intValue, s != 0 {
+            let hp = health   // setSize refills health; keep what was saved
             setSize(s)
+            health = min(hp, maxHealth)
         }
     }
 }
@@ -434,7 +439,7 @@ public final class Enderman: Monster {
         }
         // water hurts
         if inWater || (world.rainLevel > 0.5 && world.canSeeSky(ifloor(x), ifloor(y), ifloor(z))) {
-            hurt(1, "drown")
+            hurt(1, .drown)
             teleportRandomly()
         }
         // teleport when hurt by projectile or to chase
@@ -464,8 +469,8 @@ public final class Enderman: Monster {
         }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
-        if source == "projectile" {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
+        if source == .projectile {
             teleportRandomly()
             if let living = attacker as? LivingEntity { setTarget(living) }
             return false
@@ -631,7 +636,7 @@ open class Guardian: Monster {
                 }
             }
             if laserTime >= (type == "elder_guardian" ? 60 : 80) {
-                t.hurt(type == "elder_guardian" ? 8 : 6, "magic", self)
+                t.hurt(type == "elder_guardian" ? 8 : 6, .magic, self)
                 laserTarget = nil
                 laserTime = 0
             }
@@ -641,10 +646,10 @@ open class Guardian: Monster {
         }
     }
     @discardableResult
-    open override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    open override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         // thorns
-        if source == "mob", let attacker, rng.nextFloat() < 0.5 {
-            attacker.hurt(2, "thorns", self)
+        if source == .mob, let attacker, rng.nextFloat() < 0.5 {
+            attacker.hurt(2, .thorns, self)
         }
         return super.hurt(amount, source, attacker)
     }
@@ -723,9 +728,9 @@ public final class Shulker: Monster {
         }
     }
     @discardableResult
-    public override func hurt(_ amountIn: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amountIn: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         var amount = amountIn
-        if (data.open ?? 0) < 0.1 && source != "magic" { amount *= 0.3 } // closed armor
+        if (data.open ?? 0) < 0.1 && source != .magic { amount *= 0.3 } // closed armor
         let r = super.hurt(amount, source, attacker)
         if r && health < maxHealth / 2 && rng.nextFloat() < 0.25 {
             // teleport to nearby surface
@@ -756,7 +761,6 @@ public final class Pillager: Monster {
         width = 0.6; height = 1.95
         maxHealth = 24; health = 24
         speed = 0.11
-        data.crossed = true
         goals.add(FloatGoal(self, 0))
         goals.add(RangedAttackGoal(self, 2, 40, 10, { [unowned self] t, power in
             shootArrowFn?(self, t, power * 1.1, 4)
@@ -772,7 +776,7 @@ public final class Pillager: Monster {
         if isCaptain { d.append(DropEntry("emerald", min: 1, max: 3)) }
         return d
     }
-    public override func die(_ source: String, _ attacker: Entity? = nil) {
+    public override func die(_ source: DamageSource, _ attacker: Entity? = nil) {
         super.die(source, attacker)
         if isCaptain, let attacker, attacker.isPlayer {
             (attacker as? LivingEntity)?.addEffect("bad_omen", 120000, 0)
@@ -812,11 +816,20 @@ public final class Vindicator: Monster {
         if isCaptain { d.append(DropEntry("emerald", min: 1, max: 3)) }
         return d
     }
-    public override func die(_ source: String, _ attacker: Entity? = nil) {
+    public override func die(_ source: DamageSource, _ attacker: Entity? = nil) {
         super.die(source, attacker)
         if isCaptain, let attacker, attacker.isPlayer {
             (attacker as? LivingEntity)?.addEffect("bad_omen", 120000, 0)
         }
+    }
+    public override func save() -> [String: Any] {
+        var d = super.save()
+        d["captain"] = isCaptain
+        return d
+    }
+    public override func load(_ d: [String: Any]) {
+        super.load(d)
+        isCaptain = (d["captain"] as? Bool) ?? false
     }
 }
 
@@ -894,7 +907,7 @@ public final class Vex: Monster {
         if dead || deathTime > 0 { return }
         targetGoals.tick(2, age)
         lifeTicks -= 1
-        if lifeTicks <= 0 { hurt(1, "magic") }
+        if lifeTicks <= 0 { hurt(1, .magic) }
         if let t = target, !t.dead {
             let dx = t.x - x, dy = t.eyeY() - 0.5 - y, dz = t.z - z
             var d = (dx * dx + dy * dy + dz * dz).squareRoot()
@@ -943,7 +956,7 @@ public final class Ravager: Monster {
         if roarCooldown > 0 { roarCooldown -= 1 }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         let r = super.hurt(amount, source, attacker)
         if r && rng.nextFloat() < 0.15 && roarCooldown <= 0 {
             // roar: knockback all nearby

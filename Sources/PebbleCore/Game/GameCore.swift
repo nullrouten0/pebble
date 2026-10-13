@@ -351,7 +351,7 @@ public final class GameCore {
                 ($0 as? Entity)?.type == "ender_dragon" && !$0.dead
             } as? EnderDragon
             if let dragon {
-                _ = dragon.hurt(10, "explosion")
+                _ = dragon.hurt(10, .explosion)
                 dragon.pathAngle += 1.5
             }
         }
@@ -2425,7 +2425,7 @@ public final class GameCore {
             if target is LivingEntity || target.type == "end_crystal" {
                 playerAttack(p, target)
             } else if target.type == "boat" || target.type == "minecart" {
-                _ = target.hurt(2, "player", p)
+                _ = target.hurt(2, .player, p)
             }
             return
         }
@@ -3081,55 +3081,6 @@ public final class GameCore {
 /// "wither_skeleton" → "Wither Skeleton"
 public func prettyEntityName(_ type: String) -> String {
     type.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
-}
-
-/// vanilla 1.20 death-message grammar, with attacker names and the
-/// "whilst trying to escape" variants for environmental deaths
-public func deathCauseText(_ source: String?, _ attacker: String? = nil) -> String {
-    if let a = attacker {
-        switch source {
-        case "mob", "player": return "was slain by \(a)"
-        case "arrow": return "was shot by \(a)"
-        case "explosion": return "was blown up by \(a)"
-        case "magic": return "was killed by \(a) using magic"
-        case "sonic": return "was sonically charged by \(a)"
-        case "wither": return "withered away whilst fighting \(a)"
-        case "fall": return "hit the ground too hard whilst trying to escape \(a)"
-        case "fall_high": return "fell from a high place whilst trying to escape \(a)"
-        case "lava": return "tried to swim in lava to escape \(a)"
-        case "fire": return "was burned to a crisp whilst fighting \(a)"
-        case "drown": return "drowned whilst trying to escape \(a)"
-        case "freeze": return "was frozen to death by \(a)"
-        case "cactus": return "walked into a cactus whilst trying to escape \(a)"
-        default: break
-        }
-    }
-    switch source {
-    case "void": return "fell out of the world"
-    case "fall": return "hit the ground too hard"
-    case "fall_high": return "fell from a high place"
-    case "lava": return "tried to swim in lava"
-    case "fire": return "went up in flames"
-    case "fire_tick": return "burned to death"
-    case "drown": return "drowned"
-    case "starve": return "starved to death"
-    case "explosion": return "blew up"
-    case "magic": return "was killed by magic"
-    case "arrow": return "was shot"
-    case "wither": return "withered away"
-    case "freeze": return "froze to death"
-    case "lightning": return "was struck by lightning"
-    case "sonic": return "was sonically charged"
-    case "fly_into_wall": return "experienced kinetic energy"
-    case "cactus": return "was pricked to death"
-    case "sweet_berry": return "was poked to death by a sweet berry bush"
-    case "anvil": return "was squashed by a falling anvil"
-    case "falling_block": return "was squashed by a falling block"
-    case "stalagmite": return "was impaled on a stalagmite"
-    case "suffocate": return "suffocated in a wall"
-    case "mob", "player": return "was slain"
-    default: return "died"
-    }
 }
 
 // ---- small math helpers -------------------------------------------------------

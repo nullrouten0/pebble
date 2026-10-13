@@ -3,6 +3,31 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.7 — 2026-10-13 — fall damage, spiders, mobs that remember
+
+- **Falls over 5 blocks follow the rules again.** Feather Falling now
+  protects against them, armor no longer does (as in Minecraft), and
+  cats, chickens, bees, parrots, bats, shulkers and iron golems are immune
+  at any height, not just short drops.
+- **Spiders are neutral in the light**, as in Minecraft: they only come
+  for you in the dark, though they still fight back if you hit one.
+- **Natural regeneration matches Minecraft:** with a full food bar, the
+  fast heal spends saturation and slows down as saturation runs below 6.
+- **Saved and reloaded correctly now:** a slime's size and health,
+  saddles on striders and camels (which also drop their saddle),
+  vindicator captains, charged creepers, hanging bats, and bees that have
+  stung (they used to survive a reload).
+- **Death messages** for arrows, fireballs, wither skulls, thorns, stings
+  and fireworks ("was shot by Skeleton" instead of "died"); fire deaths
+  say "burned to death".
+- **Lit creepers swell** before they blow, for you and for LAN guests.
+- **LAN guests see skeletons and pillagers aim.** Also on LAN: stacks of
+  stone (item 0) no longer vanish when they're dropped, picked up or
+  handed between host and guest.
+- **Ruined portals in the Nether** get their Nether variant (less decay,
+  more magma and lava).
+- Leather boots carry you through powder snow at full speed.
+
 ## 1.4.6 — 2026-10-13 — faster world generation, sound and particles
 
 Same worlds, less work:

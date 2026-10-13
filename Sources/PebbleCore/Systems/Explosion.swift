@@ -55,7 +55,7 @@ public func explode(_ world: World, _ x: Double, _ y: Double, _ z: Double, _ pow
         if dist > radius { continue }
         let exposure = 1 - dist / radius // (skip expensive exposure rays)
         let dmg = ((exposure * exposure + exposure) / 2 * 7 * power + 1).rounded(.down)
-        ent.hurt(dmg, "explosion", source)
+        ent.hurt(dmg, .explosion, source)
         let dx2 = ent.x - x, dy2 = (ent.y + ent.height / 2) - y, dz2 = ent.z - z
         var d2 = detHyp3(dx2, dy2, dz2)
         if d2 == 0 { d2 = 1 }

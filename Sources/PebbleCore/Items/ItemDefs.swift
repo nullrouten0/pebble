@@ -156,7 +156,7 @@ extension ItemStack {
     /// build's save or a bad LAN peer (itemDefs[id] would trap), an unknown
     /// enchantment (enchDef traps), or such a stack inside a shulker box
     public var isKnown: Bool {
-        id > 0 && id < itemDefs.count && ench.allSatisfy { ENCH_BY_ID[$0.id] != nil }
+        id >= 0 && id < itemDefs.count && ench.allSatisfy { ENCH_BY_ID[$0.id] != nil }
             && (data.contents?.allSatisfy { $0?.isKnown ?? true } ?? true)
     }
 }

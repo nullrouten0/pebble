@@ -401,7 +401,7 @@ open class Mob: LivingEntity {
         var dmg = attackDamage
         dmg += 3 * Double(effectLevel("strength"))
         dmg -= 4 * Double(effectLevel("weakness"))
-        target.hurt(max(0, dmg), "mob", self)
+        target.hurt(max(0, dmg), .mob, self)
         world.hooks.playSound("entity.player.attack.strong", x, y, z, 0.7, 1)
     }
 
@@ -416,7 +416,6 @@ open class Mob: LivingEntity {
         }
         if loveTicks <= 0 && breedCooldown <= 0 {
             loveTicks = 600
-            data.loveCause = player?.id
             return true
         }
         return false
@@ -606,6 +605,7 @@ public final class NearestTargetGoal: Goal {
         if sc > 0 { return false }
         scanCooldown = 10
         let m = mob
+        if let gate = lightGate, !gate(m.world, ifloor(m.x), ifloor(m.y), ifloor(m.z)) { return false }
         let candidates = m.world.getEntitiesNear(m.x, m.y, m.z, range) { e in
             guard let le = e as? LivingEntity else { return false }
             return le !== m && !le.dead && self.filter(le)
@@ -828,12 +828,11 @@ public final class RangedAttackGoal: Goal {
         super.init(mob, priority)
     }
     public override func canUse() -> Bool { mob.target != nil && !mob.target!.dead }
-    public override func stop() { mob.nav.stop(); mob.sprinting = false; mob.data.aiming = false }
+    public override func stop() { mob.nav.stop(); mob.sprinting = false }
     public override func tick() {
         let m = mob
         guard let t = m.target else { return }
         m.lookX = t.x; m.lookY = t.eyeY(); m.lookZ = t.z
-        m.data.aiming = true
         let dSq = m.distanceToSq(t)
         let canSee = m.canSee(t)
         if dSq < range * range && canSee {

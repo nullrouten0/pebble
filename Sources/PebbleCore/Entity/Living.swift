@@ -66,6 +66,7 @@ open class LivingEntity: Entity {
     }
 
     public var breathesWaterOnly = false
+    open override var wearsLeatherBoots: Bool { armor[3].map { itemDef($0.id).name == "leather_boots" } ?? false }
     /// player-only props read through `(e as any)` in baseline goal filters
     open var gameMode: Int { 0 }
     /// player-only inventory hooks called from mob interactions (no-ops here)
@@ -94,7 +95,7 @@ open class LivingEntity: Entity {
     }
     private func applyInstantEffect(_ id: String, _ amp: Int) {
         if id == "instant_health" { heal(4 * pow(2, Double(amp))) }
-        else if id == "instant_damage" { hurt(6 * pow(2, Double(amp)), "magic") }
+        else if id == "instant_damage" { hurt(6 * pow(2, Double(amp)), .magic) }
         else if id == "saturation" { feed(amp + 1, 2) }
     }
     /// Player hook (baseline `(this as any).feed?.()`)
@@ -121,9 +122,9 @@ open class LivingEntity: Entity {
             case "regeneration":
                 if age % max(1, 50 >> e.amplifier) == 0 { heal(1) }
             case "poison":
-                if age % max(1, 25 >> e.amplifier) == 0 && health > 1 { hurt(1, "magic") }
+                if age % max(1, 25 >> e.amplifier) == 0 && health > 1 { hurt(1, .magic) }
             case "wither":
-                if age % max(1, 40 >> e.amplifier) == 0 { hurt(1, "wither") }
+                if age % max(1, 40 >> e.amplifier) == 0 { hurt(1, .wither) }
             case "hunger":
                 addExhaustion(0.005 * Double(e.amplifier + 1))
             case "levitation":
@@ -157,21 +158,21 @@ open class LivingEntity: Entity {
         }
         return v
     }
-    public func protectionLevel(_ source: String) -> Double {
+    public func protectionLevel(_ source: DamageSource) -> Double {
         var epf = 0
         for a in armor {
             guard let a else { continue }
             epf += enchLevel(a, "protection")
-            if source == "fire" || source == "lava" { epf += enchLevel(a, "fire_protection") * 2 }
-            if source == "explosion" { epf += enchLevel(a, "blast_protection") * 2 }
-            if source == "projectile" { epf += enchLevel(a, "projectile_protection") * 2 }
-            if source == "fall" { epf += enchLevel(a, "feather_falling") * 3 }
+            if source.isFire { epf += enchLevel(a, "fire_protection") * 2 }
+            if source == .explosion { epf += enchLevel(a, "blast_protection") * 2 }
+            if source == .projectile { epf += enchLevel(a, "projectile_protection") * 2 }
+            if source == .fall { epf += enchLevel(a, "feather_falling") * 3 }
         }
         return Double(min(20, epf))
     }
 
     @discardableResult
-    open override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    open override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if dead || deathTime > 0 || amount <= 0 { return false }
         if isNetProxy && world.isRemote {
             // a LAN guest's copy: the host owns its health — just flash
@@ -180,12 +181,11 @@ open class LivingEntity: Entity {
             return true
         }
         if invulnTicks > 0 { return false }
-        if source == "fire" && hasEffect("fire_resistance") { return false }
-        if source == "lava" && hasEffect("fire_resistance") { return false }
-        if source == "fall" && (type == "cat" || type == "ocelot" || type == "chicken" || type == "bat" || type == "parrot" || type == "bee" || type == "shulker" || type == "iron_golem") { return false }
+        if source.isFire && hasEffect("fire_resistance") { return false }
+        if source == .fall && (type == "cat" || type == "ocelot" || type == "chicken" || type == "bat" || type == "parrot" || type == "bee" || type == "shulker" || type == "iron_golem") { return false }
 
         // armor reduction (vanilla formula)
-        let bypassesArmor = source == "fall" || source == "void" || source == "magic" || source == "wither" || source == "starve" || source == "drown" || source == "freeze" || source == "sonic"
+        let bypassesArmor = source.bypassesArmor
         var dmg = amount
         if !bypassesArmor {
             let armorV = armorValue()
@@ -243,7 +243,7 @@ open class LivingEntity: Entity {
         }
     }
 
-    open func die(_ source: String, _ attacker: Entity? = nil) {
+    open func die(_ source: DamageSource, _ attacker: Entity? = nil) {
         health = 0
         deathTime = 1
         world.hooks.playSound(deathSound(), x, y, z, 1, 1)
@@ -263,7 +263,7 @@ open class LivingEntity: Entity {
         if ground == Int(B.pointed_dripstone) { dmg = (fallDistance * 2 - 2).rounded(.up) }
         if ground >= 0 && ground < blockDefs.count && blockDefs[ground].shape == .bed { dmg = (dmg * 0.5).rounded(.up) }
         if dmg > 0 {
-            hurt(dmg, fallDistance > 5 ? "fall_high" : "fall")
+            hurt(dmg, .fall)   // a player's death screen tells high falls apart (Player.die)
             let cell = groundBlock()
             world.hooks.playSound(dmg > 4 ? "entity.generic.big_fall" : "entity.generic.small_fall", x, y, z, 1, 1)
             // farmland trample
@@ -416,11 +416,11 @@ open class LivingEntity: Entity {
             if respiration == 0 || rng.nextFloat() < 1 / Double(respiration + 1) { airSupply -= 1 }
             if airSupply <= -20 {
                 airSupply = 0
-                if world.rule("drowningDamage") { hurt(2, "drown") }
+                if world.rule("drowningDamage") { hurt(2, .drown) }
             }
         } else if breathesWaterOnly && !inWater {
             airSupply -= 1
-            if airSupply <= -20 { airSupply = 0; hurt(2, "drown") }
+            if airSupply <= -20 { airSupply = 0; hurt(2, .drown) }
         } else {
             airSupply = min(300, airSupply + 4)
         }

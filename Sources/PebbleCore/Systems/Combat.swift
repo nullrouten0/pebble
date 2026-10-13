@@ -47,7 +47,7 @@ public func playerAttack(_ player: Player, _ target: Entity) {
         player.world.hooks.playSound("entity.player.attack.weak", player.x, player.y, player.z, 0.6, 1)
     }
 
-    let hurt = target.hurt(max(0, dmg), "mob", player)
+    let hurt = target.hurt(max(0, dmg), .mob, player)
     if hurt {
         // knockback enchant + sprint knockback (capture sprint state first —
         // the kb branch clears it, and the sweep gate below must see it)
@@ -66,7 +66,7 @@ public func playerAttack(_ player: Player, _ target: Entity) {
             var thorns = 0
             for a in liv.armor { if let a { thorns += enchLevel(a, "thorns") } }
             if thorns > 0 && gameRng.nextFloat() < Double(thorns) * 0.15 {
-                player.hurt(Double(1 + gameRng.nextInt(4)), "thorns", target)
+                player.hurt(Double(1 + gameRng.nextInt(4)), .thorns, target)
             }
         }
         // sweeping (sword, full strength, on ground-ish)
@@ -75,7 +75,7 @@ public func playerAttack(_ player: Player, _ target: Entity) {
             let sweepDmg = 1 + (sweepLvl > 0 ? dmg * Double(sweepLvl) / Double(sweepLvl + 1) : 0)
             for e in player.world.getEntitiesNear(target.x, target.y, target.z, 1.5) {
                 guard let other = e as? LivingEntity, other !== target, other !== player else { continue }
-                other.hurt(sweepDmg, "mob", player)
+                other.hurt(sweepDmg, .mob, player)
             }
             player.world.hooks.addParticles("sweep", player.x - detSin(player.yaw) * 1.5, player.y + 1.1, player.z + detCos(player.yaw) * 1.5, 1, 0, 0)
             player.world.hooks.playSound("entity.player.attack.sweep", player.x, player.y, player.z, 0.8, 1)
@@ -185,7 +185,7 @@ public func tickFangs(_ world: World) {
             world.hooks.playSound("entity.evoker_fangs.attack", f.x, Double(gy), f.z, 1, 1)
             for e in world.getEntitiesNear(f.x, Double(gy) + 0.5, f.z, 1.2) {
                 guard let liv = e as? LivingEntity, liv !== f.owner else { continue }
-                liv.hurt(6, "magic", f.owner)
+                liv.hurt(6, .magic, f.owner)
             }
         }
         i -= 1
@@ -303,7 +303,6 @@ public func registerCombatBindings() {
             if zp != nil { e.remove() }
         } else if t == "creeper" {
             (e as? Creeper)?.charged = true
-            e.data.charged = true
         } else if t == "villager" {
             let witch = spawnMob(w, "witch", e.x, e.y, e.z, SpawnOpts())
             if witch != nil { e.remove() }

@@ -220,7 +220,8 @@ public final class NetClient {
             game.host?.pushChat(line)
         case .hurt:
             let amount = try r.f32(), source = try r.str(), attacker = try r.i32()
-            _ = game.player.hurt(amount, source, ents[attacker])
+            guard let src = DamageSource(rawValue: source) else { throw NetError.badFrame }
+            _ = game.player.hurt(amount, src, ents[attacker])
         case .give:
             guard let s = try r.stack() else { return }
             let p = game.player!

@@ -40,7 +40,7 @@ public final class Blaze: Monster {
         if vy < 0 { vy *= 0.6 }
         if let t = target, t.y > y + 1, rng.nextFloat() < 0.1 { vy = 0.2 }
         if age % 8 == 0 { world.hooks.addParticles("smoke", x, y + 0.8, z, 1, 0.3, 0) }
-        if inWater { hurt(1, "drown") }
+        if inWater { hurt(1, .drown) }
     }
     public override func drops() -> [DropEntry] {
         [DropEntry("blaze_rod", min: 0, max: 1, lootingBonus: 1)]
@@ -124,8 +124,8 @@ public final class Ghast: Monster {
 public final class MagmaCube: Slime {
     public override var type: String { "magma_cube" }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
-        if source == "fire" || source == "lava" { return false }
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
+        if source == .fire || source == .lava { return false }
         return super.hurt(amount, source, attacker)
     }
     public override func drops() -> [DropEntry] {
@@ -156,7 +156,7 @@ public final class ZombifiedPiglin: Monster {
         }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         let r = super.hurt(amount, source, attacker)
         if r, let attacker, attacker.isPlayer {
             angerTime = 800
@@ -350,8 +350,8 @@ public final class WitherSkeletonMob: Monster {
         target.addEffect("wither", 200, 0)
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
-        if source == "fire" || source == "lava" { return false }
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
+        if source == .fire || source == .lava { return false }
         return super.hurt(amount, source, attacker)
     }
     public override func drops() -> [DropEntry] {

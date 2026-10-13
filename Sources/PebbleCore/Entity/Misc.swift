@@ -61,8 +61,8 @@ public final class ItemEntity: Entity {
     }
 
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
-        if source == "explosion" || source == "fire" || source == "lava" { remove(); return true }
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
+        if source == .explosion || source == .fire || source == .lava { remove(); return true }
         return false
     }
 
@@ -165,7 +165,7 @@ public final class FallingBlockEntity: Entity {
                 if (bid == Int(B.anvil) || bid == Int(B.chipped_anvil) || bid == Int(B.damaged_anvil)) && fallDistance > 1 {
                     // hurt entities below
                     for e in world.getEntitiesInBox(bb()) {
-                        (e as? Entity)?.hurt(min(40, (fallDistance * 2).rounded(.up)), "anvil")
+                        (e as? Entity)?.hurt(min(40, (fallDistance * 2).rounded(.up)), .anvil)
                     }
                     if gameRng.nextFloat() < 0.05 * fallDistance {
                         placeCell = bid == Int(B.anvil) ? Int(cell(B.chipped_anvil, blockCell & 15))
@@ -254,7 +254,7 @@ public final class LightningBolt: Entity {
             for e in world.getEntitiesNear(x, y, z, 4) {
                 guard let ent = e as? Entity, ent !== self else { continue }
                 struckByLightningFn?(ent)
-                ent.hurt(5, "lightning")
+                ent.hurt(5, .lightning)
                 ent.fireTicks = max(ent.fireTicks, 160)
             }
         }
@@ -281,8 +281,8 @@ public final class EndCrystal: Entity {
         }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
-        if dead || (source == "explosion" && amount < 0) { return false }
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
+        if dead || (source == .explosion && amount < 0) { return false }
         remove()
         explodeFn?(world, x, y + 1, z, 6, false, self)
         crystalDestroyedFn?(self, attacker)

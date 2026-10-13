@@ -24,13 +24,13 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer).
 
-> **Pebble 1.4 is a beta.** The engine is pinned by 516 golden regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.4 is a beta.** The engine is pinned by 533 golden regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
 | | |
 |---|---|
-| Lines of Swift | ~55,700 across 107 files |
+| Lines of Swift | ~55,700 across 108 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
 | Items | 1,196 |
@@ -38,7 +38,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Golden regression checks | 516, all green (`pebble test`) |
+| Golden regression checks | 533, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by the Faithful team (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -73,7 +73,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the 516-check golden test suite
+pebble test         run the 533-check golden test suite
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -191,7 +191,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     golden test harness (516 checks against goldens/*.json)
+Sources/pebsmoke/     golden test harness (533 checks against goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              golden baseline files pinning engine behavior
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -202,7 +202,7 @@ The Mac app builds with plain SwiftPM (no `.xcodeproj`); the iOS project is gene
 
 ## The determinism contract
 
-Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (pure IEEE-754, no platform math library), 32-bit-wrapping integer hashes and seeded RNG everywhere mean the same seed produces the same world, bit for bit, on any machine. Golden baseline files enforce it: `pebble test` runs 516 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. A change that moves a single block in an existing world fails the suite.
+Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (pure IEEE-754, no platform math library), 32-bit-wrapping integer hashes and seeded RNG everywhere mean the same seed produces the same world, bit for bit, on any machine. Golden baseline files enforce it: `pebble test` runs 533 checks covering terrain hashes over full chunk pipelines, a 55-mob zoo ticked 200 steps, 911 transcendental-math probes, recipe/enchant/loot RNG lockstep, a redstone contraption timeline, and independent derivations of vanilla physics constants. A change that moves a single block in an existing world fails the suite.
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -217,7 +217,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, redstone): the tail of `pebble test`, which should print `516 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, redstone): the tail of `pebble test`, which should print `533 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

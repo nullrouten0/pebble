@@ -129,7 +129,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
             }
             ok("Removed \(n) entities")
         } else {
-            _ = p.hurt(10000, "void")
+            _ = p.hurt(10000, .void)
             ok("Ouch")
         }
     case "summon":

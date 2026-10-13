@@ -18,23 +18,16 @@ public struct EntityData: Codable, Equatable {
     public var color: Int?
     public var size: Int?
     public var pattern: Int?
-    public var puffed: Bool?
+    /// creeper fuse, 0…1 (drawn as the creeper swelling)
     public var swelling: Double?
     public var grazing: Bool?
-    public var stingTimer: Int?
     public var buckTimer: Int?
-    public var loveCause: Int?
     public var baby: Bool?
     public var brown: Bool?
     public var sheared: Bool?
     public var charged: Bool?
     public var captain: Bool?
-    public var cold: Bool?
     public var hanging: Bool?
-    public var aiming: Bool?
-    public var airborne: Bool?
-    public var crossed: Bool?
-    public var leatherBoots: Bool?
     public var persistent: Bool?
     public var open: Double?
     public var gene: String?
@@ -142,18 +135,18 @@ open class Entity: EntityRef {
                 fireTicks = 0
                 if inPowderSnow { world.setBlock(ifloor(x), ifloor(y), ifloor(z), 0) }
             } else {
-                if fireTicks % 20 == 0 && world.rule("fireDamage") { _ = hurt(1, "fire") }
+                if fireTicks % 20 == 0 && world.rule("fireDamage") { _ = hurt(1, .fire) }
                 fireTicks -= 1
             }
         }
         if inLava {
-            _ = hurt(4, "lava")
+            _ = hurt(4, .lava)
             fireTicks = max(fireTicks, 300)
             fallDistance *= 0.5
         }
         // void
         if y < Double(world.info.minY - 64) {
-            _ = hurt(4, "void")
+            _ = hurt(4, .void)
             if y < Double(world.info.minY - 128) && !isPlayer { remove() }
         }
         // freezing
@@ -162,7 +155,7 @@ open class Entity: EntityRef {
         } else {
             freezeTicks = max(0, freezeTicks - 2)
         }
-        if freezeTicks >= 140 && age % 40 == 0 { _ = hurt(1, "freeze") }
+        if freezeTicks >= 140 && age % 40 == 0 { _ = hurt(1, .freeze) }
     }
 
     func updateFluidState() {
@@ -219,7 +212,7 @@ open class Entity: EntityRef {
         let bid = cell >> 4
         if bid == Int(B.cobweb) { dx *= 0.25; dy *= 0.05; dz *= 0.25; vx = 0; vy = 0; vz = 0 }
         else if bid == Int(B.sweet_berry_bush) { dx *= 0.8; dy *= 0.75; dz *= 0.8 }
-        else if bid == Int(B.powder_snow) && !(data.leatherBoots ?? false) { dx *= 0.9; dy *= 0.9; dz *= 0.9 }
+        else if bid == Int(B.powder_snow) && !wearsLeatherBoots { dx *= 0.9; dy *= 0.9; dz *= 0.9 }
         if bid == Int(B.honey_block) || (world.getBlock(ifloor(x), ifloor(y - 0.1), ifloor(z)) >> 4) == Int(B.honey_block) {
             dx *= 0.4; dz *= 0.4
             if dy < -0.13 { dy = -0.05; vy = -0.05 }
@@ -300,10 +293,13 @@ open class Entity: EntityRef {
 
     open func onLand(_ fallDistance: Double) {}
 
+    /// leather boots carry you through powder snow at full speed
+    open var wearsLeatherBoots: Bool { false }
+
     open func tick() {}
 
     @discardableResult
-    open func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool { false }
+    open func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool { false }
 
     /// right-click interaction; return true if handled
     open func interact(_ player: Entity, _ stack: ItemStack?) -> Bool { false }

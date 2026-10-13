@@ -260,7 +260,6 @@ public final class Chicken: Animal {
         super.tick()
         // flap fall
         if !onGround && vy < 0 { vy *= 0.6 }
-        data.airborne = !onGround
         if !baby {
             eggTime -= 1
             if eggTime <= 0 {
@@ -460,7 +459,6 @@ public final class Parrot: TamableAnimal {
     }
     public override func tick() {
         super.tick()
-        data.airborne = !onGround
         if !onGround && vy < 0 { vy *= 0.6 }
     }
     public override func interact(_ player: Entity, _ stack: ItemStack?) -> Bool {
@@ -470,7 +468,7 @@ public final class Parrot: TamableAnimal {
             return true
         }
         if name == "cookie" {
-            hurt(100, "poison")
+            hurt(100, .poison)
             return true
         }
         return super.interact(player, stack)
@@ -480,9 +478,11 @@ public final class Parrot: TamableAnimal {
 
 public final class Bee: Animal {
     public override var type: String { "bee" }
-    public var angry = 0
     public var hasNectar = false
     public var hasStung = false
+    /// ticks left to live after stinging. Not in `data`: counting down there
+    /// resent the bee's whole state to LAN guests every tick for a minute
+    var stingTimer = 0
     public var hiveX: Int? = nil
     public var hiveY = 0, hiveZ = 0
     public override init(world: World) {
@@ -510,16 +510,29 @@ public final class Bee: Animal {
         if !onGround && vy < 0 { vy *= 0.7 }
         if age % 30 == 0 && rng.nextFloat() < 0.5 { vy += 0.04 }
         if hasStung {
-            let t = (data.stingTimer ?? 0) - 1
-            data.stingTimer = t
-            if t <= 0 { hurt(100, "sting") }
+            stingTimer -= 1
+            if stingTimer <= 0 { hurt(100, .sting) }
+        }
+    }
+    public override func save() -> [String: Any] {
+        var d = super.save()
+        if hasStung { d["stingTimer"] = stingTimer }
+        return d
+    }
+    public override func load(_ d: [String: Any]) {
+        super.load(d)
+        // (older saves kept the countdown in data, and forgot hasStung)
+        let legacy = (d["data"] as? [String: Any])?["stingTimer"] as? NSNumber
+        if let t = (d["stingTimer"] as? NSNumber) ?? legacy, t.intValue > 0 {
+            hasStung = true
+            stingTimer = t.intValue
         }
     }
     public override func doMeleeAttack(_ target: LivingEntity) {
         super.doMeleeAttack(target)
         target.addEffect("poison", 100, 0)
         hasStung = true
-        data.stingTimer = 1200
+        stingTimer = 1200
         setTarget(nil)
     }
     var hiveScanCooldown = 0
@@ -622,7 +635,7 @@ public final class Axolotl: Animal {
         }, 8))
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         let r = super.hurt(amount, source, attacker)
         if r && health < maxHealth / 2 && gameRng.nextFloat() < 0.33 {
             playDead = 200
@@ -766,7 +779,7 @@ final class RamGoal: Goal {
         guard let t = target else { return }
         m.nav.moveToEntity(t, 2.5)
         if m.distanceToSq(t) < 2.5 {
-            t.hurt(2, "mob", m)
+            t.hurt(2, .mob, m)
             let dx = t.x - m.x, dz = t.z - m.z
             var d = (dx * dx + dz * dz).squareRoot()
             if d == 0 { d = 1 }
@@ -855,7 +868,7 @@ open class Squid: Animal {
         goals.add(RandomSwimGoal(self, 2, 1, 20))
     }
     @discardableResult
-    open override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    open override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         let r = super.hurt(amount, source, attacker)
         if r {
             world.hooks.addParticles("squid_ink", x, y + 0.4, z, 12, 0.4, 0)
@@ -875,7 +888,11 @@ public final class GlowSquid: Squid {
 
 public final class Bat: Mob {
     public override var type: String { "bat" }
-    public var hanging = false
+    /// lives in `data` so it's saved and reaches LAN guests' renderers
+    public var hanging: Bool {
+        get { data.hanging ?? false }
+        set { data.hanging = newValue }
+    }
     public override init(world: World) {
         super.init(world: world)
         category = "ambient"
@@ -889,11 +906,9 @@ public final class Bat: Mob {
         if dead || deathTime > 0 { return }
         let above = world.getBlock(ifloor(x), ifloor(y + 1), ifloor(z)) >> 4
         if hanging {
-            data.hanging = true
             if above == 0 || rng.nextFloat() < 0.005 { hanging = false }
             vx = 0; vy = 0; vz = 0
         } else {
-            data.hanging = false
             // erratic flight
             if age % 4 == 0 {
                 vx += (rng.nextFloat() - 0.5) * 0.12
@@ -982,7 +997,6 @@ public final class Strider: Animal {
             inLava = false // immune
             fireTicks = 0
         }
-        data.cold = !inLava && (world.getBlock(ifloor(x), ifloor(y - 0.2), ifloor(z)) >> 4) != Int(B.lava)
         if let rider = passengers.first as? LivingEntity, rider.isPlayer, saddled {
             if let held = rider.mainHand, itemDef(held.id).name == "warped_fungus_on_a_stick" {
                 yaw = rider.yaw
@@ -992,8 +1006,8 @@ public final class Strider: Animal {
         }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
-        if source == "lava" || source == "fire" { return false }
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
+        if source == .lava || source == .fire { return false }
         return super.hurt(amount, source, attacker)
     }
     public override func interact(_ player: Entity, _ stack: ItemStack?) -> Bool {
@@ -1009,7 +1023,20 @@ public final class Strider: Animal {
         }
         return super.interact(player, stack)
     }
-    public override func drops() -> [DropEntry] { [DropEntry("string", min: 2, max: 5, lootingBonus: 1)] }
+    public override func drops() -> [DropEntry] {
+        var d = [DropEntry("string", min: 2, max: 5, lootingBonus: 1)]
+        if saddled { d.append(DropEntry("saddle")) }
+        return d
+    }
+    public override func save() -> [String: Any] {
+        var d = super.save()
+        d["saddled"] = saddled
+        return d
+    }
+    public override func load(_ d: [String: Any]) {
+        super.load(d)
+        saddled = (d["saddled"] as? Bool) ?? false
+    }
 }
 
 public final class Camel: Animal {
@@ -1055,6 +1082,20 @@ public final class Camel: Animal {
                 world.hooks.playSound("entity.camel.dash", x, y, z, 1, 1)
             }
         }
+    }
+    public override func drops() -> [DropEntry] {
+        var d = super.drops()
+        if saddled { d.append(DropEntry("saddle")) }
+        return d
+    }
+    public override func save() -> [String: Any] {
+        var d = super.save()
+        d["saddled"] = saddled
+        return d
+    }
+    public override func load(_ d: [String: Any]) {
+        super.load(d)
+        saddled = (d["saddled"] as? Bool) ?? false
     }
 }
 
@@ -1248,12 +1289,11 @@ public final class Pufferfish: AbstractFish {
             puffed = min(60, puffed + 3)
             for t in threats {
                 if puffed > 20 && age % 20 == 0 {
-                    (t as? Entity)?.hurt(2, "mob", self)
+                    (t as? Entity)?.hurt(2, .mob, self)
                     (t as? LivingEntity)?.addEffect("poison", 60, 0)
                 }
             }
         } else if puffed > 0 { puffed -= 1 }
-        data.puffed = puffed > 20
     }
     public override func drops() -> [DropEntry] { [DropEntry("pufferfish")] }
 }

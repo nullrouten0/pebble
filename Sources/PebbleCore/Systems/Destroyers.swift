@@ -123,7 +123,7 @@ public func startCarve(_ w: World, _ x: Double, _ y: Double, _ z: Double, _ radi
         let dist = detHyp3(dx, dy, dz)
         if dist > reach { continue }
         let exposure = 1 - dist / reach
-        ent.hurt(((exposure * exposure + exposure) / 2 * 3.5 * radius + 1).rounded(.down), "explosion", source)
+        ent.hurt(((exposure * exposure + exposure) / 2 * 3.5 * radius + 1).rounded(.down), .explosion, source)
         let d = max(dist, 1)
         ent.vx += dx / d * exposure * 1.5
         ent.vy += dy / d * exposure * 1.5 + 0.2

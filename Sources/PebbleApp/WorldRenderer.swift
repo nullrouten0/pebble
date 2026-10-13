@@ -1372,7 +1372,8 @@ final class WorldRenderer {
             pose.limbAmp = liv?.limbAmp ?? 0
             pose.attackSwing = liv?.attackAnim ?? 0
             pose.hurtFlash = (liv?.hurtTime ?? 0) > 0 ? Double(liv!.hurtTime) / 10 : deathFlip * 0.6
-            pose.scale = 1
+            // a lit creeper swells toward its blast (vanilla grows it ~10-40%)
+            pose.scale = 1 + (ent.data.swelling ?? 0) * 0.2
             pose.baby = ent.data.baby ?? false
             pose.sky = w.getSkyLight(bx, by, bz)
             pose.block = w.getBlockLight(bx, by, bz)
@@ -1382,12 +1383,12 @@ final class WorldRenderer {
             }
             pose.ageTicks = ent.age
             pose.airborne = !ent.onGround
-            pose.aiming = (ent as? Mob)?.target != nil
+            pose.aiming = (ent as? Mob)?.target != nil || ent.netAiming   // a guest's copies have no target
             pose.crossed = pose.aiming
             pose.grazing = ent.data.grazing ?? false
             pose.sitting = (ent as? Mob)?.sitting ?? false
             pose.open = ent.data.open ?? 0  // shulker lid (synced to LAN guests)
-            pose.hanging = ent.type == "bat" && ent.onGround
+            pose.hanging = ent.type == "bat" && (ent.data.hanging ?? false)
             pose.alpha = deathFlip > 0 ? 1 - deathFlip * 0.6 : 1
             pose.elytraFlying = (ent as? Player)?.elytraFlying ?? false
             // blob shadow under living entities (incl. the player in 3rd person);

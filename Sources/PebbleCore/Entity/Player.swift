@@ -17,7 +17,7 @@ public enum GameMode {
 /// LAN host: a guest's player lives on the guest's machine — what happens to
 /// its copy in the host world (damage, pickups, XP, effects) is sent there
 public protocol NetPlayerLink: AnyObject {
-    func netHurt(_ amount: Double, _ source: String, _ attacker: Entity?) -> Bool
+    func netHurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity?) -> Bool
     func netGive(_ stack: ItemStack) -> Bool
     func netAddXP(_ points: Int)
     func netAddEffect(_ id: String, _ duration: Int, _ amplifier: Int, _ ambient: Bool)
@@ -405,7 +405,7 @@ public final class Player: LivingEntity {
         if horizontalCollision {
             let speed = (vx * vx + vy * vy + vz * vz).squareRoot()
             let dmg = speed * 10 - 3
-            if dmg > 0 { hurt(dmg, "fly_into_wall") }
+            if dmg > 0 { hurt(dmg, .flyIntoWall) }
         }
     }
 
@@ -428,14 +428,17 @@ public final class Player: LivingEntity {
         if hunger >= 18 && health < maxHealth && world.rule("naturalRegeneration") {
             let fast = hunger >= 20 && saturation > 0
             if foodTickTimer >= (fast ? 10 : 80) {
-                heal(1)
-                addExhaustion(fast ? 6 : 6)
+                // vanilla: saturation-fed regen heals up to 1 per half second,
+                // scaled down (with its cost) once saturation drops below 6
+                let spend = fast ? min(saturation, 6) : 6
+                heal(spend / 6)
+                addExhaustion(spend)
                 foodTickTimer = 0
             }
         } else if hunger <= 0 {
             if foodTickTimer >= 80 {
                 let diff = world.difficulty
-                if health > (diff >= 3 ? 0 : diff == 2 ? 1 : 10) { hurt(1, "starve") }
+                if health > (diff >= 3 ? 0 : diff == 2 ? 1 : 10) { hurt(1, .starve) }
                 foodTickTimer = 0
             }
         } else if foodTickTimer > 80 {
@@ -623,12 +626,12 @@ public final class Player: LivingEntity {
 
     // ---- combat / death -------------------------------------------------------
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if let netLink { return netLink.netHurt(amount, source, attacker) }
-        if gameMode == GameMode.creative && source != "void" { return false }
+        if gameMode == GameMode.creative && source != .void { return false }
         // shield: negate frontal physical damage from an attacker we're facing
         if amount > 0, isBlocking(), let attacker, shieldFacesAttacker(attacker),
-           ["mob", "player", "projectile", "explosion", "fireball", "wither_skull"].contains(source) {
+           source.shieldable {
             world.hooks.playSound("item.shield.block", x, y, z, 1, 0.8 + Double.random(in: 0..<0.4))
             if let s = usingHandStack { damageStack(s, max(1, Int(amount.rounded(.down)))) }
             return false
@@ -641,7 +644,7 @@ public final class Player: LivingEntity {
         }
         return r
     }
-    public override func die(_ source: String, _ attacker: Entity? = nil) {
+    public override func die(_ source: DamageSource, _ attacker: Entity? = nil) {
         // totem of undying
         for hand in 0..<2 {
             let s = hand == 0 ? mainHand : offHand
@@ -659,7 +662,8 @@ public final class Player: LivingEntity {
         }
         health = 0
         deathTime = 1
-        data.deathCause = source
+        // falls over 5 blocks get vanilla's "fell from a high place" wording
+        data.deathCause = source == .fall && fallDistance > 5 ? "fall_high" : source.rawValue
         data.deathAttacker = lastAttacker.map { prettyEntityName($0.type) }
         world.hooks.playSound("entity.player.death", x, y, z, 1, 1)
         if !world.rule("keepInventory") {

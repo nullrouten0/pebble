@@ -755,9 +755,10 @@ func registerOverworldStructures() {
         plan: { ctx, ocx, ocz, _ in
             let x = ocx * 16 + 5, z = ocz * 16 + 7
             let y = ctx.heightAt(x + 2, z)
+            let nether = ctx.dim == Dim.nether.rawValue
             return StructurePlan(id: "ruined_portal", pieces: [
                 piece(x - 3, y - 3, z - 3, x + 7, y + 6, z + 4) { b in
-                    buildRuinedPortal(b, x, y, z, false)
+                    buildRuinedPortal(b, x, y, z, nether)
                 },
             ])
         }

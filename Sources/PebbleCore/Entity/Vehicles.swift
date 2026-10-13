@@ -61,7 +61,7 @@ public final class Boat: Entity {
         return nil
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if dead { return false }
         breakBoat()
         return true
@@ -278,9 +278,9 @@ public final class Minecart: Entity {
         }
     }
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if dead { return false }
-        if variant == "tnt" && (source == "fire" || source == "explosion") {
+        if variant == "tnt" && (source == .fire || source == .explosion) {
             tntFuse = 10
             return true
         }

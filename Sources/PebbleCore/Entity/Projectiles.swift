@@ -136,7 +136,7 @@ public final class ArrowEntity: Projectile {
         var dmg = (speed * damage).rounded(.up)
         if critical { dmg += (gameRng.nextFloat() * (dmg / 2 + 1)).rounded(.down) }
         if flame { e.fireTicks = max(e.fireTicks, 100) }
-        let hurt = e.hurt(dmg, "projectile", owner)
+        let hurt = e.hurt(dmg, .projectile, owner)
         if hurt {
             if punchLevel > 0, let liv = e as? LivingEntity {
                 var d = (vx * vx + vz * vz).squareRoot()
@@ -194,7 +194,7 @@ public final class ThrownSnowball: Projectile {
     public override var type: String { "snowball" }
     public override func onHitEntity(_ e: Entity) {
         let dmg: Double = e.type == "blaze" ? 3 : 0
-        e.hurt(dmg, "projectile", owner)
+        e.hurt(dmg, .projectile, owner)
         world.hooks.addParticles("snow", x, y, z, 6, 0.2, 0)
         remove()
     }
@@ -207,7 +207,7 @@ public final class ThrownSnowball: Projectile {
 public final class ThrownEgg: Projectile {
     public override var type: String { "egg" }
     public override func onHitEntity(_ e: Entity) {
-        e.hurt(0, "projectile", owner)
+        e.hurt(0, .projectile, owner)
         hatch()
     }
     public override func onHitBlock(_ hit: RaycastHit) { hatch() }
@@ -232,7 +232,7 @@ public final class ThrownPearl: Projectile {
             owner.x = x
             owner.y = y + 0.1
             owner.z = z
-            owner.hurt(5, "fall")
+            owner.hurt(5, .fall)
             world.hooks.playSound("entity.enderman.teleport", x, y, z, 1, 1)
             world.hooks.addParticles("portal", x, y + 1, z, 24, 0.5, 0)
         }
@@ -306,7 +306,7 @@ public final class Fireball: Projectile {
         }
     }
     public override func onHitEntity(_ e: Entity) {
-        e.hurt(small ? 5 : 6, "fireball", owner)
+        e.hurt(small ? 5 : 6, .fireball, owner)
         e.fireTicks = max(e.fireTicks, 100)
         explode()
     }
@@ -325,7 +325,7 @@ public final class Fireball: Projectile {
     }
     /// ghast fireballs can be deflected
     @discardableResult
-    public override func hurt(_ amount: Double, _ source: String, _ attacker: Entity? = nil) -> Bool {
+    public override func hurt(_ amount: Double, _ source: DamageSource, _ attacker: Entity? = nil) -> Bool {
         if let attacker {
             let dx = x - attacker.x, dy = y - attacker.eyeY(), dz = z - attacker.z
             var d = (dx * dx + dy * dy + dz * dz).squareRoot()
@@ -347,7 +347,7 @@ public final class WitherSkull: Projectile {
         drag = 1    // baseline evaluates `blue ? 0.73 : 1` at construction (blue=false)
     }
     public override func onHitEntity(_ e: Entity) {
-        e.hurt(8, "wither_skull", owner)
+        e.hurt(8, .witherSkull, owner)
         (e as? LivingEntity)?.addEffect("wither", 200, 1)
         explode()
     }
@@ -403,7 +403,7 @@ public final class ShulkerBullet: Projectile {
         if !dead && age % 2 == 0 { world.hooks.addParticles("portal", x, y, z, 1, 0.1, 0) }
     }
     public override func onHitEntity(_ e: Entity) {
-        e.hurt(4, "projectile", owner)
+        e.hurt(4, .projectile, owner)
         (e as? LivingEntity)?.addEffect("levitation", 200, 0)
         remove()
     }
@@ -445,7 +445,7 @@ public final class TridentEntity: Projectile {
         let impaling = stack.map { enchLevel($0, "impaling") } ?? 0
         let waterBonus = ((e as? LivingEntity)?.breathesWater ?? false) ? 1.0 : 0.0
         let dmg = 8 + Double(impaling) * 2.5 * waterBonus
-        e.hurt(dmg, "projectile", owner)
+        e.hurt(dmg, .projectile, owner)
         dealtDamage = true
         // channeling
         if let stack, enchLevel(stack, "channeling") > 0, world.thundering,
@@ -519,7 +519,7 @@ public final class FireworkEntity: Entity {
             world.hooks.playSound("entity.firework_rocket.blast", x, y, z, 2, 1)
             world.hooks.addParticles("totem", x, y, z, 30, 0.5, 0)
             // damage if boosted
-            attachedTo?.hurt(0, "firework")
+            attachedTo?.hurt(0, .firework)
             remove()
         }
     }
@@ -619,7 +619,7 @@ public final class FishingBobber: Entity {
 public final class LlamaSpit: Projectile {
     public override var type: String { "llama_spit" }
     public override func onHitEntity(_ e: Entity) {
-        e.hurt(1, "projectile", owner)
+        e.hurt(1, .projectile, owner)
         remove()
     }
     public override func onHitBlock(_ hit: RaycastHit) { remove() }
