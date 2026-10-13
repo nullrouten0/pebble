@@ -2428,6 +2428,37 @@ do {
         check("creative dig world loads", false)
     }
 
+    // selection wand: left-click marks corner 1 without digging (even held),
+    // right-click marks corner 2 without placing anything
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        p.pitch = .pi / 2 - 0.01
+        p.inventory[p.selectedSlot] = ItemStack(iid("selection_wand"), 1)
+        let bx = Int(floor(p.x)), by = Int(floor(p.y)) - 1, bz = Int(floor(p.z))
+        let under = w.getBlock(bx, by, bz), above = w.getBlock(bx, by + 1, bz)
+        g.mouseDown(0)
+        for _ in 0..<20 { _ = g.frame(dtMs: 50) }
+        g.mouseUp(0)
+        check("wand left-click marks corner 1", p.selection?.a == BlockPos(bx, by, bz), "\(String(describing: p.selection))")
+        check("wand left-click never digs, even held", w.getBlock(bx, by, bz) == under)
+        g.mouseDown(2)
+        for _ in 0..<10 { _ = g.frame(dtMs: 50) }
+        g.mouseUp(2)
+        check("wand right-click marks corner 2", p.selection?.b == BlockPos(bx, by, bz), "\(String(describing: p.selection))")
+        check("wand right-click places nothing", w.getBlock(bx, by + 1, bz) == above && w.getBlock(bx, by, bz) == under)
+        let line = setSelectionCorner(p, 2, BlockPos(bx + 2, by + 4, bz - 1))
+        check("a selection reports its size and volume", line.hasSuffix("(3×5×2, 30 blocks)"), line)
+        let top = w.info.minY + w.info.height - 1
+        setSelectionCorner(p, 1, BlockPos(bx, 1_000_000, bz))
+        check("a corner above the build limit is clamped to it", p.selection?.a?.y == top, "\(String(describing: p.selection))")
+        p.selection = Selection(dim: .nether, a: BlockPos(0, 64, 0), b: BlockPos(5, 64, 5))
+        setSelectionCorner(p, 1, BlockPos(bx, by, bz))
+        check("a corner in another dimension starts a fresh selection", p.selection?.dim == w.dim && p.selection?.b == nil)
+        g.exitToTitle()
+    } else {
+        check("selection wand world loads", false)
+    }
+
     // saves: a chest edited in place (no block change) in an already-saved
     // chunk must survive an unload + reload, and the untouched chunks around
     // it must not be rewritten when they're revisited

@@ -3,6 +3,20 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.5.3 — 2026-10-13 — selection wand
+
+- **Selection wand (`selection_wand`).** Left-click a block to mark corner 1
+  and right-click for corner 2. The wand never digs or places. The action bar
+  shows each corner and the box's size, e.g. "12×5×9, 540 blocks".
+- **`//pos1` and `//pos2`** mark a corner at your feet, or at `x y z`
+  (`~` works). **`//desel`** clears the selection.
+- The selection shows as a gold box with a red marker on corner 1 and a blue
+  one on corner 2, drawn faintly through terrain.
+- The selection belongs to one dimension and is cleared on quit. It's the
+  groundwork for copy and paste, which come next.
+- Release builds no longer fail on toolchains that time out type-checking the
+  view-frustum box test.
+
 ## 1.5.2 — 2026-10-13 — texture credits
 
 - The title screen's texture credit reads "Textures: Faithful 32x by the

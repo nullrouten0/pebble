@@ -141,6 +141,7 @@ Fast building and demolition for creative play, for LAN guests too. Get a tool w
 | `void_bomb` | A thrown orb that wipes out a sphere of radius 12 | radius 24 |
 | `quarry_charge` | Digs a 9×9 shaft straight down to bedrock | 17×17 |
 | `infinity_wipe` | Erases the land for 320 blocks around you. Use once to arm, again within 3 seconds to fire. **Can't be undone.** | 1000 blocks |
+| `selection_wand` | Left-click a block for corner 1, right-click for corner 2. `//pos1` and `//pos2` mark your feet; `//desel` clears | — |
 | `/undo [n]`, `/redo [n]` | Undo or redo your last *n* edits (also Cmd+Z / Cmd+Shift+Z) | — |
 
 **Structures you can place:**
@@ -221,7 +222,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `790 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `797 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

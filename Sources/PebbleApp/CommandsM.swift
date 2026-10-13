@@ -54,6 +54,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
     case "help":
         ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, effect, enchant, xp, setblock, fill, locate, place, undo, redo, chatsize, difficulty, gamerule, clear, spawnpoint, heal")
         ok("LAN: host [port], join <address[:port]>, leave, list, name <name>")
+        ok("Selection: //pos1 [x y z], //pos2 [x y z], //desel (or use the selection_wand)")
     case "give":
         guard let itemName = arg(0) else { return fail("Usage: /give <item> [count]") }
         let count = arg(1).flatMap(Int.init) ?? 1
@@ -208,6 +209,16 @@ func runCommand(_ game: GameCore, _ raw: String) {
             }
         }
         ok("Filled \(n) blocks")
+    case "/pos1", "/pos2":
+        // at your feet, or at typed coordinates
+        if !args.isEmpty && args.count < 3 { return fail("Usage: /\(cmd) [x y z]") }
+        let x = Int((args.isEmpty ? p.x : parseCoord(args[0], p.x)).rounded(.down))
+        let y = Int((args.isEmpty ? p.y : parseCoord(args[1], p.y)).rounded(.down))
+        let z = Int((args.isEmpty ? p.z : parseCoord(args[2], p.z)).rounded(.down))
+        ok(setSelectionCorner(p, cmd == "/pos1" ? 1 : 2, BlockPos(x, y, z)))
+    case "/desel":
+        p.selection = nil
+        ok("Selection cleared")
     case "locate":
         guard let target = arg(0) else { return fail("Usage: /locate <structure>") }
         if target == "stronghold" {

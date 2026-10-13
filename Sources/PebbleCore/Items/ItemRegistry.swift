@@ -338,6 +338,8 @@ private let registerAllItemsOnce: Void = {
     registerItem("wall_builder", display: "Wall Builder", maxStack: 1, category: "tools", icon: "brick", rarity: 3)
     registerItem("box_builder", display: "Box Builder", maxStack: 1, category: "tools", icon: "lurker_shell", rarity: 3)
     registerItem("infinity_wipe", display: "Infinity Wipe", maxStack: 1, category: "tools", icon: "nether_star", rarity: 3)
+    // marks a box for the clipboard commands (Systems/Selection.swift)
+    registerItem("selection_wand", display: "Selection Wand", maxStack: 1, category: "tools", rarity: 3)
 
     // worn in the helmet slot: a beam of light where you look (WorldRenderer
     // headlamps). Durability 0 = never wears out.

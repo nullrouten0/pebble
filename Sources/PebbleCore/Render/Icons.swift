@@ -354,6 +354,13 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         fill(4, 3, 11, 10, bodyDk); fill(5, 4, 10, 9, body)
         fill(6, 5, 9, 8, lens); fill(7, 5, 8, 6, glow)
         return true
+    case "selection_wand":
+        // a dark rod with a glowing gold tip, the same diagonal as a stick
+        let rod = 0x2e2a36, rodHi = 0x4a4458, tip = 0xf0c040, glow = 0xfff4c0
+        fill(9, 4, 10, 5, rodHi); fill(7, 6, 8, 7, rod); fill(5, 8, 6, 9, rodHi); fill(3, 10, 4, 11, rod)
+        fill(2, 12, 3, 13, rod)
+        fill(11, 1, 14, 4, tip); fill(12, 2, 13, 3, glow)
+        return true
     case "stick":
         fill(11, 2, 12, 3, 0x8a6a42); fill(9, 4, 10, 5, 0x8a6a42); fill(7, 6, 8, 7, 0x6a4f30)
         fill(5, 8, 6, 9, 0x8a6a42); fill(3, 10, 4, 11, 0x6a4f30)

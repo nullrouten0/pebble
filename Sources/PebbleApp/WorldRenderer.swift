@@ -1171,6 +1171,7 @@ final class WorldRenderer {
         drawCubes(enc, game: game, viewProj: viewProj, camPos: camPos, uni: &uni, partial: partial)
         drawCrack(enc, game: game, camPos: camPos, uni: &uni)
         drawSelection(enc, game: game, viewProj: viewProj, camPos: camPos)
+        drawWandSelection(enc, game: game, viewProj: viewProj, camPos: camPos)
         let pr = SIMD3<Float>(Float(detCos(cam.yaw)), 0, Float(detSin(cam.yaw)))
         let pu = SIMD3<Float>(Float(detSin(cam.yaw) * detSin(cam.pitch)), Float(detCos(cam.pitch)), Float(-detCos(cam.yaw) * detSin(cam.pitch)))
         enc.setDepthStencilState(depthRead)
@@ -1763,10 +1764,30 @@ final class WorldRenderer {
         }
     }
 
-    /// wireframe boxes (12 edges) or a single straight segment (asLines)
+    // ---- selection wand box (Systems/Selection.swift) --------------------------
+    /// the box between the two corners plus a marker on each corner, drawn
+    /// faintly through terrain and solidly where it's in view
+    private func drawWandSelection(_ enc: MTLRenderCommandEncoder, game: GameCore, viewProj: simd_float4x4, camPos: SIMD3<Double>) {
+        guard let p = game.player, let sel = p.selection, sel.dim == game.world.dim else { return }
+        func box(_ lo: BlockPos, _ hi: BlockPos, _ pad: Double) -> (Double, Double, Double, Double, Double, Double) {
+            (Double(lo.x) - camPos.x - pad, Double(lo.y) - camPos.y - pad, Double(lo.z) - camPos.z - pad,
+             Double(hi.x + 1) - camPos.x + pad, Double(hi.y + 1) - camPos.y + pad, Double(hi.z + 1) - camPos.z + pad)
+        }
+        var parts: [((Double, Double, Double, Double, Double, Double), SIMD3<Float>)] = []
+        if let (lo, hi) = sel.box { parts.append((box(lo, hi, 0.02), SIMD3(1.0, 0.8, 0.25))) }
+        if let a = sel.a { parts.append((box(a, a, 0.01), SIMD3(1.0, 0.35, 0.3))) }
+        if let b = sel.b { parts.append((box(b, b, 0.01), SIMD3(0.35, 0.6, 1.0))) }
+        for (bx, c) in parts {
+            drawBoxOutline(enc, viewProj, [bx], asLines: false, color: SIMD4(c, 0.25), throughWalls: true)
+            drawBoxOutline(enc, viewProj, [bx], asLines: false, color: SIMD4(c, 0.9))
+        }
+    }
+
+    /// wireframe boxes (12 edges) or a single straight segment (asLines);
+    /// throughWalls skips the depth test
     func drawBoxOutline(_ enc: MTLRenderCommandEncoder, _ viewProj: simd_float4x4,
                         _ boxes: [(Double, Double, Double, Double, Double, Double)],
-                        asLines: Bool, color: SIMD4<Float>) {
+                        asLines: Bool, color: SIMD4<Float>, throughWalls: Bool = false) {
         var verts: [Float] = []
         for (x0, y0, z0, x1, y1, z1) in boxes {
             if asLines {
@@ -1784,7 +1805,7 @@ final class WorldRenderer {
         guard !verts.isEmpty else { return }
         var u = LineUniforms(viewProj: viewProj, color: color)
         enc.setRenderPipelineState(linePipeline)
-        enc.setDepthStencilState(depthRead)
+        enc.setDepthStencilState(throughWalls ? depthNone : depthRead)
         verts.withUnsafeBytes { raw in
             enc.setVertexBytes(raw.baseAddress!, length: raw.count, index: 0)
         }

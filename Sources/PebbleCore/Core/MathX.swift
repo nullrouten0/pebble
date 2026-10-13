@@ -174,8 +174,14 @@ public struct Frustum {
     @inline(__always)
     public func intersectsBox(_ x0: Float, _ y0: Float, _ z0: Float, _ x1: Float, _ y1: Float, _ z1: Float) -> Bool {
         // the box corner furthest along the plane's normal
+        // split into typed steps: as one expression some toolchains give up
+        // type-checking it ("unable to type-check … in reasonable time")
         @inline(__always) func inside(_ p: SIMD4<Float>) -> Bool {
-            p.x * (p.x > 0 ? x1 : x0) + p.y * (p.y > 0 ? y1 : y0) + p.z * (p.z > 0 ? z1 : z0) + p.w >= 0
+            let cx: Float = p.x > 0 ? x1 : x0
+            let cy: Float = p.y > 0 ? y1 : y0
+            let cz: Float = p.z > 0 ? z1 : z0
+            let d: Float = p.x * cx + p.y * cy + p.z * cz
+            return d + p.w >= 0
         }
         return inside(left) && inside(right) && inside(bottom) && inside(top) && inside(near) && inside(far)
     }

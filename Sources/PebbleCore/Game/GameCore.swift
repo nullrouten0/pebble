@@ -23,7 +23,7 @@ let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 
 /// item-billboard projectiles (the app renders these as sprites)
 /// tools that act once per click, never on held-use repeat
-let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge", "infinity_wipe"]
+let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge", "infinity_wipe", "selection_wand"]
 /// heavy world tools a LAN guest doesn't predict locally — the host runs them
 let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder", "infinity_wipe"]
 
@@ -2466,6 +2466,12 @@ public final class GameCore {
     @discardableResult
     func performUse(_ p: Player, _ ctx: InteractCtx, target: Entity?, hit: RaycastHit?) -> Bool {
         p.useItemHand = .main
+        if p.mainHand.map({ itemDef($0.id).name }) == "selection_wand" {
+            guard let hit else { return false }
+            markCorner(p, 2, hit)
+            p.attackAnim = 0.6
+            return true
+        }
         if p.mainHand.map({ itemDef($0.id).name }) == "infinity_wipe" {
             useInfinityWipe(p)
             p.attackAnim = 0.6
@@ -2542,6 +2548,11 @@ public final class GameCore {
     public func mouseDown(_ button: Int) {
         guard inWorld, !(host?.hasScreen() ?? false) else { return }
         if button == 0 {
+            // the selection wand marks corner 1 instead of digging
+            if let p = player, p.mainHand.map({ itemDef($0.id).name }) == "selection_wand" {
+                if !p.dead, p.deathTime == 0, let hit = crosshairBlock() { markCorner(p, 1, hit) }
+                return
+            }
             leftDown = true
             player?.breakingProgress = -1   // a fresh press starts a fresh crack
             doAttack()
@@ -2688,6 +2699,15 @@ public final class GameCore {
     // Infinity wipe (the cut itself is in Systems/InfinityWipe.swift)
     // ===========================================================================
     /// first use arms it; a second use within 3 s fires it
+    /// selection wand: the clicked block becomes corner 1 or 2 (a LAN guest's
+    /// click replays here on the host too, so its copy of the selection matches)
+    private func markCorner(_ p: Player, _ corner: Int, _ hit: RaycastHit) {
+        let line = setSelectionCorner(p, corner, BlockPos(hit.x, hit.y, hit.z))
+        guard p === player else { return }
+        host?.showActionBar("§d" + line, 60)
+        host?.playUI("ui.button.click")
+    }
+
     private func useInfinityWipe(_ p: Player) {
         let w = p.world
         if w.dim != .overworld { return tell(p, "§cThe Infinity Wipe only works in the Overworld") }

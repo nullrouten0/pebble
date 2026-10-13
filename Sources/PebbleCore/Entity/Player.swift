@@ -60,6 +60,8 @@ public final class Player: LivingEntity {
     public var usingItem = false
     public var useItemTicks = 0
     public var useItemHand = Hand.main
+    /// selection wand corners (Systems/Selection.swift); not saved
+    public var selection: Selection? = nil
     public var fishingBobberId: Int? = nil
     private var _wearingPumpkin = false
     public override var wearingPumpkin: Bool { _wearingPumpkin }
