@@ -200,9 +200,13 @@ final class UIManager {
     /// safe-area insets in UI units (notch, home indicator); zero on the Mac
     private(set) var safeTop = 0.0, safeLeft = 0.0, safeBottom = 0.0, safeRight = 0.0
 
+    /// a larger scale for the current context (phones: in-world and inventory
+    /// screens, GameRuntime.touchZoom); nil = the usual GUI scale
+    var zoomScale: Double?
+
     func resize(_ pw: Double, _ ph: Double, _ guiScaleSetting: Int, relayout game: GameCore? = nil) {
         let auto = max(1.0, min((pw / 380).rounded(.down), (ph / 240).rounded(.down)))
-        let newScale = guiScaleSetting == 0 ? auto : min(Double(guiScaleSetting), auto)
+        let newScale = zoomScale ?? (guiScaleSetting == 0 ? auto : min(Double(guiScaleSetting), auto))
         if let inset = gRuntime?.platform.safeAreaInsets {
             safeTop = (inset.top / newScale).rounded(.up)
             safeLeft = (inset.left / newScale).rounded(.up)

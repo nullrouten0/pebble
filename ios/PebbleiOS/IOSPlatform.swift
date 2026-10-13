@@ -24,6 +24,8 @@ final class IOSPlatform: PlatformHooks {
 
     func pasteboardString() -> String? { UIPasteboard.general.string }
 
+    var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+
     func setKeepAwake(_ on: Bool) {
         if UIApplication.shared.isIdleTimerDisabled != on { UIApplication.shared.isIdleTimerDisabled = on }
     }

@@ -544,6 +544,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         renderer.flushAtlasUploads(cmd)         // staged slice blits, GPU-ordered
 
         runTestHooks()
+        applyTouchZoom()
         powerBench?.frame()
         let cap = frameCap()
         if cap != appliedFpsCap {
@@ -568,6 +569,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         }
 
         // ---- UI pass ----
+        applyTouchZoom()   // a screen may have opened during the tick
         ui.beginFrame()
         let screen = ui.current()
         if game.hasWorld() && (screen == nil || screen!.showHUD || !screen!.pausesGame) {
@@ -593,6 +595,41 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         }
         cmd.present(drawable)
         cmd.commit()
+    }
+
+    /// Phones: the 240-unit menu height pins the GUI scale low (5 on an iPhone
+    /// Pro Max, slots ~5 mm). In-world and on inventory screens nothing needs
+    /// that height, so zoom up: in-world as far as the hotbar and the corner
+    /// buttons still fit side by side, inventory screens as far as their panel
+    /// fits. Half steps; menus keep the usual scale. Off with a manual GUI Scale.
+    private func touchZoom() -> Double? {
+        guard platform.isPhone, touch.enabled, game.settings.guiScale == 0, drawableSize.width > 0 else { return nil }
+        let pw = Double(drawableSize.width), ph = Double(drawableSize.height)
+        let inset = platform.safeAreaInsets
+        let usableW = pw - inset.left - inset.right, usableH = ph - inset.top - inset.bottom
+        let screen = ui.current()
+        var s: Double
+        if screen == nil && game.hasWorld() {
+            // hotbar (182) centered with the corner L (~100) beside it, both halves
+            s = min(usableW / 400, usableH / 180)
+        } else if let c = screen as? ContainerScreen {
+            let e = c.zoomExtent
+            s = min(usableW / e.w, ph / e.h)
+        } else {
+            return nil
+        }
+        s = (s * 2).rounded(.down) / 2
+        let auto = max(1.0, min((pw / 380).rounded(.down), (ph / 240).rounded(.down)))
+        return s > auto ? s : nil
+    }
+
+    /// apply touchZoom() when the context changes (screen opened / closed)
+    private func applyTouchZoom() {
+        let z = touchZoom()
+        if z != ui.zoomScale {
+            ui.zoomScale = z
+            ui.resize(Double(drawableSize.width), Double(drawableSize.height), game.settings.guiScale, relayout: game)
+        }
     }
 
     /// Max FPS, lowered to 30 where full rate only burns battery: Battery

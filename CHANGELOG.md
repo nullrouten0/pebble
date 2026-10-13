@@ -5,10 +5,20 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
 ## iPad Beta — `ios-port` branch
 
-Version 1.3.3. Not a main release yet: build it yourself from the branch
+Version 1.3.4. Not a main release yet: build it yourself from the branch
 (see the README banner). Known rough edges: frame rate dips while new
 terrain streams in, and iPhone layouts are only lightly polished.
 
+- **Bigger touch targets on iPhone (1.3.4).** Menus need the full screen
+  height, which pins an iPhone's GUI scale low (inventory slots about 5 mm
+  on a Pro Max). In-world and on inventory screens nothing needs that
+  height, so phones now zoom the UI up there: in-world as far as the
+  hotbar and corner buttons still fit side by side (about 20% bigger on a
+  Pro Max), inventory, crafting, furnace and chest screens as far as their
+  panel fits (about 40% bigger slots), creative about 30% with its
+  category tabs moved beside the panel. Menus keep their size; a manual
+  GUI Scale turns the zoom off. iPads are unchanged. The creative screen's
+  "Destroy item" hint moved under the grid (the search box covered it).
 - **Untouched terrain stays put (1.3.3).** Two things changed the world
   on their own as players explored (single-player too, but worst while
   hosting guests who explore):

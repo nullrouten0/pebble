@@ -42,6 +42,10 @@ public protocol PlatformHooks: AnyObject {
     /// (true) or dismiss it (false). Typed text comes back via InputRouter.
     func setTextInputActive(_ active: Bool)
 
+    /// a phone: the UI zooms up where the 240-unit menu height isn't needed
+    /// (in-world, inventory screens) so touch targets reach finger size
+    var isPhone: Bool { get }
+
     /// keep the screen from dimming and locking (true while in a world)
     func setKeepAwake(_ on: Bool)
 
@@ -63,6 +67,7 @@ public extension PlatformHooks {
     var maxFrameRate: Int? { nil }
     func setTextInputActive(_ active: Bool) {}
     var adaptiveRenderScale: Bool { false }
+    var isPhone: Bool { false }
     func setKeepAwake(_ on: Bool) {}
     var battery: (level: Double, charging: Bool)? { nil }
     func setBatteryMonitoring(_ on: Bool) {}

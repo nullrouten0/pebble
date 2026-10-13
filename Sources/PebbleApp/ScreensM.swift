@@ -25,6 +25,8 @@ class ContainerScreen: Screen {
     var playerInvY: Double { panelH - 83 }
     /// true when this frame's panel came from the pack texture (slot bgs baked in)
     private(set) var textured = false
+    /// UI units this screen needs on screen, for zooming it up on phones
+    var zoomExtent: (w: Double, h: Double) { (panelW + 16, panelH + 12) }
 
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         panelX = ((ui.width - panelW) / 2).rounded(.down)
@@ -1097,6 +1099,7 @@ final class CreativeScreen: ContainerScreen {
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         panelX = ((ui.width - panelW) / 2).rounded(.down)
         panelY = ((ui.height - panelH) / 2).rounded(.down)
+        sideTabs = ui.height < panelH + 28 + 8 && ui.width >= panelW + 2 * 42 + 8
         search.x = panelX + 100
         search.y = panelY + 5
         fields.append(search)
@@ -1126,12 +1129,23 @@ final class CreativeScreen: ContainerScreen {
         }
         scroll = min(scroll, max(0, (filtered.count + 8) / 9 - 6))
     }
+    /// tabs above and below the panel, or in columns beside it when there's
+    /// width but not height (a phone zoomed up for touch-sized slots)
+    override var zoomExtent: (w: Double, h: Double) { (panelW + 2 * 42 + 8, panelH + 12) }
+    private var sideTabs = false
+    private func tabRect(_ i: Int) -> (x: Double, y: Double) {
+        if sideTabs {
+            // below the touch Quick Move / close buttons in the top corners
+            return (i < 5 ? panelX - 41 : panelX + panelW + 3, panelY + 46 + Double(i % 5) * 18)
+        }
+        return (panelX + Double(i % 5) * 39, i < 5 ? panelY - 14 : panelY + panelH)
+    }
+
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDarkBg(0.55)
         let cv = ui.cv
         for i in 0..<CREATIVE_TABS.count {
-            let tx = panelX + Double(i % 5) * 39
-            let ty = i < 5 ? panelY - 14 : panelY + panelH
+            let (tx, ty) = tabRect(i)
             cv.setFill(i == tab ? "#c6c6c6" : "#8a8a8a")
             cv.fillRect(tx, ty, 38, 14)
             cv.drawText(String(CREATIVE_TABS[i].1.prefix(7)), tx + 2, ty + 3, 1, i == tab ? "#3f3f3f" : "#e8e8e8", shadow: false)
@@ -1162,12 +1176,12 @@ final class CreativeScreen: ContainerScreen {
         cv.fillRect(panelX + panelW - 16, panelY + 22 + (sf * 93).rounded(), 10, 15)
         ui.drawSlots(self)
         ui.drawButtons(self)
-        cv.drawText("Destroy item: drop on grid", panelX + 4, panelY + 6, 1, "#3f3f3f", shadow: false)
+        // under the grid: the search field covers the title row past x+100
+        cv.drawText("Destroy item: drop on grid", panelX + 8, panelY + 138, 1, "#3f3f3f", shadow: false)
     }
     override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
         for i in 0..<CREATIVE_TABS.count {
-            let tx = panelX + Double(i % 5) * 39
-            let ty = i < 5 ? panelY - 14 : panelY + panelH
+            let (tx, ty) = tabRect(i)
             if mx >= tx && mx < tx + 38 && my >= ty && my < ty + 14 {
                 tab = i
                 search.text = ""
