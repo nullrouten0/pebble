@@ -115,27 +115,11 @@ checkD("lerp", lerpD(0, 10, 0.25), 2.5)
 // ---------------------------------------------------------------------------
 section("block registry (vs goldens)")
 registerAllBlocks()
-check("block count", blockDefs.count == 879, "got \(blockDefs.count) want 879")
-check("tile count (baseline range intact)", tileCount() >= 757, "got \(tileCount()) want >= 757")
-let idGoldens: [(String, UInt16)] = [
-    ("air", 0), ("stone", 3), ("grass_block", 33), ("oak_log", 95),
-    ("water", 292), ("lava", 293), ("glass", 294), ("white_wool", 298),
-    ("black_shulker_box", 473), ("wheat", 537), ("snow", 550),
-    ("netherrack", 589), ("end_stone", 614), ("crafting_table", 626),
-    ("redstone_wire", 684), ("rail", 717), ("tuff_wall", 823),
-    ("oxidized_cut_copper_slab", 852), ("waxed_oxidized_cut_copper_slab", 856),
-    ("infested_deepslate", 878), ("sculk_shrieker", 716),
-    ("cherry_leaves", 279), ("mangrove_propagule", 289),
-]
-var idsOK = true
-for (name, want) in idGoldens {
-    let got = bidOpt(name)
-    if got != want {
-        idsOK = false
-        print("    id mismatch \(name): got \(String(describing: got)) want \(want)")
-    }
-}
-check("23 block ids bit-identical to baseline", idsOK)
+// ids are per world now (a saved palette maps them), so only air's is fixed:
+// cell 0 means "nothing here" throughout the engine
+check("air is block 0", bid("air") == 0)
+check("block names are unique", Set(blockDefs.map(\.name)).count == blockDefs.count)
+check("tile count (fallback atlas)", tileCount() >= 757, "got \(tileCount())")
 check("tile grass_top", tileId("grass_top") == 38, "got \(tileId("grass_top"))")
 check("tile destroy_9", tileId("destroy_9") == 740, "got \(tileId("destroy_9"))")
 check("tile 756 is sweep_particle", allTileNames().count > 756 && allTileNames()[756] == "sweep_particle", "got \(allTileNames().count > 756 ? allTileNames()[756] : "nil")")
@@ -154,30 +138,7 @@ check("two-block bed drops exactly once",
 // ---------------------------------------------------------------------------
 section("item registry (vs goldens)")
 registerAllItems()
-// 1186 baseline items + 2 appended (weeping/twisting vines — their drop
-// fns referenced items that never existed; appended at the END so every
-// baseline id is unchanged)
-let BASE_ITEM_COUNT = 1186
-check("item count", itemDefs.count == 1196, "got \(itemDefs.count) want 1196") // 1188 + bazooka, mining_laser, void_bomb, quarry_charge, wall_builder, box_builder, infinity_wipe, headlamp
-check("item ids stable after append", iid("weeping_vines") == 1186 && iid("twisting_vines") == 1187,
-      "vines ids \(iid("weeping_vines"))/\(iid("twisting_vines")) want 1186/1187")
-let itemGoldens: [(String, Int)] = [
-    ("stone", 0), ("wheat_seeds", 764), ("wooden_sword", 832), ("netherite_hoe", 861),
-    ("leather_helmet", 869), ("elytra", 894), ("apple", 896), ("milk_bucket", 934),
-    ("stick", 935), ("goat_horn", 1008), ("white_dye", 1009), ("bucket", 1025),
-    ("potion", 1045), ("oak_boat", 1048), ("music_disc_descent", 1075),
-    ("angler_pottery_sherd", 1076), ("netherite_upgrade", 1112),
-    ("zombified_piglin_spawn_egg", 1185),
-]
-var itemIdsOK = true
-for (name, want) in itemGoldens {
-    let got = iidOpt(name)
-    if got != want {
-        itemIdsOK = false
-        print("    item id mismatch \(name): got \(String(describing: got)) want \(want)")
-    }
-}
-check("18 item ids bit-identical to baseline", itemIdsOK)
+check("item names are unique", Set(itemDefs.map(\.name)).count == itemDefs.count)
 check("blockToItem stone", blockToItem[Int(B.stone)] == Int32(iid("stone")))
 check("cake maxStack 1", itemDefs[iid("cake")].maxStack == 1)
 check("netherite sword dmg", itemDefs[iid("netherite_sword")].tool?.attackDamage == 7)
@@ -2748,6 +2709,62 @@ do {
           b?.blocks == gen.blocks && b?.biomes == gen.biomes && (b?.entities.first?["type"] as? String) == "cow")
     check("compressed entity-only record reads back", c?.blocks == nil && (c?.entities.first?["type"] as? String) == "sheep")
     check("compressed full record is >10× smaller", zBytes * 10 < plainBytes, "\(plainBytes) → \(zBytes) bytes")
+}
+
+// ---------------------------------------------------------------------------
+section("block/item palettes (a world from another build)")
+do {
+    let home = NSTemporaryDirectory() + "pebsmoke-pal-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let db = SaveDB()
+    // the "old build": stone and dirt swapped places, stone and diamond items
+    // too, and each list ends with something this build doesn't have
+    var old = Palette.current()
+    let stoneB = Int(bid("stone")), dirtB = Int(bid("dirt"))
+    old.blocks.swapAt(stoneB, dirtB)
+    old.blocks.append("retired_block")
+    let stoneI = iid("stone"), diamondI = iid("diamond")
+    old.items.swapAt(stoneI, diamondI)
+    old.items.append("retired_item")
+    let oldStoneCell = UInt16(dirtB << 4 | 2), oldGoneCell = UInt16(old.blocks.count - 1) << 4
+    let goneItem = old.items.count - 1
+    func oldStack(_ id: Int) -> [String: Any] { ["id": id, "count": 3, "damage": 0, "ench": [], "data": [:]] }
+    let chest = BlockEntityData(type: "chest", x: 1, y: 64, z: 1)
+    chest.items = [ItemStack(diamondI, 5), ItemStack(goneItem, 1), nil]   // old ids: stone, then the gone item
+    var blocks = [UInt16](repeating: 0, count: 16 * 16 * DIMS[0].height)
+    blocks[0] = oldStoneCell; blocks[1] = oldGoneCell
+    let rec = ChunkRecord(key: db.chunkKey("old", 0, 0, 0), worldId: "old", dim: 0, cx: 0, cz: 0,
+                          blocks: blocks, biomes: [UInt8](repeating: 0, count: 4 * 4 * (DIMS[0].height / 4)),
+                          blockEntities: [chest],
+                          entities: [["type": "item", "x": 1.5, "y": 65.0, "z": 1.5, "stack": oldStack(diamondI)],
+                                     ["type": "falling_block", "x": 2.5, "y": 70.0, "z": 2.5, "blockCell": Int(oldStoneCell)]])
+    _ = db.putChunks([rec])
+    db.putPlayer("old", ["dim": 0, "data": ["inventory": [oldStack(diamondI), oldStack(goneItem), NSNull()]]])
+    db.putPlayer("old#guest:Bob", ["dim": 0, "data": ["inventory": [oldStack(stoneI)]]])   // old id of diamond
+    db.putPalette("old", old)
+    let remap = db.migratePalette("old")
+    check("a world from another build is migrated", remap != nil && db.getPalette("old") == Palette.current())
+    check("…and names what it couldn't keep", remap?.droppedBlocks == ["retired_block"] && remap?.droppedItems == ["retired_item"])
+    let got = db.getChunk("old", 0, 0, 0)
+    check("stone stays stone, meta kept", got?.blocks?[0] == UInt16(stoneB << 4 | 2))
+    check("a block this build lacks becomes air", got?.blocks?[1] == 0)
+    let gotChest = got?.blockEntities?.first
+    check("chest items keep their identity; a gone item leaves an empty slot",
+          gotChest?.items?.map { $0?.id } == [stoneI, nil, nil])
+    let item = (got?.entities.first { $0["type"] as? String == "item" }?["stack"] as? [String: Any])?["id"] as? NSNumber
+    check("an item on the ground keeps its identity", item?.intValue == stoneI)
+    let fb = got?.entities.first { $0["type"] as? String == "falling_block" }?["blockCell"] as? NSNumber
+    check("a falling block keeps its identity", fb?.intValue == stoneB << 4 | 2)
+    let inv = (db.getPlayer("old")?["data"] as? [String: Any])?["inventory"] as? [Any]
+    check("the player's inventory keeps its identity", ((inv?[0] as? [String: Any])?["id"] as? NSNumber)?.intValue == stoneI && inv?[1] is NSNull)
+    let guestInv = (db.getPlayer("old#guest:Bob")?["data"] as? [String: Any])?["inventory"] as? [Any]
+    check("LAN guests' saved players are migrated too", ((guestInv?[0] as? [String: Any])?["id"] as? NSNumber)?.intValue == diamondI)
+    check("a second open changes nothing", db.migratePalette("old") == nil)
+    check("a world saved before palettes gets this build's", db.migratePalette("prepalette") == nil && db.getPalette("prepalette") == Palette.current())
 }
 
 print("\n\(passed) passed, \(failed) failed")

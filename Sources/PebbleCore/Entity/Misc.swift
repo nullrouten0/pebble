@@ -82,7 +82,10 @@ public final class ItemEntity: Entity {
            let s = try? JSONDecoder().decode(ItemStack.self, from: bytes), s.isKnown {
             stack = s
         } else {
-            stack = ItemStack(0, 1)
+            // no stack (its item was removed from the game, or the record is
+            // damaged): the entity has nothing to be, so it goes
+            stack = ItemStack(0, 0)
+            lifeTime = 0
         }
         pickupDelay = inum(d["pickupDelay"])
     }

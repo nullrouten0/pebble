@@ -556,11 +556,17 @@ public final class GameCore {
         rec.spawnZ = sz
         rec.spawnY = gen.heightEstimate(Double(sx), Double(sz)) + 1
         db.putWorld(rec)
+        db.putPalette(rec.id, Palette.current())
         enterWorld(rec, nil, nil)
     }
 
     public func loadWorld(_ id: String) {
         guard let rec = db.getWorld(id) else { return }
+        if let remap = db.migratePalette(id) {
+            print("[saves] \(rec.name): rewritten for this build's block/item ids"
+                  + (remap.droppedBlocks.isEmpty ? "" : "; gone blocks now air: \(remap.droppedBlocks.joined(separator: ", "))")
+                  + (remap.droppedItems.isEmpty ? "" : "; gone items dropped: \(remap.droppedItems.joined(separator: ", "))"))
+        }
         let playerData = db.getPlayer(id)
         let adv = db.getAdvancements(id)
         enterWorld(rec, playerData, adv)

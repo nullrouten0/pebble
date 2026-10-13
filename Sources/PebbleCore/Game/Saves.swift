@@ -162,6 +162,7 @@ public final class SaveDB {
         """)
         exec("CREATE TABLE IF NOT EXISTS player(world TEXT PRIMARY KEY, json TEXT NOT NULL)")
         exec("CREATE TABLE IF NOT EXISTS advancements(world TEXT PRIMARY KEY, json TEXT NOT NULL)")
+        exec("CREATE TABLE IF NOT EXISTS palette(world TEXT PRIMARY KEY, json TEXT NOT NULL)")
         migrateLegacySaves()
     }
 
@@ -236,7 +237,7 @@ public final class SaveDB {
     }
     public func deleteWorld(_ id: String) {
         exec("BEGIN")
-        for table in ["worlds", "chunks", "player", "advancements"] {
+        for table in ["worlds", "chunks", "player", "advancements", "palette"] {
             let col = table == "worlds" ? "id" : "world"
             run("DELETE FROM \(table) WHERE \(col)=?", bind: { self.bindText($0, 1, id) })
         }
@@ -262,7 +263,17 @@ public final class SaveDB {
         return keys
     }
 
-    public func getChunk(_ worldId: String, _ dim: Int, _ cx: Int, _ cz: Int) -> ChunkRecord? {
+    /// every saved chunk's coordinates for a world
+    public func chunkCoords(_ worldId: String) -> [(dim: Int, cx: Int, cz: Int)] {
+        var out: [(dim: Int, cx: Int, cz: Int)] = []
+        run("SELECT dim, cx, cz FROM chunks WHERE world=?", bind: { self.bindText($0, 1, worldId) }) { stmt in
+            out.append((Int(sqlite3_column_int(stmt, 0)), Int(sqlite3_column_int(stmt, 1)), Int(sqlite3_column_int(stmt, 2))))
+        }
+        return out
+    }
+
+    /// `remap`: the record was written under another palette (migratePalette)
+    public func getChunk(_ worldId: String, _ dim: Int, _ cx: Int, _ cz: Int, remap: PaletteRemap? = nil) -> ChunkRecord? {
         var rec: ChunkRecord?
         run("SELECT data FROM chunks WHERE world=? AND dim=? AND cx=? AND cz=?", bind: { stmt in
             self.bindText(stmt, 1, worldId)
@@ -274,7 +285,7 @@ public final class SaveDB {
                 let count = Int(sqlite3_column_bytes(stmt, 0))
                 let data = Data(bytes: bytes, count: count)
                 rec = self.decodeChunk(data, key: self.chunkKey(worldId, dim, cx, cz),
-                                       worldId: worldId, dim: dim, cx: cx, cz: cz)
+                                       worldId: worldId, dim: dim, cx: cx, cz: cz, remap: remap)
             }
         }
         return rec
@@ -362,7 +373,8 @@ public final class SaveDB {
         return data
     }
 
-    func decodeChunk(_ data: Data, key: String, worldId: String, dim: Int, cx: Int, cz: Int) -> ChunkRecord? {
+    func decodeChunk(_ data: Data, key: String, worldId: String, dim: Int, cx: Int, cz: Int,
+                     remap: PaletteRemap? = nil) -> ChunkRecord? {
         if data.count >= 8, data.prefix(4) == Data("VCK2".utf8) {
             let bodyLen = Int(UInt32(littleEndian: data.subdata(in: 4..<8).withUnsafeBytes { $0.load(as: UInt32.self) }))
             guard bodyLen > 0, bodyLen < 64 << 20 else { return nil }
@@ -375,7 +387,7 @@ public final class SaveDB {
                 }
             }
             guard got == bodyLen else { return nil }
-            return decodeChunk(plain, key: key, worldId: worldId, dim: dim, cx: cx, cz: cz)
+            return decodeChunk(plain, key: key, worldId: worldId, dim: dim, cx: cx, cz: cz, remap: remap)
         }
         var rec = ChunkRecord(key: key, worldId: worldId, dim: dim, cx: cx, cz: cz)
         var off = 0
@@ -397,6 +409,7 @@ public final class SaveDB {
                 }
             }
             off += nBlocks * 2
+            if let remap { for i in 0..<blocks.count { blocks[i] = remap.cell(blocks[i]) } }
             // clamp corrupted ids — blockDefs[cell >> 4] is indexed unchecked
             // in hot paths, and one bad blob must not crash the game
             let maxId = UInt16(blockDefs.count)
@@ -407,8 +420,9 @@ public final class SaveDB {
             off += nBiomes
         }
         guard let jsonLen = readU32(), off + jsonLen <= data.count,
-              let tail = try? JSONSerialization.jsonObject(with: data.subdata(in: off..<off + jsonLen)) as? [String: Any]
+              var tail = try? JSONSerialization.jsonObject(with: data.subdata(in: off..<off + jsonLen)) as? [String: Any]
         else { return nil }
+        if let remap, let t = remap.json(tail) as? [String: Any] { tail = t }
         rec.entities = tail["entities"] as? [[String: Any]] ?? []
         if let rawBE = tail["blockEntities"],
            let bytes = try? JSONSerialization.data(withJSONObject: rawBE),
@@ -417,6 +431,58 @@ public final class SaveDB {
             rec.blockEntities = bes
         }
         return rec
+    }
+
+    // ---- palette -------------------------------------------------------------------
+    public func getPalette(_ worldId: String) -> Palette? {
+        var out: Palette?
+        run("SELECT json FROM palette WHERE world=?", bind: { self.bindText($0, 1, worldId) }) { stmt in
+            if let json = self.columnText(stmt, 0) { out = try? JSONDecoder().decode(Palette.self, from: Data(json.utf8)) }
+        }
+        return out
+    }
+    public func putPalette(_ worldId: String, _ p: Palette) {
+        guard let bytes = try? JSONEncoder().encode(p), let json = String(data: bytes, encoding: .utf8) else { return }
+        run("INSERT OR REPLACE INTO palette(world, json) VALUES(?,?)", bind: { stmt in
+            self.bindText(stmt, 1, worldId)
+            self.bindText(stmt, 2, json)
+        })
+    }
+
+    /// Bring a world saved under another block/item palette in line with this
+    /// build, once, before it opens: every chunk record and every player row
+    /// (the host's and LAN guests') is rewritten with this build's ids, then
+    /// the current palette is recorded. Worlds from before palettes were
+    /// saved in registration order, which only ever grew, so they simply get
+    /// the current palette. Returns the remap it applied, if any.
+    @discardableResult
+    public func migratePalette(_ worldId: String) -> PaletteRemap? {
+        let now = Palette.current()
+        guard let old = getPalette(worldId) else { putPalette(worldId, now); return nil }
+        guard let remap = PaletteRemap(from: old) else { return nil }
+        var batch: [ChunkRecord] = []
+        for (dim, cx, cz) in chunkCoords(worldId) {
+            if let r = getChunk(worldId, dim, cx, cz, remap: remap) { batch.append(r) }
+            if batch.count >= 256 { putChunks(batch); batch.removeAll() }
+        }
+        putChunks(batch)
+        for key in playerKeys(worldId) {
+            if let p = getPlayer(key), let d = remap.json(p) as? [String: Any] { putPlayer(key, d) }
+        }
+        putPalette(worldId, now)
+        return remap
+    }
+
+    /// the world's own player row and its LAN guests' ("<world id>#guest:<name>")
+    func playerKeys(_ worldId: String) -> [String] {
+        var out: [String] = []
+        run("SELECT world FROM player WHERE world=? OR world LIKE ?", bind: { stmt in
+            self.bindText(stmt, 1, worldId)
+            self.bindText(stmt, 2, worldId + "#guest:%")
+        }) { stmt in
+            if let k = self.columnText(stmt, 0) { out.append(k) }
+        }
+        return out
     }
 
     // ---- player / advancements --------------------------------------------------
