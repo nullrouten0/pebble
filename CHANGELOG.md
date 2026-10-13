@@ -3,6 +3,19 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.2 — 2026-10-12 — creative inventory tab, icon tabs
+
+- **Your character and armor slots in creative.** The creative screen has
+  an **Inventory** tab (the chest, at the far end of the bottom row), as in
+  Minecraft: it shows your character, the helmet, chestplate, leggings and
+  boots slots, the offhand slot and crafting, with the tabs still around it
+  to go back to the items. The inventory button reopens whichever tab you
+  were on.
+- **Icon tabs.** Creative tabs show an item instead of a name cut to seven
+  letters ("Buildin", "Functio"); the selected category's name is the
+  panel title, and a mouse hover names any tab. They're finger-sized, and
+  sit in columns beside the panel on a phone.
+
 ## 1.4.1 — 2026-10-12 — Mac: smaller saves, creative dig erode
 
 - **Mac worlds save compressed**, as iOS has since the beta: chunk records

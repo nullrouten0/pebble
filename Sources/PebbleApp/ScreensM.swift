@@ -75,8 +75,13 @@ class ContainerScreen: Screen {
 final class InventoryScreen: ContainerScreen {
     var craftGrid: [ItemStack?] = [nil, nil, nil, nil]
     var craftResult: ItemStack?
+    /// opened from the creative screen's Inventory tab: keep the tab strip
+    /// so any other tab goes back to the creative items
+    let creativeTabs: Bool
+    private var tabs = CreativeTabs()
 
-    override init() {
+    init(creativeTabs: Bool = false) {
+        self.creativeTabs = creativeTabs
         super.init()
         title = "Crafting"
         titleX = 97
@@ -124,6 +129,28 @@ final class InventoryScreen: ContainerScreen {
     }
     func updateResult() {
         craftResult = matchCrafting(craftGrid, 2, 2)?.out
+    }
+    override var zoomExtent: (w: Double, h: Double) {
+        creativeTabs ? CreativeTabs.extent(panelW, panelH) : super.zoomExtent
+    }
+    override func initScreen(_ ui: UIManager, _ game: GameCore) {
+        super.initScreen(ui, game)
+        tabs.layout(ui, panelX, panelY, panelW, panelH)
+    }
+    override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
+        super.draw(ui, game, partial)
+        if creativeTabs { tabs.draw(ui, selected: CREATIVE_INVENTORY_TAB) }
+    }
+    override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
+        if creativeTabs, let i = tabs.hit(mx, my) {
+            if i != CREATIVE_INVENTORY_TAB {
+                game.playUISound("ui.button.click")
+                CreativeScreen.lastTab = i
+                ui.replace(CreativeScreen(), game)
+            }
+            return true
+        }
+        return super.onMouseDown(ui, game, mx, my, btn)
     }
     override func drawExtra(_ ui: UIManager, _ game: GameCore) {
         let cv = ui.cv
@@ -1077,15 +1104,78 @@ final class TradingScreen: ContainerScreen {
 // =============================================================================
 // Creative inventory
 // =============================================================================
-private let CREATIVE_TABS: [(String, String)] = [
-    ("building", "Building"), ("colored", "Colored"), ("natural", "Natural"),
-    ("functional", "Functional"), ("redstone", "Redstone"), ("tools", "Tools"),
-    ("combat", "Combat"), ("food", "Food"), ("ingredients", "Ingredients"), ("spawn_eggs", "Eggs"),
+/// creative tabs: (item category, name, icon item). The last one isn't a
+/// category: it's the survival inventory (character, armor, offhand,
+/// crafting), as in vanilla
+private let CREATIVE_TABS: [(String, String, String)] = [
+    ("building", "Building", "bricks"), ("colored", "Colored", "cyan_wool"), ("natural", "Natural", "grass_block"),
+    ("functional", "Functional", "crafting_table"), ("redstone", "Redstone", "redstone"), ("tools", "Tools", "iron_pickaxe"),
+    ("combat", "Combat", "golden_sword"), ("food", "Food", "apple"), ("ingredients", "Ingredients", "iron_ingot"),
+    ("spawn_eggs", "Spawn Eggs", "pig_spawn_egg"), ("inventory", "Inventory", "chest"),
 ]
+let CREATIVE_INVENTORY_TAB = 10
+
+/// The creative tab strip, shared by the creative screen and (in creative)
+/// the inventory: icon tabs in a row of six above the panel and five below,
+/// or in columns beside it when height is short (a phone zoomed up)
+struct CreativeTabs {
+    static let h = 22.0, sideW = 28.0
+    var panelX = 0.0, panelY = 0.0, panelW = 0.0, panelH = 0.0
+    var side = false
+
+    /// UI units the panel plus its tabs need, for the phone zoom
+    static func extent(_ panelW: Double, _ panelH: Double) -> (w: Double, h: Double) {
+        (panelW + 2 * (sideW + 4) + 8, panelH + 12)
+    }
+    mutating func layout(_ ui: UIManager, _ x: Double, _ y: Double, _ w: Double, _ hgt: Double) {
+        panelX = x; panelY = y; panelW = w; panelH = hgt
+        side = ui.height < hgt + 2 * Self.h + 8 && ui.width >= Self.extent(w, hgt).w
+    }
+    func rect(_ i: Int) -> (x: Double, y: Double, w: Double) {
+        // the inventory tab sits apart, at the far end of the bottom row
+        let top = i < 6, k = top ? i : (i == CREATIVE_INVENTORY_TAB ? 5 : i - 6)
+        if side {
+            return (top ? panelX - Self.sideW - 2 : panelX + panelW + 2, panelY + 30 + Double(k) * (Self.h + 1), Self.sideW)
+        }
+        let step = ((panelW + 1) / 6).rounded(.down)
+        return (panelX + Double(k) * step, top ? panelY - Self.h : panelY + panelH, step - 1)
+    }
+    func hit(_ mx: Double, _ my: Double) -> Int? {
+        CREATIVE_TABS.indices.first { i in
+            let r = rect(i)
+            return mx >= r.x && mx < r.x + r.w && my >= r.y && my < r.y + Self.h
+        }
+    }
+    /// after the panel: the selected tab joins it, hovering names a tab
+    func draw(_ ui: UIManager, selected: Int) {
+        let cv = ui.cv
+        for i in CREATIVE_TABS.indices {
+            let r = rect(i), sel = i == selected
+            // the selected tab runs 2 into the panel, in the panel's color
+            var y = r.y, hgt = Self.h
+            if sel && !side { hgt += 2; if i >= 6 { y -= 2 } }
+            var x = r.x, w = r.w
+            if sel && side { w += 2; if i < 6 { } else { x -= 2 } }
+            cv.setFill(sel ? "#c6c6c6" : "#8b8b8b")
+            cv.fillRect(x, y, w, hgt)
+            cv.setStroke(sel ? "#ffffff" : "#555555")
+            cv.strokeRect(r.x, r.y, r.w, Self.h)
+            if let id = iidOpt(CREATIVE_TABS[i].2) {
+                cv.drawItemIcon(id, nil, r.x + ((r.w - 16) / 2).rounded(.down), r.y + 3, 16, 16)
+            }
+            if !ui.touchMode && ui.mouseX >= r.x && ui.mouseX < r.x + r.w && ui.mouseY >= r.y && ui.mouseY < r.y + Self.h {
+                ui.tooltipLines = [CREATIVE_TABS[i].1]
+            }
+        }
+    }
+}
 
 final class CreativeScreen: ContainerScreen {
-    var tab = 0
+    /// the tab the inventory key opens next (vanilla remembers it)
+    static var lastTab = 0
+    var tab = CreativeScreen.lastTab == CREATIVE_INVENTORY_TAB ? 0 : CreativeScreen.lastTab
     var scroll = 0
+    private var tabs = CreativeTabs()
     let search = TextField(0, 0, 80, 12)
     var filtered: [Int] = []
 
@@ -1099,7 +1189,7 @@ final class CreativeScreen: ContainerScreen {
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         panelX = ((ui.width - panelW) / 2).rounded(.down)
         panelY = ((ui.height - panelH) / 2).rounded(.down)
-        sideTabs = ui.height < panelH + 28 + 8 && ui.width >= panelW + 2 * 42 + 8
+        tabs.layout(ui, panelX, panelY, panelW, panelH)
         search.x = panelX + 100
         search.y = panelY + 5
         fields.append(search)
@@ -1129,28 +1219,15 @@ final class CreativeScreen: ContainerScreen {
         }
         scroll = min(scroll, max(0, (filtered.count + 8) / 9 - 6))
     }
-    /// tabs above and below the panel, or in columns beside it when there's
-    /// width but not height (a phone zoomed up for touch-sized slots)
-    override var zoomExtent: (w: Double, h: Double) { (panelW + 2 * 42 + 8, panelH + 12) }
-    private var sideTabs = false
-    private func tabRect(_ i: Int) -> (x: Double, y: Double) {
-        if sideTabs {
-            // below the touch Quick Move / close buttons in the top corners
-            return (i < 5 ? panelX - 41 : panelX + panelW + 3, panelY + 46 + Double(i % 5) * 18)
-        }
-        return (panelX + Double(i % 5) * 39, i < 5 ? panelY - 14 : panelY + panelH)
-    }
+    /// room for the tabs beside the panel when a phone zooms up
+    override var zoomExtent: (w: Double, h: Double) { CreativeTabs.extent(panelW, panelH) }
 
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         ui.drawDarkBg(0.55)
         let cv = ui.cv
-        for i in 0..<CREATIVE_TABS.count {
-            let (tx, ty) = tabRect(i)
-            cv.setFill(i == tab ? "#c6c6c6" : "#8a8a8a")
-            cv.fillRect(tx, ty, 38, 14)
-            cv.drawText(String(CREATIVE_TABS[i].1.prefix(7)), tx + 2, ty + 3, 1, i == tab ? "#3f3f3f" : "#e8e8e8", shadow: false)
-        }
         ui.drawPanel(panelX, panelY, panelW, panelH)
+        tabs.draw(ui, selected: tab)
+        cv.drawText(search.text.isEmpty ? CREATIVE_TABS[tab].1 : "Search", panelX + 8, panelY + 7, 1, "#3f3f3f", shadow: false)
         for row in 0..<6 {
             for col in 0..<9 {
                 let gx = panelX + 8 + Double(col) * 18
@@ -1180,14 +1257,17 @@ final class CreativeScreen: ContainerScreen {
         cv.drawText("Destroy item: drop on grid", panelX + 8, panelY + 138, 1, "#3f3f3f", shadow: false)
     }
     override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
-        for i in 0..<CREATIVE_TABS.count {
-            let (tx, ty) = tabRect(i)
-            if mx >= tx && mx < tx + 38 && my >= ty && my < ty + 14 {
+        if let i = tabs.hit(mx, my) {
+            game.playUISound("ui.button.click")
+            CreativeScreen.lastTab = i
+            if i == CREATIVE_INVENTORY_TAB {
+                ui.replace(InventoryScreen(creativeTabs: true), game)
+            } else {
                 tab = i
                 search.text = ""
                 refresh()
-                return true
             }
+            return true
         }
         if mx >= panelX + 8 && mx < panelX + 8 + 162 && my >= panelY + 22 && my < panelY + 22 + 108 {
             let col = Int((mx - panelX - 8) / 18)

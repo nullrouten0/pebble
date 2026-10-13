@@ -25,7 +25,9 @@ final class HostBridge: GameHost {
         switch kind {
         case "crafting": ui.open(CraftingScreen(), game)
         case "inventory": ui.open(InventoryScreen(), game)
-        case "creative": ui.open(CreativeScreen(), game)
+        case "creative":
+            // back to the tab you left: the item picker, or the inventory
+            ui.open(CreativeScreen.lastTab == CREATIVE_INVENTORY_TAB ? InventoryScreen(creativeTabs: true) : CreativeScreen(), game)
         case "chest":
             if let be = data?.be {
                 ui.open(ChestScreen(be, data?.title ?? "Chest", data?.other), game)
