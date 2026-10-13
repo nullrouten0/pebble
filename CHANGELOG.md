@@ -3,6 +3,16 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.5.2 — 2026-10-13 — texture credits
+
+- The title screen's texture credit reads "Textures: Faithful 32x by the
+  Faithful Team - faithfulpack.net", and clicking it opens
+  [faithfulpack.net](https://faithfulpack.net/) (Mac and iOS).
+- The end credits name the pack, the team and the Faithful License, and
+  say Pebble isn't affiliated with or endorsed by the Faithful Team; the
+  README says the same.
+- Mac packaging always ships the Faithful License alongside the pack.
+
 ## 1.5.1 — 2026-10-13 — Pebble's own names
 
 - **New names across the game.** A few creatures, blocks and items have

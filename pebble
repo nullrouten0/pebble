@@ -147,8 +147,12 @@ bundle() {
     cp "$REPO/packaging/logo.png"       "$stage/Contents/Resources/"
     cp "$REPO/packaging/title-bg.png"   "$stage/Contents/Resources/"
     cp "$REPO/packaging/"*.zip          "$stage/Contents/Resources/" 2>/dev/null || true
-    # the Faithful license must travel with the pack (their requirement #6)
-    cp "$REPO/packaging/FAITHFUL-LICENSE.txt" "$stage/Contents/Resources/" 2>/dev/null || true
+    # the Faithful license must travel with the pack (their requirement #6):
+    # no pack ships without it
+    if ls "$stage/Contents/Resources/"*.zip >/dev/null 2>&1; then
+        cp "$REPO/packaging/FAITHFUL-LICENSE.txt" "$stage/Contents/Resources/" \
+            || die "packaging/FAITHFUL-LICENSE.txt is missing; the Faithful pack can't ship without it"
+    fi
     cp "$REPO/.build/release/Pebble"    "$stage/Contents/MacOS/Pebble"
     stamp_commit "$stage/Contents/Info.plist"
     codesign --force --sign - "$stage" >/dev/null 2>&1 || warn "codesign failed — the app may trip Gatekeeper"

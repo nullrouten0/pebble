@@ -70,6 +70,7 @@ final class MacPlatform: PlatformHooks {
     }
 
     func pasteboardString() -> String? { NSPasteboard.general.string(forType: .string) }
+    func openURL(_ url: String) { if let u = URL(string: url) { NSWorkspace.shared.open(u) } }
 
     func showStatus(_ title: String) { window?.title = title }
 

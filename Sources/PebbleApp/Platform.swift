@@ -53,6 +53,9 @@ public protocol PlatformHooks: AnyObject {
     /// or while monitoring is off (the power bench turns it on)
     var battery: (level: Double, charging: Bool)? { get }
     func setBatteryMonitoring(_ on: Bool)
+
+    /// open a web page in the system browser (the texture credit's link)
+    func openURL(_ url: String)
 }
 
 public extension PlatformHooks {

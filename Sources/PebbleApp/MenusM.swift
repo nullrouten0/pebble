@@ -6,8 +6,20 @@ import QuartzCore
 import PebbleCore
 
 // =============================================================================
+/// the Faithful 32x texture pack's home page (credited on the title screen and in the credits)
+let FAITHFUL_URL = "https://faithfulpack.net/"
+
 final class TitleScreen: Screen {
     var splash = ""
+    /// the texture credit line, which opens FAITHFUL_URL when clicked
+    private var creditRect = (x: 0.0, y: 0.0, w: 0.0, h: 0.0)
+    override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
+        if mx >= creditRect.x && mx < creditRect.x + creditRect.w && my >= creditRect.y && my < creditRect.y + creditRect.h {
+            gRuntime?.platform.openURL(FAITHFUL_URL)
+            return true
+        }
+        return super.onMouseDown(ui, game, mx, my, btn)
+    }
     static let SPLASHES = [
         "Punch a tree!", "Watch out for fizzlers!", "Don't dig straight down!",
         "Diamonds run deep!", "Now with wardens!", "Hush is listening!",
@@ -109,7 +121,13 @@ final class TitleScreen: Screen {
         let pad = gRuntime?.touch.enabled == true ? 6.0 : 2.0
         let L = ui.safeLeft + pad, R = ui.width - ui.safeRight - pad, B = ui.height - ui.safeBottom - (pad - 2)
         cv.drawText("Pebble \(PEBBLE_BUILD)", L, B - 10, 1, "#c8c8c8")
-        cv.drawText("Textures: Faithful 32x (faithfulpack.net)", L, B - 20, 1, "#909090")
+        // the Faithful license asks for clear credit and a link to their site
+        let creditText = "Textures: Faithful 32x by the Faithful Team - faithfulpack.net"
+        creditRect = (L, B - 21, Double(textWidth(creditText)), 10)
+        let hover = ui.mouseX >= creditRect.x && ui.mouseX < creditRect.x + creditRect.w
+            && ui.mouseY >= creditRect.y && ui.mouseY < creditRect.y + creditRect.h
+        cv.drawText(creditText, L, B - 20, 1, hover ? "#b8d4ff" : "#909090")
+        if hover { cv.setFill("#b8d4ff"); cv.fillRect(L, B - 11, creditRect.w, 1) }
         let credit = "Singleplayer & LAN"
         cv.drawText(credit, R - Double(textWidth(credit)), B - 10, 1, "#c8c8c8")
         if let why = game.netEndMessage {
@@ -832,9 +850,11 @@ final class CreditsScreen: Screen {
         "§7Not affiliated with Mojang or Microsoft.",
         "§7No Mojang code or asset files included.",
         "",
-        "§fAll textures: Faithful 32x,",
-        "§funmodified, by the Faithful Team.",
+        "§fTextures: Faithful 32x by the Faithful Team,",
+        "§fused under the Faithful License.",
         "§efaithfulpack.net",
+        "§7Pebble is not affiliated with or endorsed",
+        "§7by the Faithful Team.",
     ]
     override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.cv.setFill("#000000")

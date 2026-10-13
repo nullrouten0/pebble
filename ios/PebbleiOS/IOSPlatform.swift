@@ -23,6 +23,7 @@ final class IOSPlatform: PlatformHooks {
     }
 
     func pasteboardString() -> String? { UIPasteboard.general.string }
+    func openURL(_ url: String) { if let u = URL(string: url) { UIApplication.shared.open(u) } }
 
     var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
 
