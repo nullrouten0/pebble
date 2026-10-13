@@ -1307,7 +1307,8 @@ final class WorldRenderer {
             let gw = pw / scale, gh = ph / scale
             let logoH = 52.0
             let logoW = logoH * Double(logo.width) / Double(logo.height)
-            let cx = gw / 2, top = gh / 4 - 34
+            let cx = gw / 2
+            let top = gRuntime.map { TitleScreen.logoTop($0.ui) } ?? (gh / 4 - 34)
             // GUI units → NDC (y flipped)
             func ndcX(_ x: Double) -> Float { Float(x / gw * 2 - 1) }
             func ndcY(_ y: Double) -> Float { Float(1 - y / gh * 2) }

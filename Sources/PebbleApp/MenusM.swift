@@ -22,11 +22,23 @@ final class TitleScreen: Screen {
         super.init()
         closeOnEsc = false
     }
+    /// Short screens (a phone in landscape): how far to lift the logo and
+    /// buttons so the last row clears the version and credit lines, which sit
+    /// above the home indicator. 0 on iPads and the Mac.
+    static func lift(_ ui: UIManager) -> Double {
+        let stackBottom = (ui.height / 4).rounded(.down) + 48 + 4 * 24 + 28 + 20
+        return max(0, stackBottom - (ui.height - ui.safeBottom - 24))
+    }
+    /// top of the wordmark (the renderer draws the textured one here too)
+    static func logoTop(_ ui: UIManager) -> Double {
+        max(2, (ui.height / 4).rounded(.down) - 34 - lift(ui))
+    }
+
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         if splash.isEmpty { splash = TitleScreen.SPLASHES[Int.random(in: 0..<TitleScreen.SPLASHES.count)] }
         let cx = (ui.width / 2).rounded(.down)
         // vanilla layout: stacked main buttons at h/4+48, then a half-width row
-        var y = (ui.height / 4).rounded(.down) + 48
+        var y = (ui.height / 4).rounded(.down) + 48 - TitleScreen.lift(ui)
         buttons.append(Button(cx - 100, y, 200, 20, "Singleplayer", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.open(WorldSelectScreen(), game)
@@ -47,7 +59,7 @@ final class TitleScreen: Screen {
             ui.open(CreditsScreen(), game)
         }))
         // keep the bottom row clear of the corner credits on short windows
-        y = max(y + 28, min(y + 36, ui.height - 46))
+        y = max(y + 28, min(y + 36, ui.height - ui.safeBottom - 46))
         // (no Quit on iOS — apps don't quit themselves)
         let canQuit = gRuntime?.platform.canQuit ?? true
         buttons.append(Button(cx - 100, y, canQuit ? 98 : 200, 20, "Options...", { [weak ui, weak game] in
@@ -78,7 +90,7 @@ final class TitleScreen: Screen {
             }
         }
         // wordmark: textured logo when bundled, block-shadowed text otherwise
-        let logoY = (ui.height / 4).rounded(.down) - 26
+        let logoY = TitleScreen.logoTop(ui) + 8
         if !ui.titleLogo {
             cv.drawTextCentered("PEBBLE", ui.width / 2 + 2, logoY + 2, 4, "#1c1c1c", shadow: false)
             cv.drawTextCentered("PEBBLE", ui.width / 2, logoY, 4, "#e8e8e8", shadow: false)
@@ -91,10 +103,15 @@ final class TitleScreen: Screen {
         cv.scale(pulse, pulse)
         cv.drawTextCentered(splash, 0, 0, 1, "#ffff55")
         cv.restore()
-        cv.drawText("Pebble \(PEBBLE_BUILD)", 2, ui.height - 10, 1, "#c8c8c8")
-        cv.drawText("Textures: Faithful 32x (faithfulpack.net)", 2, ui.height - 20, 1, "#909090")
+        // inside the safe area: clear of rounded corners, the Dynamic Island
+        // and the home indicator
+        // (touch screens have rounded corners even where the safe area is 0)
+        let pad = gRuntime?.touch.enabled == true ? 6.0 : 2.0
+        let L = ui.safeLeft + pad, R = ui.width - ui.safeRight - pad, B = ui.height - ui.safeBottom - (pad - 2)
+        cv.drawText("Pebble \(PEBBLE_BUILD)", L, B - 10, 1, "#c8c8c8")
+        cv.drawText("Textures: Faithful 32x (faithfulpack.net)", L, B - 20, 1, "#909090")
         let credit = "Singleplayer & LAN"
-        cv.drawText(credit, ui.width - Double(textWidth(credit)) - 2, ui.height - 10, 1, "#c8c8c8")
+        cv.drawText(credit, R - Double(textWidth(credit)), B - 10, 1, "#c8c8c8")
         if let why = game.netEndMessage {
             cv.drawTextCentered("§cLAN game ended: \(why)", ui.width / 2, (ui.height / 4).rounded(.down) + 30, 1)
         }
@@ -713,7 +730,7 @@ final class AdvancementsScreen: Screen {
             return row
         }
         _ = place("root", 0)
-        buttons.append(Button(8, ui.height - 28, 80, 20, "Done", { [weak ui, weak game] in
+        buttons.append(Button(8 + ui.safeLeft, ui.height - ui.safeBottom - 28, 80, 20, "Done", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.closeTop(game)
         }))
@@ -753,7 +770,7 @@ final class AdvancementsScreen: Screen {
             ]
         }
         ui.drawButtons(self)
-        cv.drawText("Drag to pan", ui.width - 70, ui.height - 12, 1, "#808080")
+        cv.drawText("Drag to pan", ui.width - ui.safeRight - 70, ui.height - ui.safeBottom - 12, 1, "#808080")
     }
     override func onMouseDown(_ ui: UIManager, _ game: GameCore, _ mx: Double, _ my: Double, _ btn: Int) -> Bool {
         if super.onMouseDown(ui, game, mx, my, btn) { return true }
@@ -832,7 +849,7 @@ final class CreditsScreen: Screen {
         if y < -20 {
             ui.closeTop(game)
         }
-        ui.cv.drawTextCentered("§8Press Esc to skip", ui.width / 2, ui.height - 12, 1)
+        ui.cv.drawTextCentered("§8Press Esc to skip", ui.width / 2, ui.height - ui.safeBottom - 12, 1)
     }
 }
 

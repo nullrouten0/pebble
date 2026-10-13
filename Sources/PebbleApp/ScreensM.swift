@@ -1428,15 +1428,16 @@ final class ChatScreen: Screen {
         let s = chatScale
         // sit on top of the on-screen keyboard / home indicator when there is one
         let bottom = ui.height - max(ui.keyboardInset, ui.safeBottom)
-        drawChatLines(ui, chatLog.map { ($0, 1.0) }, bottom - 4 - 12 * s, 0.5)
+        let left = ui.safeLeft, width = ui.width - ui.safeLeft - ui.safeRight
+        drawChatLines(ui, chatLog.map { ($0, 1.0) }, bottom - 4 - 12 * s, 0.5, left: left)
         cv.setFill("rgba(0,0,0,0.6)")
-        cv.fillRect(2, bottom - 2 - 12 * s, ui.width - 4, 12 * s)
+        cv.fillRect(left + 2, bottom - 2 - 12 * s, width - 4, 12 * s)
         let blink = Int(CACurrentMediaTime() * 1000 / 400) % 2 == 0 ? "_" : ""
         // keep the caret in view when the line is wider than the screen
-        let maxW = Int((ui.width - 12) / s)
+        let maxW = Int((width - 12) / s)
         var shown = input + blink
         while textWidth(shown) > maxW && !shown.isEmpty { shown.removeFirst() }
-        cv.drawText(shown, 4, bottom - 2 - 12 * s + 2 * s, s)
+        cv.drawText(shown, left + 4, bottom - 2 - 12 * s + 2 * s, s)
     }
     override func onChar(_ ui: UIManager, _ game: GameCore, _ ch: String) -> Bool {
         input += ch

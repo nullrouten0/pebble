@@ -3,6 +3,16 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.3 — 2026-10-12 — iPhone title screen fits the screen
+
+- **Title screen on iPhone:** the version, texture credit and "Singleplayer
+  & LAN" lines sat in the rounded corners, under the Dynamic Island and the
+  home indicator. They stay inside the safe area now, and on short screens
+  the logo and buttons move up to make room. Touch screens get a little
+  extra margin for their rounded corners. The chat input box, the
+  advancements screen's Done button and the credits' skip hint stay inside
+  the safe area too.
+
 ## 1.4.2 — 2026-10-12 — creative inventory tab, icon tabs
 
 - **Your character and armor slots in creative.** The creative screen has
