@@ -293,8 +293,13 @@ public func registerFarmingHandlers() {
 
     // leaves decay ----------------------------------------------------------------
     for leaf in ["oak_leaves", "spruce_leaves", "birch_leaves", "jungle_leaves", "acacia_leaves", "dark_oak_leaves", "mangrove_leaves", "cherry_leaves", "azalea_leaves", "flowering_azalea_leaves"] {
+        neighborHandlers[Int(bid(leaf))] = { world, x, y, z, c, _, _, _ in
+            if (c & 8) == 0 { world.leafChecks.insert(BlockPos(x, y, z)) }
+        }
         reg(bid(leaf)) { world, x, y, z, c in
             if (c & 8) != 0 { return } // persistent
+            // only leaves a neighbor change woke (see World.leafChecks)
+            guard world.leafChecks.remove(BlockPos(x, y, z)) != nil else { return }
             // distance to log scan (BFS depth 5)
             var foundLog = false
             struct K: Hashable { let x: Int, y: Int, z: Int }
@@ -643,7 +648,12 @@ public func registerFarmingHandlers() {
     for c in COLORS {
         blockTickHandlers[Int(bid("\(c)_concrete_powder"))] = fallTick
     }
-    let fallTickSchedule: NeighborFn = { world, x, y, z, c, _, _, _ in
+    let fallTickSchedule: NeighborFn = { world, x, y, z, c, nx, ny, nz in
+        // fluid flowing in beside or above doesn't unsettle it (from below it
+        // does: that's the support). Chunk loads wake generated springs, and
+        // their flow brushing a gravel or sand deposit over a cave collapsed
+        // the whole deposit, 1,000+ falling blocks while a player explored.
+        if ny != y - 1 && isLiquid(UInt16(truncatingIfNeeded: world.getBlock(nx, ny, nz))) { return }
         world.scheduleTick(x, y, z, c >> 4, 2)
     }
     // concrete powder + water = concrete (neighbor update)

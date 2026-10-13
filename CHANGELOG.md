@@ -5,10 +5,24 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
 ## iPad Beta — `ios-port` branch
 
-Version 1.3.2. Not a main release yet: build it yourself from the branch
+Version 1.3.3. Not a main release yet: build it yourself from the branch
 (see the README banner). Known rough edges: frame rate dips while new
 terrain streams in, and iPhone layouts are only lightly polished.
 
+- **Untouched terrain stays put (1.3.3).** Two things changed the world
+  on their own as players explored (single-player too, but worst while
+  hosting guests who explore):
+  - *Cave gravel and sand collapsed.* Generated springs are woken when a
+    chunk loads, and their flow brushing a gravel or sand deposit over a
+    cave brought the whole deposit down: over 1,000 falling blocks at once
+    on one route, all simulated (and sent to guests) by the host. Fluid
+    flowing in beside or above a gravity block no longer unsettles it;
+    flowing in underneath still does, as in Minecraft. 81% fewer falls.
+  - *Forests shed saplings.* 2-3% of generated leaves sit past the
+    6-block reach to a log, and every random tick re-checked them, so
+    about 100 saplings and sticks dropped around spawn every 5 minutes.
+    Like Minecraft, leaves now re-check only after something next to them
+    changes: chopping a trunk still brings its canopy down, leaf by leaf.
 - **Hosting a LAN game is much lighter (1.3.2).** The host has to load and
   run every guest's surroundings (it owns the world), but it was also
   building 3D meshes for them, which it never draws. It now meshes only

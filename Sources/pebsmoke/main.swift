@@ -2487,6 +2487,76 @@ do {
 }
 
 // ---------------------------------------------------------------------------
+section("untouched terrain stays put: leaves, loose ground")
+do {
+    // generated trees shed 2-3% of their leaves (canopy past the 6-block
+    // reach) and water woken on chunk load collapsed cave gravel deposits:
+    // ~100 sapling drops per 5 minutes around spawn, 1,000+ falling blocks
+    // while exploring
+    let home = NSTemporaryDirectory() + "pebsmoke-terrain-\(getpid())"
+    setenv("PEBBLE_HOME", home, 1)
+    defer {
+        try? FileManager.default.removeItem(atPath: home)
+        unsetenv("PEBBLE_HOME")
+    }
+    let g = GameCore()
+    g.settings.renderDistance = 6
+    g.createWorld(name: "terrain", seedText: "12345", mode: GameMode.creative, difficulty: 0)
+    let w = g.worlds[.overworld]!
+    var leafDrops = 0
+    w.onLocalSpawn = { e in
+        if let it = e as? ItemEntity {
+            let n = itemDefs[it.stack.id].name
+            if n.hasSuffix("_sapling") || n == "stick" || n == "apple" || n == "propagule" { leafDrops += 1 }
+        }
+        return true
+    }
+    w.randomTickSpeed = 30   // 10x: 600 ticks ≈ 5 minutes of play
+    for _ in 0..<600 { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)) }
+    check("untouched trees keep their leaves", leafDrops == 0, "\(leafDrops) leaf drops")
+
+    // a tree in the sky: chopping its trunk still makes the canopy decay
+    let tx = Int(g.player.x) + 3, tz = Int(g.player.z) + 3, base = 200
+    let LOG = Int(cell(B.oak_log)), LEAF = Int(cell(B.oak_leaves))
+    func leaves() -> Int {
+        var n = 0
+        for y in (base + 2)...(base + 6) { for z in (tz - 2)...(tz + 2) { for x in (tx - 2)...(tx + 2) where (w.getBlock(x, y, z) >> 4) == Int(B.oak_leaves) { n += 1 } } }
+        return n
+    }
+    func plantTree() {
+        for y in (base + 2)...(base + 5) { for z in (tz - 2)...(tz + 2) { for x in (tx - 2)...(tx + 2) where x != tx || z != tz { w.setBlock(x, y, z, LEAF) } } }
+        for y in base...(base + 5) { w.setBlock(tx, y, tz, LOG) }
+        w.setBlock(tx, base + 6, tz, LEAF)
+    }
+    plantTree()
+    let full = leaves()
+    w.randomTickSpeed = 300
+    for _ in 0..<200 { _ = g.frame(dtMs: 50) }
+    check("a tree with its trunk keeps its leaves", leaves() == full, "\(leaves()) of \(full)")
+    for y in base...(base + 5) { w.setBlock(tx, y, tz, 0) }
+    for _ in 0..<1500 { _ = g.frame(dtMs: 50) }
+    check("a chopped tree's leaves decay", leaves() == 0, "\(leaves()) of \(full) left")
+    w.randomTickSpeed = 3
+
+    // gravel over air beside flowing water stays; water flowing in under it doesn't
+    let gx = tx + 8, gy = base, gz = tz
+    let STONE = Int(cell(B.stone)), GRAVEL = Int(cell(B.gravel))
+    // a stone floor with a sealed one-block pocket under the gravel
+    for z in (gz - 4)...(gz + 4) { for x in (gx - 4)...(gx + 4) {
+        w.setBlock(x, gy - 2, z, STONE)
+        if x != gx || z != gz { w.setBlock(x, gy - 1, z, STONE) }
+    } }
+    w.setBlock(gx, gy, gz, GRAVEL, SET_SILENT)          // a generated deposit over a "cave"
+    w.setBlock(gx + 1, gy, gz, Int(cell(B.water, 0)))   // a spring beside it
+    for _ in 0..<100 { _ = g.frame(dtMs: 50) }
+    check("water flowing beside gravel over a cave leaves it", (w.getBlock(gx, gy, gz) >> 4) == Int(B.gravel))
+    w.setBlock(gx + 1, gy - 1, gz, 0)                    // open the pocket: water runs in under it
+    for _ in 0..<100 { _ = g.frame(dtMs: 50) }
+    check("water flowing in under gravel still drops it", (w.getBlock(gx, gy, gz) >> 4) != Int(B.gravel))
+    g.exitToTitle()
+}
+
+// ---------------------------------------------------------------------------
 section("chunk saves (VCK1 plain, VCK2 compressed)")
 do {
     let home = NSTemporaryDirectory() + "pebsmoke-db-\(getpid())"
