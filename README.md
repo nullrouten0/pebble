@@ -16,17 +16,17 @@
 
 ---
 
-> ### 🧪 iPad Beta — this branch (`ios-port`)
-> Pebble runs on **iPad** (and iPhone, in landscape) — the same game and worlds, and it plays LAN games with the Mac version. Touch controls (move stick, drag to look, tap to place, hold to break), hardware keyboard and mouse, and game controllers all work. It's a **beta**: not in the App Store or a main release yet, performance while new terrain streams in still needs work, and the touch controls will change. See the [iPad Beta notes](CHANGELOG.md#ipad-beta--ios-port-branch).
+> ### New in Pebble 1.4: iPad and iPhone (beta)
+> Pebble runs on **iPad** and **iPhone** (in landscape) — the same game and worlds, and it plays LAN games with the Mac version. Touch controls (move stick, drag to look, tap to place, hold to dig), hardware keyboard and mouse, and game controllers all work. Also new everywhere: a **headlamp** to light your way and four **world wonders** for `/place` (Eiffel Tower, Stonehenge, Colosseum, Devils Tower). The iOS app is a **beta**: not in the App Store, frame rate dips while new terrain streams in, and the touch controls will keep improving. See the [1.4.0 notes](CHANGELOG.md#140--2026-10-12--ipad--iphone-headlamp-world-wonders).
 >
-> **Install it on your iPad** (needs a Mac with Xcode 16+ and a free Apple ID):
+> **Install it on your iPad or iPhone** (needs a Mac with Xcode 16+ and a free Apple ID):
 > ```bash
 > brew install xcodegen
-> git clone -b ios-port https://github.com/nullrouten0/pebble.git && cd pebble
+> git clone https://github.com/nullrouten0/pebble.git && cd pebble
 > cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # add your team ID + a unique bundle ID
 > ./pebble ios                                                     # generates and opens the Xcode project
 > ```
-> In Xcode: **Settings → Accounts** → add your Apple ID (your team ID is shown there), plug in the iPad, pick it as the run destination, and press **⌘R**. On the iPad, turn on **Settings → Privacy & Security → Developer Mode** if asked, and trust your Apple ID under **Settings → General → VPN & Device Management**. Apps signed with a free Apple ID expire after 7 days — press ⌘R again to refresh. No iPad handy? `./pebble ios run` launches it in the simulator.
+> In Xcode: **Settings → Accounts** → add your Apple ID (your team ID is shown there), plug in the iPad or iPhone, pick it as the run destination, and press **⌘R**. On the device, turn on **Settings → Privacy & Security → Developer Mode** if asked, and trust your Apple ID under **Settings → General → VPN & Device Management**. Apps signed with a free Apple ID expire after 7 days — press ⌘R again to refresh. No iPad handy? `./pebble ios run` launches it in the simulator.
 
 > ### New in Pebble 1.2: build together
 > **LAN multiplayer** — click **Host LAN Game** on the title screen, pick a world, and you're in and open to the local network. Friends on the same Wi-Fi click **Join LAN Game**. Pebble finds the game for you. Everyone shares one world: blocks, mobs, items, chests, chat, day and night.
@@ -35,11 +35,11 @@
 >
 > See [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
 
-**Pebble** is the open-source alternative to Minecraft: Java Edition — a native macOS voxel game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids, and boss fights — plus a creative building toolkit and LAN multiplayer. It is implemented in **~50,000 lines of Swift** with **zero external dependencies**. No game engine, no .xcodeproj. The renderer is hand-written Metal, the audio engine synthesizes every sound from oscillators at runtime, multiplayer runs on Apple's Network framework, and the game looks the way it does thanks to [Faithful 32x](https://faithfulpack.net) as its built-in texture set.
+**Pebble** is the open-source alternative to Minecraft: Java Edition — a native macOS (and now iPad and iPhone) voxel game with the full overworld/nether/end progression: worldgen, mobs, redstone, crafting, enchanting, brewing, villages, raids, and boss fights — plus a creative building toolkit and LAN multiplayer. It is implemented in **~50,000 lines of Swift** with **zero external dependencies**. No game engine, no .xcodeproj. The renderer is hand-written Metal, the audio engine synthesizes every sound from oscillators at runtime, multiplayer runs on Apple's Network framework, and the game looks the way it does thanks to [Faithful 32x](https://faithfulpack.net) as its built-in texture set.
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft** in any way, and contains no Mojang code or assets. Full statement in [Disclaimer](#disclaimer) below.
 
-> **Pebble 1.2.0 is a beta.** The engine is pinned by 516 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
+> **Pebble 1.4.0 is a beta.** The engine is pinned by 516 golden regression checks, but a game of this scope absolutely has bugs we haven't found yet — we just don't know where they are. Multiplayer is the newest part and the least battle-tested. If you hit a bug, [opening an issue](https://github.com/thebriangao/pebble/issues) would mean the world to us, and a pull request with a fix even more. See [Reporting bugs & contributing](#reporting-bugs--contributing) for what to include.
 
 ## By the numbers
 

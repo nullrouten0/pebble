@@ -1,6 +1,6 @@
 # Pebble on iPad / iPhone — feasibility, performance, and port plan
 
-## Status (2026-10-10, branch `ios-port`)
+## Status (2026-10-12: merged into `main` as Pebble 1.4.0; started 2026-10-10 on branch `ios-port`)
 
 **Done and verified in the simulator** (iPad Pro 13" M5, iPhone 18 Pro, iOS 27):
 - Step 0: noise tables moved to raw buffers. Cold 361-chunk gen went from 0.57 s at best (6 threads) to 0.12 s (14 threads), and it keeps scaling. `MAX_GEN_INFLIGHT` now follows the core count, and the stronghold cache is locked.

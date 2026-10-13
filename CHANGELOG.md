@@ -3,11 +3,14 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
-## iPad Beta — `ios-port` branch
+## 1.4.0 — 2026-10-12 — iPad & iPhone, headlamp, world wonders
 
-Version 1.4.0. Not a main release yet: build it yourself from the branch
-(see the README banner). Known rough edges: frame rate dips while new
-terrain streams in, and iPhone layouts are only lightly polished.
+Pebble now runs on iPad and iPhone (beta): build it with `./pebble ios`
+(see the README banner). The Mac app shares all its game, render and UI
+code with the iOS app now. Known rough edges on iOS: frame rate dips while
+new terrain streams in, and iPhone layouts are only lightly polished.
+Entries tagged with a version below landed during the iOS beta; everything
+here ships to the Mac too unless it says touch, iPad or iPhone.
 
 - **Four world wonders for `/place` (1.4.0):** `eiffel_tower` (about 150
   tall: curved lattice legs, the great arches, three platforms, a glass room
