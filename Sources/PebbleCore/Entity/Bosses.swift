@@ -360,7 +360,7 @@ public final class WitherBoss: Monster {
         xpReward = 50
         targetGoals.add(HurtByTargetGoal(self, 1))
         targetGoals.add(NearestTargetGoal(self, 2, { e in
-            (e.isPlayer || (e as? Mob)?.category == "creature") && !e.dead
+            (e.isPlayer || (e as? Mob)?.category == .creature) && !e.dead
         }, 40, false))
     }
     public override func tick() {

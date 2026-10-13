@@ -167,7 +167,7 @@ open class Villager: Mob {
     public var workstation: (Int, Int, Int)? = nil
     public override init(world: World) {
         super.init(world: world)
-        category = "creature"
+        category = .creature
         width = 0.6; height = 1.95
         maxHealth = 20; health = 20
         speed = 0.1
@@ -289,7 +289,7 @@ public final class WanderingTrader: Mob {
     public var restockTimer = 0
     public override init(world: World) {
         super.init(world: world)
-        category = "creature"
+        category = .creature
         width = 0.6; height = 1.95
         maxHealth = 20; health = 20
         speed = 0.12
@@ -334,7 +334,7 @@ public final class IronGolem: Mob {
     public var playerMade = false
     public override init(world: World) {
         super.init(world: world)
-        category = "creature"
+        category = .creature
         width = 1.4; height = 2.7
         maxHealth = 100; health = 100
         speed = 0.12
@@ -349,7 +349,7 @@ public final class IronGolem: Mob {
         targetGoals.add(HurtByTargetGoal(self, 1))
         targetGoals.add(NearestTargetGoal(self, 2, { e in
             let t = e.type
-            return ((e as? Mob)?.category == "monster" && t != "creeper")
+            return ((e as? Mob)?.category == .monster && t != "creeper")
                 || ["zombie", "skeleton", "spider", "pillager", "vindicator", "evoker", "ravager"].contains(t)
         }, 20))
     }
@@ -377,7 +377,7 @@ public final class SnowGolem: Mob {
     public override var type: String { "snow_golem" }
     public override init(world: World) {
         super.init(world: world)
-        category = "creature"
+        category = .creature
         width = 0.7; height = 1.9
         maxHealth = 4; health = 4
         speed = 0.2
@@ -386,7 +386,7 @@ public final class SnowGolem: Mob {
         goals.add(SnowballAttackGoal(self, 1))
         goals.add(StrollGoal(self, 5, 1))
         goals.add(LookAtPlayerGoal(self, 7))
-        targetGoals.add(NearestTargetGoal(self, 1, { e in (e as? Mob)?.category == "monster" }, 10))
+        targetGoals.add(NearestTargetGoal(self, 1, { e in (e as? Mob)?.category == .monster }, 10))
     }
     public override func tick() {
         super.tick()

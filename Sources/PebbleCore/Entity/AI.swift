@@ -251,6 +251,9 @@ open class Goal {
     open func tick() {}
 }
 
+/// natural-spawning bucket (each has its own cap) and the despawn rule
+public enum MobCategory { case monster, creature, water, ambient, misc }
+
 public final class GoalSelector {
     public var goals: [Goal] = []
     public var active: [Goal] = []   // insertion-ordered like a deterministic Set
@@ -310,7 +313,7 @@ open class Mob: LivingEntity {
     public var growUpAge = 0       // ticks until adult (if baby)
     public var loveTicks = 0
     public var breedCooldown = 0
-    public var category = "creature"   // monster | creature | water | ambient | misc
+    public var category = MobCategory.creature
     public var attackDamage = 2.0
     public var followRange = 16.0
     public var burnsInSun = false
@@ -328,7 +331,7 @@ open class Mob: LivingEntity {
         if dead || deathTime > 0 { return }
 
         // despawn rules
-        if !persistent && category == "monster" {
+        if !persistent && category == .monster {
             var nearestPlayer = Double.infinity
             for p in world.players {
                 let d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) + (p.z - z) * (p.z - z)

@@ -195,6 +195,16 @@ public func tickFangs(_ world: World) {
 // ---------------------------------------------------------------------------
 // Mining math
 // ---------------------------------------------------------------------------
+/// is `tool` the right kind for this block (mining speed, and drops when the
+/// block requires a tool)? Swords cut cobwebs and bamboo; shears also take
+/// leaves and wool fast.
+private func toolMatches(_ tool: ToolDef?, _ bid: Int, _ def: BlockDef) -> Bool {
+    guard let tool else { return false }
+    return tool.type == def.tool.rawValue
+        || (tool.type == "sword" && (bid == Int(B.cobweb) || bid == Int(B.bamboo)))
+        || (tool.type == "shears" && (def.tool == .shears || def.name.contains("leaves") || def.name.contains("wool")))
+}
+
 public func breakSpeed(_ player: Player, _ cellVal: Int) -> Double {
     let bid = cellVal >> 4
     let def = blockDefs[bid]
@@ -203,9 +213,7 @@ public func breakSpeed(_ player: Player, _ cellVal: Int) -> Double {
     let held = player.mainHand
     let tool = held.map { itemDef($0.id).tool } ?? nil
     var speed = 1.0
-    let matches = tool != nil && (tool!.type == def.tool.rawValue ||
-        (tool!.type == "sword" && (bid == Int(B.cobweb) || bid == Int(B.bamboo))) ||
-        (tool!.type == "shears" && (def.tool == .shears || def.name.contains("leaves") || def.name.contains("wool"))))
+    let matches = toolMatches(tool, bid, def)
     if matches, let tool {
         speed = tool.speed
         let eff = held.map { enchLevel($0, "efficiency") } ?? 0
@@ -231,8 +239,7 @@ public func canHarvest(_ player: Player, _ cellVal: Int) -> Bool {
     let def = blockDefs[bid]
     if !def.requiresTool { return true }
     guard let held = player.mainHand, let tool = itemDef(held.id).tool else { return false }
-    let matches = tool.type == def.tool.rawValue || (tool.type == "sword" && bid == Int(B.cobweb))
-    return matches && tool.tier >= def.tier
+    return toolMatches(tool, bid, def) && tool.tier >= def.tier
 }
 
 // ---------------------------------------------------------------------------

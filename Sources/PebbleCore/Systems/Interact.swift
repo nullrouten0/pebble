@@ -580,7 +580,7 @@ private func useBed(_ ctx: InteractCtx, _ x: Int, _ y: Int, _ z: Int, _ c: Int) 
     }
     // monsters nearby?
     let monsters = world.getEntitiesNear(Double(x), Double(y), Double(z), 8) { e in
-        (e as? Mob)?.category == "monster" && !e.dead
+        (e as? Mob)?.category == .monster && !e.dead
     }
     if !monsters.isEmpty {
         var data = ScreenData()
@@ -679,7 +679,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
     let world = ctx.world, player = ctx.player
     // honor the active interact hand so the offhand fallback (doUse) uses the
     // offhand item; consume/replace/damageHeld follow the same hand.
-    guard let held = (player.useItemHand == "off" ? player.offHand : player.mainHand) else { return false }
+    guard let held = (player.useItemHand == .off ? player.offHand : player.mainHand) else { return false }
     let def = itemDef(held.id)
     let name = def.name
 
@@ -1374,7 +1374,7 @@ public func finishUsingItem(_ ctx: InteractCtx) {
     }
     player.usingItem = false
     player.useItemTicks = 0
-    player.useItemHand = "main"
+    player.useItemHand = .main
 }
 
 public func releaseUsingItem(_ ctx: InteractCtx) {
@@ -1392,7 +1392,7 @@ public func releaseUsingItem(_ ctx: InteractCtx) {
     }
     player.usingItem = false
     player.useItemTicks = 0
-    player.useItemHand = "main"
+    player.useItemHand = .main
 }
 
 // =============================================================================

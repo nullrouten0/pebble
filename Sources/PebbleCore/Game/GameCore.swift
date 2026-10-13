@@ -2103,7 +2103,7 @@ public final class GameCore {
     private func tickUsing() {
         let p = player!
         if p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) {
-            if p.usingItem { p.usingItem = false; p.useItemHand = "main" }
+            if p.usingItem { p.usingItem = false; p.useItemHand = .main }
             return
         }
         let ctx = interactCtx()
@@ -2407,7 +2407,7 @@ public final class GameCore {
     private func doAttack() {
         let p = player!
         if p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) { return }
-        p.useItemHand = "main" // an attack always swings (and wears) the main hand
+        p.useItemHand = .main // an attack always swings (and wears) the main hand
         let target = crosshairEntity(ATTACK_REACH)
         p.attackAnim = 1
         if let target, let nc = netClient {
@@ -2454,7 +2454,7 @@ public final class GameCore {
     /// off hand. Shared with the LAN host, which replays guests' clicks.
     @discardableResult
     func performUse(_ p: Player, _ ctx: InteractCtx, target: Entity?, hit: RaycastHit?) -> Bool {
-        p.useItemHand = "main"
+        p.useItemHand = .main
         if p.mainHand.map({ itemDef($0.id).name }) == "infinity_wipe" {
             useInfinityWipe(p)
             p.attackAnim = 0.6
@@ -2482,12 +2482,12 @@ public final class GameCore {
         // offhand fallback: retry the held-item use with the offhand item
         // (food, shield, torches/blocks, throwables, …) when the main hand did nothing.
         if p.offHand != nil {
-            p.useItemHand = "off"
+            p.useItemHand = .off
             let used = useItem(ctx, hit)
-            if !p.usingItem { p.useItemHand = "main" } // keep "off" only for an ongoing use
+            if !p.usingItem { p.useItemHand = .main } // keep .off only for an ongoing use
             if used { p.attackAnim = 0.6; return true }
         }
-        if !p.usingItem { p.useItemHand = "main" }
+        if !p.usingItem { p.useItemHand = .main }
         return false
     }
 

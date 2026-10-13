@@ -23,6 +23,9 @@ public protocol NetPlayerLink: AnyObject {
     func netAddEffect(_ id: String, _ duration: Int, _ amplifier: Int, _ ambient: Bool)
 }
 
+/// which hand an item use (eating, drawing a bow, blocking…) runs in
+public enum Hand { case main, off }
+
 public final class Player: LivingEntity {
     public override var type: String { "player" }
     public override var isPlayer: Bool { true }
@@ -56,7 +59,7 @@ public final class Player: LivingEntity {
     public var attackStrengthTicker = 100.0
     public var usingItem = false
     public var useItemTicks = 0
-    public var useItemHand = "main"   // main | off
+    public var useItemHand = Hand.main
     public var fishingBobberId: Int? = nil
     private var _wearingPumpkin = false
     public override var wearingPumpkin: Bool { _wearingPumpkin }
@@ -548,13 +551,13 @@ public final class Player: LivingEntity {
         return true
     }
     /// The stack in the hand currently driving the interact pipeline. The use
-    /// path sets `useItemHand` to "off" for an offhand fallback so consume /
-    /// replace / damage land on the right slot; it is "main" everywhere else.
-    public var usingHandStack: ItemStack? { useItemHand == "off" ? offHand : mainHand }
+    /// path sets `useItemHand` to .off for an offhand fallback so consume /
+    /// replace / damage land on the right slot; it is .main everywhere else.
+    public var usingHandStack: ItemStack? { useItemHand == .off ? offHand : mainHand }
 
     public override func consumeHeld(_ n: Int) {
         if gameMode == GameMode.creative { return }
-        if useItemHand == "off" {
+        if useItemHand == .off {
             guard let s = offHand else { return }
             s.count -= n
             if s.count <= 0 { offHand = nil }
@@ -569,7 +572,7 @@ public final class Player: LivingEntity {
             if countItem(stack.id) == 0 { give(stack) }
             return
         }
-        let off = useItemHand == "off"
+        let off = useItemHand == .off
         let s = off ? offHand : mainHand
         if let s, s.count > 1 {
             s.count -= 1

@@ -469,7 +469,7 @@ public final class NetClient {
         w.f32(p.limbSwing); w.f32(p.limbAmp); w.f32(p.attackAnim)
         w.u8(p.hurtTime); w.u8(min(255, p.deathTime))
         w.f32(p.health); w.f32(p.fallDistance)
-        w.u8(p.selectedSlot); w.u16(p.useItemTicks); w.u8(p.useItemHand == "off" ? 1 : 0)
+        w.u8(p.selectedSlot); w.u16(p.useItemTicks); w.u8(p.useItemHand == .off ? 1 : 0)
         w.u8(p.gameMode)
         w.u16(min(65535, p.sleepTicks)); w.i16(max(-32768, min(32767, p.fireTicks)))
         w.f32(p.moveForward); w.f32(p.moveStrafe)
@@ -560,10 +560,10 @@ public final class NetClient {
         send(.actUse, w)
     }
 
-    func sendRelease(_ ticks: Int, _ hand: String) {
+    func sendRelease(_ ticks: Int, _ hand: Hand) {
         guard let p = game.player else { return }
         var w = ByteWriter()
-        w.u16(ticks); w.u8(hand == "off" ? 1 : 0)
+        w.u16(ticks); w.u8(hand == .off ? 1 : 0)
         writeHeld(&w, p)
         send(.actRelease, w)
     }

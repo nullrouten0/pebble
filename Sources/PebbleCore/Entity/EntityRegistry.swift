@@ -118,21 +118,21 @@ public func loadEntity(_ world: World, _ d: [String: Any]) -> Entity? {
 public func naturalSpawnTick(_ world: World, _ players: [Player], _ rng: inout RandomX) {
     if !world.rule("doMobSpawning") || players.isEmpty { return }
     // count by category
-    var counts: [String: Int] = [:]
+    var counts: [MobCategory: Int] = [:]
     for e in world.entities {
         if let mob = e as? Mob {
             counts[mob.category] = (counts[mob.category] ?? 0) + 1
         }
     }
-    let attempts: [(String, Int, Bool)] = [
-        ("monster", 70, true),          // every tick
-        ("creature", 10, world.time % 400 == 0),
-        ("ambient", 15, world.time % 400 == 0),
-        ("water", 5, world.time % 400 == 0),
+    let attempts: [(MobCategory, Int, Bool)] = [
+        (.monster, 70, true),          // every tick
+        (.creature, 10, world.time % 400 == 0),
+        (.ambient, 15, world.time % 400 == 0),
+        (.water, 5, world.time % 400 == 0),
     ]
     for (cat, cap, doIt) in attempts {
         if !doIt { continue }
-        if cat == "monster" && world.difficulty == 0 { continue }
+        if cat == .monster && world.difficulty == 0 { continue }
         if (counts[cat] ?? 0) >= cap { continue }
         // pick a random player and position
         let p = players[rng.nextInt(players.count)]
@@ -142,7 +142,7 @@ public func naturalSpawnTick(_ world: World, _ players: [Player], _ rng: inout R
         let z = ifloor(p.z + detSin(ang) * dist)
         if !world.isLoadedAt(x, z) { continue }
         var y: Int
-        if cat == "monster" && rng.nextFloat() < 0.6 {
+        if cat == .monster && rng.nextFloat() < 0.6 {
             // try caves: random y below surface
             y = world.info.minY + 1 + rng.nextInt(max(1, world.surfaceY(x, z) - world.info.minY))
         } else {
@@ -150,7 +150,7 @@ public func naturalSpawnTick(_ world: World, _ players: [Player], _ rng: inout R
         }
         let biome = world.biomeAt(x, y, z)
         guard let bdef = BIOMES[Int(biome)] else { continue }
-        let list = cat == "monster" ? bdef.monsters : cat == "creature" ? bdef.creatures : cat == "water" ? bdef.waterCreatures : bdef.ambient
+        let list = cat == .monster ? bdef.monsters : cat == .creature ? bdef.creatures : cat == .water ? bdef.waterCreatures : bdef.ambient
         if list.isEmpty { continue }
         let entry = rng.pickWeighted(list) { $0.weight }
         let mobType = entry.mob, minPack = entry.minPack, maxPack = entry.maxPack
@@ -163,8 +163,8 @@ public func naturalSpawnTick(_ world: World, _ players: [Player], _ rng: inout R
         for _ in 0..<pack {
             let px = x + rng.nextInt(9) - 4
             let pz = z + rng.nextInt(9) - 4
-            var py = cat == "water" ? y : world.surfaceY(px, pz)
-            if cat == "monster" { py = y }
+            var py = cat == .water ? y : world.surfaceY(px, pz)
+            if cat == .monster { py = y }
             if !canSpawnAt(world, mobType, cat, px, py, pz, &rng) { continue }
             // don't spawn too close to players
             var tooClose = false
@@ -180,12 +180,12 @@ public func naturalSpawnTick(_ world: World, _ players: [Player], _ rng: inout R
     }
 }
 
-func canSpawnAt(_ world: World, _ mobType: String, _ cat: String, _ x: Int, _ y: Int, _ z: Int, _ rng: inout RandomX) -> Bool {
+func canSpawnAt(_ world: World, _ mobType: String, _ cat: MobCategory, _ x: Int, _ y: Int, _ z: Int, _ rng: inout RandomX) -> Bool {
     if y <= world.info.minY || y >= world.info.minY + world.info.height - 1 { return false }
     let at = world.getBlock(x, y, z)
     let atId = at >> 4
     let below = world.getBlock(x, y - 1, z) >> 4
-    if cat == "water" {
+    if cat == .water {
         return atId == Int(B.water)
     }
     // land mobs never spawn inside fluids (water is "replaceable" and slipped
@@ -197,7 +197,7 @@ func canSpawnAt(_ world: World, _ mobType: String, _ cat: String, _ x: Int, _ y:
     let head = world.getBlock(x, y + 1, z) >> 4
     if head != 0 && blockDefs[head].solid { return false }
     if below == 0 || !blockDefs[below].solid { return false }
-    if cat == "monster" {
+    if cat == .monster {
         // vanilla 1.20 isDarkEnoughToSpawn: block light must be 0, then two
         // probabilistic gates — raw skylight vs rand(32), then skyDarken-adjusted
         // light vs rand(8). The old "≤7" rule let every midday shadow spawn mobs.
@@ -224,7 +224,7 @@ func canSpawnAt(_ world: World, _ mobType: String, _ cat: String, _ x: Int, _ y:
         }
         return true
     }
-    if cat == "creature" {
+    if cat == .creature {
         // animals need grass-ish + light
         if world.lightAt(x, y, z) < 9 && world.info.hasSky { return false }
         return below == Int(B.grass_block) || below == Int(B.sand) || below == Int(B.snow_block) || below == Int(B.mycelium) || below == Int(B.podzol) || !world.info.hasSky

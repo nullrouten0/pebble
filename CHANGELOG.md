@@ -3,6 +3,15 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.10 — 2026-10-13 — fewer strings standing in for types
+
+No visible changes. Which hand an item use runs in and a mob's spawning
+category are enums now (`Hand`, `MobCategory`) instead of strings, so a
+typo is a compile error rather than a silent miss — the same kind of slip
+that broke long-fall damage before 1.4.7. Mining speed and harvesting
+share one tool-match rule, and the stacking test is named `sameItem` so
+it isn't mistaken for `==`.
+
 ## 1.4.9 — 2026-10-13 — thread-safe registration
 
 No visible changes. The thirteen one-time registrations (blocks, items,

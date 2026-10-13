@@ -211,7 +211,10 @@ public func stack(_ name: String, _ count: Int = 1) -> ItemStack { ItemStack(iid
 
 // MARK: - stack helpers
 
-public func stacksEqual(_ a: ItemStack?, _ b: ItemStack?) -> Bool {
+/// the same kind of item (id, damage, enchantments, data, name), whatever the
+/// counts — what stacking needs. Not `==`, which also compares counts and
+/// tells a nil label from "".
+public func sameItem(_ a: ItemStack?, _ b: ItemStack?) -> Bool {
     guard let a, let b else { return a == nil && b == nil }
     return a.id == b.id && a.damage == b.damage && a.ench == b.ench
         && a.data == b.data && (a.label ?? "") == (b.label ?? "")
@@ -219,7 +222,7 @@ public func stacksEqual(_ a: ItemStack?, _ b: ItemStack?) -> Bool {
 public func canMerge(_ a: ItemStack?, _ b: ItemStack?) -> Bool {
     guard let a, let b else { return false }
     if itemDefs[a.id].maxStack <= 1 { return false }
-    return stacksEqual(a, b)
+    return sameItem(a, b)
 }
 public func maxStackOf(_ s: ItemStack) -> Int { itemDefs[s.id].maxStack }
 extension ItemDef {

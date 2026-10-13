@@ -16,7 +16,7 @@ func blockNameOf(_ id: Int) -> String {
 open class Monster: Mob {
     public override init(world: World) {
         super.init(world: world)
-        category = "monster"
+        category = .monster
         xpReward = 5
     }
     public func addMonsterGoals(_ speed: Double = 1.05, lightGate: ((World, Int, Int, Int) -> Bool)? = nil) {

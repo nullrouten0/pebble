@@ -368,10 +368,10 @@ public final class NetHost {
             let p = c.proxy!
             p.usingItem = true
             p.useItemTicks = ticks
-            p.useItemHand = hand == 1 ? "off" : "main"
+            p.useItemHand = hand == 1 ? .off : .main
             replay(c, drops: true) { releaseUsingItem(InteractCtx(world: p.world, player: p)) }
             p.usingItem = false
-            p.useItemHand = "main"
+            p.useItemHand = .main
         case .actAttack:
             let targetId = try r.i32()
             let ticker = try r.f32()
@@ -657,7 +657,7 @@ public final class NetHost {
                 p.fallDistance = s.fallDistance
                 p.selectedSlot = max(0, min(8, s.selectedSlot))
                 p.useItemTicks = s.useItemTicks
-                p.useItemHand = s.useHand == 1 ? "off" : "main"
+                p.useItemHand = s.useHand == 1 ? .off : .main
                 p.setGameMode(s.gameMode)
                 p.sleepTicks = s.sleepTicks
                 p.fireTicks = s.fireTicks

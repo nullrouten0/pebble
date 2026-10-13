@@ -18,7 +18,7 @@ open class Animal: Mob {
 
     public override init(world: World) {
         super.init(world: world)
-        category = "creature"
+        category = .creature
     }
 
     open override func isFood(_ stack: ItemStack?) -> Bool {
@@ -863,7 +863,7 @@ open class Squid: Animal {
         width = 0.8; height = 0.8
         maxHealth = 10; health = 10
         speed = 0.08
-        category = "water"
+        category = .water
         xpReward = 2
         goals.add(RandomSwimGoal(self, 2, 1, 20))
     }
@@ -895,7 +895,7 @@ public final class Bat: Mob {
     }
     public override init(world: World) {
         super.init(world: world)
-        category = "ambient"
+        category = .ambient
         width = 0.5; height = 0.9
         maxHealth = 6; health = 6
         noGravity = true
@@ -1145,7 +1145,7 @@ public final class Allay: Mob {
     public var heldItems: [ItemStack] = []
     public override init(world: World) {
         super.init(world: world)
-        category = "creature"
+        category = .creature
         width = 0.35; height = 0.6
         maxHealth = 20; health = 20
         speed = 0.1
@@ -1216,7 +1216,7 @@ open class AbstractFish: Mob {
     public var bucketItem = "cod_bucket"
     public override init(world: World) {
         super.init(world: world)
-        category = "water"
+        category = .water
         breathesWater = true
         breathesWaterOnly = true
         width = 0.5; height = 0.4
