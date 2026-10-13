@@ -30,7 +30,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 | | |
 |---|---|
-| Lines of Swift | ~55,700 across 108 files |
+| Lines of Swift | ~55,900 across 109 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
 | Items | 1,196 |

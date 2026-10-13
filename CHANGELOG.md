@@ -3,6 +3,35 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.5.0 — 2026-10-13 — worlds that survive updates
+
+Pebble now aims at vanilla Minecraft: Java Edition rather than the
+JavaScript original it was ported from, and its saves are built to outlast
+changes to the game.
+
+- **Every chunk you visit is saved, blocks and all.** Before, untouched
+  land was saved without its blocks and rebuilt from the seed each time it
+  loaded, so any change to world generation quietly reshaped places you'd
+  already seen. Now generation changes only affect land nobody has visited.
+- **Worlds remember which block and item each id means.** A build that
+  adds, moves, renames or removes blocks and items opens existing worlds
+  correctly: the world is updated once, the first time it opens. A
+  removed block becomes air, and a removed item leaves an empty slot.
+- **New worlds** place trees, flowers, ores and other decorations from
+  each feature's name, so future additions can't reshuffle the rest; trees
+  never generate leaves out of their logs' reach (those used to start
+  falling as soon as snow settled on them). **Worlds created before 1.5 keep
+  their original generator**, so their unvisited land matches what it would
+  always have been.
+- **Blast furnaces only smelt ores and smokers only cook food**, as in
+  Minecraft (the blast furnace used to take sand, cobblestone and logs).
+- Open 1.5 worlds only in 1.5 or later: older builds don't know about
+  palettes or generator versions.
+
+For contributors: CONTRIBUTING now sorts the 788 checks into contracts,
+behaviour checks and snapshots, and `pebble test --regold <names>`
+regenerates snapshots and lists exactly what changed.
+
 ## 1.4.11 — 2026-10-13 — anvils are "Too Expensive!" again
 
 - **Anvils follow Minecraft's limit:** a job costing 40 levels or more says
