@@ -66,11 +66,7 @@ public final class BiomeDef {
 
 public var BIOMES: [BiomeDef?] = []
 
-private var biomesRegistered = false
-
-public func registerAllBiomes() {
-    if biomesRegistered { return }
-    biomesRegistered = true
+private let registerAllBiomesOnce: Void = {
     precondition(!blockDefs.isEmpty, "blocks must register first")
 
     BIOMES = [BiomeDef?](repeating: nil, count: Biome.allCases.count)
@@ -284,7 +280,8 @@ public func registerAllBiomes() {
     endBiome(.endMidlands, "end_midlands")
     endBiome(.smallEndIslands, "small_end_islands")
     endBiome(.endBarrens, "end_barrens")
-}
+}()
+public func registerAllBiomes() { _ = registerAllBiomesOnce }
 
 // MARK: - climate → biome
 

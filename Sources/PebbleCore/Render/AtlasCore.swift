@@ -250,13 +250,11 @@ func paintInto(_ t: T, _ name: String) {
     fallbackPaint(t)
 }
 
-private var paintersRegistered = false
-public func ensurePainters() {
-    if paintersRegistered { return }
-    paintersRegistered = true
+private let ensurePaintersOnce: Void = {
     registerPainters1()
     registerPainters2()
-}
+}()
+public func ensurePainters() { _ = ensurePaintersOnce }
 
 public func paintTile(_ name: String) -> T {
     ensurePainters()

@@ -55,12 +55,7 @@ private func insertInto(_ be: BlockEntityData, _ stack: ItemStack, _ slotFilter:
     return false
 }
 
-private var blockEntitiesRegistered = false
-
-public func registerBlockEntityHandlers() {
-    if blockEntitiesRegistered { return }
-    blockEntitiesRegistered = true
-
+private let registerBlockEntityHandlersOnce: Void = {
     beTickHandlers["furnace"] = { world, be in
         let kind = be.kind ?? "furnace"
         let speed = kind == "furnace" ? 1 : 2
@@ -367,4 +362,5 @@ public func registerBlockEntityHandlers() {
             world.hooks.playSound("block.conduit.ambient", Double(be.x) + 0.5, Double(be.y) + 0.5, Double(be.z) + 0.5, 0.5, 1)
         }
     }
-}
+}()
+public func registerBlockEntityHandlers() { _ = registerBlockEntityHandlersOnce }

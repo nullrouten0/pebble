@@ -113,11 +113,7 @@ public func allLootTables() -> [String] { lootTableOrder }
 
 // MARK: - tables
 
-private var lootRegistered = false
-
-public func registerAllLootTables() {
-    if lootRegistered { return }
-    lootRegistered = true
+private let registerAllLootTablesOnce: Void = {
     precondition(!itemDefs.isEmpty, "registerAllItems() must run first")
 
     // -----------------------------------------------------------------------
@@ -444,4 +440,5 @@ public func registerAllLootTables() {
             return q
         }
     }
-}
+}()
+public func registerAllLootTables() { _ = registerAllLootTablesOnce }

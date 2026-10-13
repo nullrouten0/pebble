@@ -16,11 +16,7 @@ private func regLate(_ name: String, _ f: @escaping EntityFactory) {
     FACTORY_BY_NAME[name] = f
 }
 
-private var entitiesRegistered = false
-
-public func registerAllEntities() {
-    if entitiesRegistered { return }
-    entitiesRegistered = true
+private let registerAllEntitiesOnce: Void = {
     registerEntityHelpers()
 
     reg("cow") { Cow(world: $0) }; reg("mooshroom") { Mooshroom(world: $0) }
@@ -76,7 +72,8 @@ public func registerAllEntities() {
     regLate("rocket") { Rocket(world: $0) }; regLate("void_bomb") { VoidBomb(world: $0) }
 
     bindSpawnMob(spawnMob)
-}
+}()
+public func registerAllEntities() { _ = registerAllEntitiesOnce }
 
 public func createEntity(_ type: String, _ world: World) -> Entity? {
     FACTORY_BY_NAME[type].map { $0(world) }

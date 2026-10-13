@@ -91,7 +91,7 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 |---|---|
 | `PEBBLE_HOME=/tmp/scratch` | saves and settings go there instead of your real profile |
 | `PEBBLE_AUTOLOAD=1` | skip menus, load the most recent world |
-| `PEBBLE_NEWWORLD=<seed>` | create a fresh world with that seed |
+| `PEBBLE_NEWWORLD=<seed>` | with `PEBBLE_AUTOLOAD`, create a fresh world with that seed instead |
 | `PEBBLE_SETTINGS='{"maxFps":30}'` | override settings at launch (after the first-launch device preset); saved to the profile, so pair it with a scratch `PEBBLE_HOME` |
 | `PEBBLE_CMD="/tp 0 120 0;/time set 1000"` | run chat commands once the world is up (see the scripted steps below) |
 | `PEBBLE_SHOT="/tmp/x.png@300"` | capture a frame N frames after load |

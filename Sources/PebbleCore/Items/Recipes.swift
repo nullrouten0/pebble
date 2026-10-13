@@ -79,11 +79,7 @@ private func stoneSet(_ fam: String, _ base: String, stairs: Bool = true, wall: 
     }
 }
 
-private var recipesRegistered = false
-public func registerAllRecipes() {
-    if recipesRegistered { return }
-    recipesRegistered = true
-
+private let registerAllRecipesOnce: Void = {
     // --- tags ---
     TAGS = [
         "planks": WOODS.map { "\($0)_planks" },
@@ -545,4 +541,5 @@ public func registerAllRecipes() {
     shaped("DTD/DMD/DDD", ["D": "diamond", "T": "netherite_upgrade", "M": "netherrack"], "netherite_upgrade", 2)
     // appended: glowstone lamp on an iron mount, leather strap
     shaped(" G /LIL", ["G": "glowstone_dust", "L": "leather", "I": "iron_ingot"], "headlamp")
-}
+}()
+public func registerAllRecipes() { _ = registerAllRecipesOnce }

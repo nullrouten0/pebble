@@ -3,6 +3,14 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.9 — 2026-10-13 — thread-safe registration
+
+No visible changes. The thirteen one-time registrations (blocks, items,
+entities, biomes, recipes, loot, models, painters and the systems
+handlers) run through `let`-initialized globals, which Swift runs exactly
+once even if two threads ask at the same moment, instead of boolean flags
+that two threads could both see as unset. CONTRIBUTING asks for this.
+
 ## 1.4.8 — 2026-10-13 — one copy of each
 
 No visible changes: code that existed twice now exists once (the noise

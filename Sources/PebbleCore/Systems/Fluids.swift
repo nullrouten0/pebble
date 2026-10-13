@@ -213,12 +213,10 @@ private func scheduleFluid(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: In
     world.scheduleTick(x, y, z, c >> 4, tickRate(world, c >> 4))
 }
 
-private var fluidsRegistered = false
-public func registerFluidHandlers() {
-    if fluidsRegistered { return }
-    fluidsRegistered = true
+private let registerFluidHandlersOnce: Void = {
     blockTickHandlers[Int(B.water)] = fluidTick
     blockTickHandlers[Int(B.lava)] = fluidTick
     neighborHandlers[Int(B.water)] = { w, x, y, z, c, _, _, _ in scheduleFluid(w, x, y, z, c) }
     neighborHandlers[Int(B.lava)] = { w, x, y, z, c, _, _, _ in scheduleFluid(w, x, y, z, c) }
-}
+}()
+public func registerFluidHandlers() { _ = registerFluidHandlersOnce }

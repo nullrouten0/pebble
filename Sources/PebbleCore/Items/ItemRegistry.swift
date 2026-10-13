@@ -19,15 +19,12 @@ public let SPAWN_EGG_MOBS = [
     "wolf", "zoglin", "zombie", "zombie_villager", "zombified_piglin",
 ]
 
-private var registered = false
 
 private func matches(_ name: String, _ pattern: String) -> Bool {
     name.range(of: pattern, options: .regularExpression) != nil
 }
 
-public func registerAllItems() {
-    if registered { return }
-    registered = true
+private let registerAllItemsOnce: Void = {
     precondition(!blockDefs.isEmpty, "registerAllBlocks() must run first")
 
     // ---- block items (auto) ----
@@ -352,7 +349,8 @@ public func registerAllItems() {
 
     // post-registration fixups
     itemDefs[iid("cake")].maxStack = 1
-}
+}()
+public func registerAllItems() { _ = registerAllItemsOnce }
 
 /// the headlamp's item id (-1 until items register)
 nonisolated(unsafe) public private(set) var HEADLAMP_ID = -1

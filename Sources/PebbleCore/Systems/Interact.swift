@@ -1629,11 +1629,8 @@ public func applyBonemeal(_ world: World, _ x: Int, _ y: Int, _ z: Int) -> Bool 
 // =============================================================================
 // Registration umbrella for the whole systems layer
 // =============================================================================
-private var systemsRegistered = false
 
-public func registerAllSystems() {
-    if systemsRegistered { return }
-    systemsRegistered = true
+private let registerAllSystemsOnce: Void = {
     registerExplosionHandler()
     registerCombatBindings()
     registerBlockEntityHandlers()
@@ -1642,4 +1639,5 @@ public func registerAllSystems() {
     registerRedstoneHandlers()
     registerFluidHandlers()   // was only wired in pebsmoke — in-app water/lava never flowed
     bindBonemeal(applyBonemeal)
-}
+}()
+public func registerAllSystems() { _ = registerAllSystemsOnce }

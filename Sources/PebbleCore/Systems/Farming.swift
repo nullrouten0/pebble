@@ -126,12 +126,7 @@ public func weatherRandomTick(_ world: World, _ x: Int, _ z: Int) {
     }
 }
 
-private var farmingRegistered = false
-
-public func registerFarmingHandlers() {
-    if farmingRegistered { return }
-    farmingRegistered = true
-
+private let registerFarmingHandlersOnce: Void = {
     func reg(_ id: UInt16, _ fn: @escaping BlockTickFn) {
         randomTickHandlers[Int(id)] = fn
     }
@@ -672,7 +667,8 @@ public func registerFarmingHandlers() {
     for grav in gravityBlocks {
         neighborHandlers[Int(bid(grav))] = fallTickSchedule
     }
-}
+}()
+public func registerFarmingHandlers() { _ = registerFarmingHandlersOnce }
 
 // =============================================================================
 // SUPPORT POPS — vanilla neighbor-update behavior: plants/layers break (with

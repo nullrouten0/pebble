@@ -100,14 +100,9 @@ public let STONE_FAMILIES: [(String, String)] = [
     ("tuff", "tuff"),
 ]
 
-// MARK: - registration (call registerAllBlocks() exactly once at startup)
+// MARK: - registration (registerAllBlocks() runs the body once, however often it's called)
 
-private var registered = false
-
-public func registerAllBlocks() {
-    if registered { return }
-    registered = true
-
+private let registerAllBlocksOnce: Void = {
     // air
     registerBlock("air", shape: .air, opaque: false, solid: false, fullCube: false, replaceable: true, lightOpacity: 0, hardness: 0, drops: .none)
     registerBlock("cave_air", shape: .air, opaque: false, solid: false, fullCube: false, replaceable: true, lightOpacity: 0, hardness: 0, drops: .none)
@@ -445,4 +440,5 @@ public func registerAllBlocks() {
                   drops: .fn { m, ctx in (m & 3) >= 3 ? [Drop("nether_wart", 2, 4 + ctx.fortune)] : [Drop("nether_wart")] }, ao: false)
 
     registerSnowToEnd()
-}
+}()
+public func registerAllBlocks() { _ = registerAllBlocksOnce }

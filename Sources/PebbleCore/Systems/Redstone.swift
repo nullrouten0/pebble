@@ -928,12 +928,8 @@ private func pistonTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) 
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
-private var redstoneRegistered = false
 
-public func registerRedstoneHandlers() {
-    if redstoneRegistered { return }
-    redstoneRegistered = true
-
+private let registerRedstoneHandlersOnce: Void = {
     WOOD_BUTTONS = WOODS.map { Int(bid("\($0)_button")) }
     WOOD_PLATES = WOODS.map { Int(bid("\($0)_pressure_plate")) }
 
@@ -1243,4 +1239,5 @@ public func registerRedstoneHandlers() {
     blockTickHandlers[Int(B.lightning_rod)] = { world, x, y, z, c in
         if (c & 8) != 0 { world.setBlock(x, y, z, Int(cell(B.lightning_rod, c & 7))) }
     }
-}
+}()
+public func registerRedstoneHandlers() { _ = registerRedstoneHandlersOnce }

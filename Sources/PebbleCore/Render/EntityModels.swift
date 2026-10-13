@@ -224,11 +224,7 @@ private func cowModel(_ c: Int, packTex: [String]) -> MobModel {
         packTex: packTex)
 }
 
-private var modelsRegistered = false
-public func ensureModels() {
-    if modelsRegistered { return }
-    modelsRegistered = true
-
+private let ensureModelsOnce: Void = {
     M("pig", MobModel(
         texW: 64, texH: 32,
         parts: [
@@ -325,7 +321,8 @@ public func ensureModels() {
 
     // everything else EntityModels2.swift
     registerAllModels()
-}
+}()
+public func ensureModels() { _ = ensureModelsOnce }
 
 // ---------------------------------------------------------------------------
 // geometry: 9 floats per vertex (pos3, normal3, uv2, partIdx)
