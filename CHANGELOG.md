@@ -3,14 +3,26 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.5.5 — 2026-10-13 — paste where you look
+
+- **`//paste` goes where you're looking**, up to 96 blocks away, the way a
+  placed block would. In 1.5.4 it kept its old position relative to you, so
+  after you turned around it landed behind you, out of sight.
+  - Looking at the ground or a floor: the copy stands on it, centred across
+    your view and running away from you.
+  - Looking at a wall: it grows out of the wall toward you.
+  - Looking at a ceiling: it hangs from it.
+  - Looking at grass or other plants you could build through: it replaces
+    them instead of floating on top.
+  - Looking at open sky: it lands 3 blocks ahead, level with your feet.
+
 ## 1.5.4 — 2026-10-13 — copy and paste
 
 - **`//copy`** copies the selection to your clipboard: blocks plus their
   contents, such as chest items and sign text. **`//cut`** also clears it.
 - **`//paste`** puts the clipboard back where it sat relative to you when you
-  copied: stand 5 blocks east of where you copied, and it lands 5 blocks east
-  of the original. **`//paste -a`** skips the clipboard's air, so it doesn't
-  carve out what's around it.
+  copied (1.5.5 changes this to where you're looking). **`//paste -a`** skips
+  the clipboard's air, so it doesn't carve out what's around it.
 - Each paste or cut is one undo step. **`//undo`** and **`//redo`** work the
   same as `/undo` and `/redo`.
 - Up to 1,000,000 blocks (100×100×100) at a time. The whole area must be

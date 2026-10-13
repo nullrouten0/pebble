@@ -2476,36 +2476,66 @@ do {
         check("//copy takes the box and the chest in it", clip?.volume == 18 && clip?.blockEntityCount == 1,
               "\(String(describing: clip?.volume)) \(String(describing: clip?.blockEntityCount))")
 
-        // walk 10 east and paste: it lands 10 east of the original
-        p.setPos(p.x + 10, p.y, p.z)
-        let ox = bx + 10
+        // aim: looking straight down at the block under your feet, the paste
+        // stands on it, centred across your view and running away from you
+        // (yaw 0 faces +z)
+        let fx = ifloor(p.x), fy = ifloor(p.y), fz = ifloor(p.z)
+        w.setBlock(fx, fy - 1, fz, stone)
+        w.setBlock(fx, fy, fz, 0)
+        w.setBlock(fx, fy + 1, fz, 0)
+        p.yaw = 0
+        p.pitch = .pi / 2 - 0.01
+        let o = BlockPos(fx - 1, fy, fz)
+        w.setBlock(fx, fy, fz, Int(cell(B.short_grass)))
+        let onGrass = pasteOrigin(p, clip!)
+        check("aimed at grass, the paste replaces it rather than standing on it", onGrass == (o.x, o.y, o.z), "\(onGrass)")
+        w.setBlock(fx, fy, fz, 0)
         let r = try? pasteClipboard(p, skipAir: false)
-        check("//paste keeps the offset from where you stand", r?.lo == BlockPos(ox, by, bz), "\(String(describing: r?.lo))")
+        check("//paste stands on the block you look at, running away from you", r?.lo == o,
+              "\(String(describing: r?.lo)) want \(o)")
         check("pasted blocks match the copy",
-              w.getBlock(ox, by, bz) == stone && w.getBlock(ox + 2, by, bz + 2) == stone && w.getBlock(ox + 1, by + 1, bz + 1) == chestCell)
-        let pasted = w.getBlockEntity(ox + 1, by + 1, bz + 1)
+              w.getBlock(o.x, o.y, o.z) == stone && w.getBlock(o.x + 2, o.y, o.z + 2) == stone
+              && w.getBlock(o.x + 1, o.y + 1, o.z + 1) == chestCell)
+        let pasted = w.getBlockEntity(o.x + 1, o.y + 1, o.z + 1)
         check("the pasted chest gets its own copy of the items",
               pasted?.items?[0]?.count == 5 && pasted !== chest && pasted?.items?[0] !== chest.items![0])
 
         // paste again over the first paste: the blocks match, only the chest's contents differ
         pasted?.items?[0] = ItemStack(iid("emerald"), 3)
-        _ = try? pasteClipboard(p, skipAir: false)
+        _ = try? pasteClipboard(p, skipAir: false, at: o)
         check("pasting a chest over a chest replaces its contents",
-              w.getBlockEntity(ox + 1, by + 1, bz + 1)?.items?[0]?.id == iid("diamond"))
+              w.getBlockEntity(o.x + 1, o.y + 1, o.z + 1)?.items?[0]?.id == iid("diamond"))
         _ = undoLastEdit()
         check("undoing that paste brings back the chest it replaced",
-              w.getBlockEntity(ox + 1, by + 1, bz + 1)?.items?[0]?.id == iid("emerald"))
+              w.getBlockEntity(o.x + 1, o.y + 1, o.z + 1)?.items?[0]?.id == iid("emerald"))
         _ = undoLastEdit()
-        check("undoing the first paste leaves air and no chest data",
-              w.getBlock(ox, by, bz) == 0 && w.getBlock(ox + 1, by + 1, bz + 1) == 0 && w.getBlockEntity(ox + 1, by + 1, bz + 1) == nil)
+        check("undoing the first paste brings back what was there, with no chest data",
+              w.getBlock(o.x + 1, o.y, o.z) == 0 && w.getBlock(o.x + 1, o.y + 1, o.z + 1) != chestCell
+              && w.getBlockEntity(o.x + 1, o.y + 1, o.z + 1) == nil)
 
         // -a: the clipboard's air (the top layer around the chest) leaves what's there
         let glass = Int(cell(B.glass))
-        w.setBlock(ox, by + 1, bz, glass)
-        _ = try? pasteClipboard(p, skipAir: true)
-        check("//paste -a leaves blocks where the clipboard has air", w.getBlock(ox, by + 1, bz) == glass && w.getBlock(ox, by, bz) == stone)
+        let ax = bx + 10
+        w.setBlock(ax, by + 1, bz, glass)
+        _ = try? pasteClipboard(p, skipAir: true, at: BlockPos(ax, by, bz))
+        check("//paste -a leaves blocks where the clipboard has air", w.getBlock(ax, by + 1, bz) == glass && w.getBlock(ax, by, bz) == stone)
         _ = undoLastEdit()
-        w.setBlock(ox, by + 1, bz, 0)
+        w.setBlock(ax, by + 1, bz, 0)
+
+        // aim at a wall: it grows out of the wall toward you, its bottom level
+        // with the cell in front of the face
+        for dz in 1...3 { w.setBlock(fx, fy + 1, fz + dz, 0) }
+        w.setBlock(fx, fy + 1, fz + 4, stone)
+        p.pitch = 0
+        let wall = pasteOrigin(p, clip!)
+        check("aimed at a wall, the paste grows out of it toward you", wall == (fx - 1, fy + 1, fz + 1), "\(wall)")
+        // nothing in reach (up at the build limit, looking level): 3 blocks ahead at your feet
+        let top = w.info.minY + w.info.height - 3
+        let (sx, sy, sz) = (p.x, p.y, p.z)
+        p.setPos(sx, Double(top), sz)
+        let sky = pasteOrigin(p, clip!)
+        check("with nothing in reach, the paste stands 3 blocks ahead", sky == (fx - 1, top, fz + 3), "\(sky)")
+        p.setPos(sx, sy, sz)
 
         _ = try? copySelection(p, cut: true)
         check("//cut clears the box", w.getBlock(bx, by, bz) == 0 && w.getBlock(bx + 1, by + 1, bz + 1) == 0

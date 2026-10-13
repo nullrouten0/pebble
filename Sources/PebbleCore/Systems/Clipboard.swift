@@ -1,13 +1,15 @@
 // The clipboard behind the selection wand: //copy and //cut take the selected
 // box (blocks plus contents such as chest items and sign text), //paste puts
-// it back relative to where you stand now, the way it sat relative to you
-// when you copied. One clipboard per player, not saved. Cuts and pastes are
-// one undo step each (EditHistory.swift). Mobs and dropped items aren't copied.
+// it where you're looking, attached to that block face the way a placed block
+// would be (pasteOrigin). One clipboard per player, not saved. Cuts and pastes
+// are one undo step each (EditHistory.swift). Mobs and dropped items aren't copied.
 
 import Foundation
 
 /// the most blocks one copy or paste may cover (100×100×100)
 public let CLIPBOARD_MAX_BLOCKS = 1_000_000
+/// how far //paste looks for a block to paste onto
+public let PASTE_REACH = 96.0
 
 public final class Clipboard {
     /// width (x), height (y), length (z)
@@ -16,14 +18,11 @@ public final class Clipboard {
     let cells: [UInt16]
     /// block entities by cell index, positions relative to the box's min corner
     let blockEntities: [Int: BlockEntityData]
-    /// the box's min corner relative to the copier's block when they copied
-    public let offset: (x: Int, y: Int, z: Int)
 
-    init(w: Int, h: Int, l: Int, cells: [UInt16], blockEntities: [Int: BlockEntityData], offset: (Int, Int, Int)) {
+    init(w: Int, h: Int, l: Int, cells: [UInt16], blockEntities: [Int: BlockEntityData]) {
         self.w = w; self.h = h; self.l = l
         self.cells = cells
         self.blockEntities = blockEntities
-        self.offset = offset
     }
 
     public var volume: Int { w * h * l }
@@ -58,9 +57,40 @@ extension BlockEntityData {
     }
 }
 
-/// the block a player stands in
-private func standingBlock(_ p: Player) -> (Int, Int, Int) {
-    (ifloor(p.x), ifloor(p.y), ifloor(p.z))
+/// the min corner a paste of `clip` goes to: the cell in front of the block
+/// face under `p`'s crosshair (up to PASTE_REACH), as if placing a block.
+/// - on a floor (or a ceiling) it stands on (hangs from) that cell, centred
+///   across your view and running away from you
+/// - on a wall it grows out of the wall toward you, centred across the wall,
+///   its bottom level with that cell
+/// - with nothing in reach it stands level with your feet, 3 blocks ahead
+public func pasteOrigin(_ p: Player, _ clip: Clipboard) -> (Int, Int, Int) {
+    let fx = -detSin(p.yaw), fz = detCos(p.yaw)
+    let dx = fx * detCos(p.pitch), dy = -detSin(p.pitch), dz = fz * detCos(p.pitch)
+    var tx: Int, ty: Int, tz: Int, nx = 0, ny = 1, nz = 0
+    if let hit = p.world.raycast(p.x, p.eyeY(), p.z, dx, dy, dz, PASTE_REACH) {
+        nx = DIR_X[hit.face]; ny = DIR_Y[hit.face]; nz = DIR_Z[hit.face]
+        if blockDefs[hit.cell >> 4].replaceable {
+            // tall grass, snow layers…: paste into them, as placing a block does
+            (tx, ty, tz) = (hit.x, hit.y, hit.z)
+            (nx, ny, nz) = (0, 1, 0)
+        } else {
+            tx = hit.x + nx; ty = hit.y + ny; tz = hit.z + nz
+        }
+    } else {
+        tx = ifloor(p.x + fx * 3); ty = ifloor(p.y); tz = ifloor(p.z + fz * 3)
+    }
+    /// the start of a span of `n` cells from `t`, growing toward `sign`
+    func grow(_ t: Int, _ n: Int, _ sign: Int) -> Int { sign > 0 ? t : t - n + 1 }
+    if ny != 0 {
+        let y0 = grow(ty, clip.h, ny)
+        if abs(fx) >= abs(fz) {
+            return (grow(tx, clip.w, fx > 0 ? 1 : -1), y0, tz - clip.l / 2)
+        }
+        return (tx - clip.w / 2, y0, grow(tz, clip.l, fz > 0 ? 1 : -1))
+    }
+    if nx != 0 { return (grow(tx, clip.w, nx), ty, tz - clip.l / 2) }
+    return (tx - clip.w / 2, ty, grow(tz, clip.l, nz))
 }
 
 /// every chunk column the box touches is loaded
@@ -95,9 +125,7 @@ public func copySelection(_ p: Player, cut: Bool) throws -> Clipboard {
             }
         }
     }
-    let (px, py, pz) = standingBlock(p)
-    let clip = Clipboard(w: w, h: h, l: l, cells: cells, blockEntities: bes,
-                         offset: (lo.x - px, lo.y - py, lo.z - pz))
+    let clip = Clipboard(w: w, h: h, l: l, cells: cells, blockEntities: bes)
     p.clipboard = clip
     if cut {
         let batch = beginEdit(world, "cut")
@@ -118,14 +146,14 @@ public struct PasteResult {
     public let lo: BlockPos, hi: BlockPos
 }
 
-/// paste `p`'s clipboard where it sat relative to them when they copied; with
-/// `skipAir` the clipboard's air leaves what's there alone. One undo step.
+/// paste `p`'s clipboard with its min corner `at`, or where they're looking
+/// (pasteOrigin); with `skipAir` the clipboard's air leaves what's there
+/// alone. One undo step.
 @discardableResult
-public func pasteClipboard(_ p: Player, skipAir: Bool) throws -> PasteResult {
+public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) throws -> PasteResult {
     guard let clip = p.clipboard else { throw ClipboardError.empty }
     let world = p.world
-    let (px, py, pz) = standingBlock(p)
-    let x0 = px + clip.offset.x, y0 = py + clip.offset.y, z0 = pz + clip.offset.z
+    let (x0, y0, z0) = at.map { ($0.x, $0.y, $0.z) } ?? pasteOrigin(p, clip)
     let x1 = x0 + clip.w - 1, z1 = z0 + clip.l - 1
     guard boxLoaded(world, x0, z0, x1, z1) else { throw ClipboardError.unloaded }
     let minY = world.info.minY, maxY = world.info.minY + world.info.height - 1
