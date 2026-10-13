@@ -30,14 +30,8 @@ public final class SimplexNoise {
 
     public init(_ seed: UInt32) {
         var rng = RandomX(seed)
-        var p = [Int](repeating: 0, count: 256)
-        for i in 0..<256 { p[i] = i }
-        var i = 255
-        while i > 0 {
-            let j = rng.nextInt(i + 1)
-            p.swapAt(i, j)
-            i -= 1
-        }
+        var p = Array(0..<256)
+        rng.shuffle(&p)
         for k in 0..<512 {
             perm[k] = p[k & 255]
             permMod12[k] = perm[k] % 12

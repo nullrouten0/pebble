@@ -99,7 +99,7 @@ public func shootBow(_ player: Player, _ chargeTicks: Int) {
     if power > 1 { power = 1 }
 
     let infinity = enchLevel(held, "infinity") > 0
-    let hasArrow = player.gameMode == 1 || infinity || player.countItem(iid("arrow")) > 0 ||
+    let hasArrow = player.gameMode == GameMode.creative || infinity || player.countItem(iid("arrow")) > 0 ||
         player.countItem(iid("spectral_arrow")) > 0 || player.countItem(iid("tipped_arrow")) > 0
     if !hasArrow { return }
 
@@ -117,7 +117,7 @@ public func shootBow(_ player: Player, _ chargeTicks: Int) {
             if let s, s.id == iid("tipped_arrow") { potionId = s.data.potion; break }
         }
     }
-    if player.gameMode != 1 && !(infinity && arrowItem == "arrow") {
+    if player.gameMode != GameMode.creative && !(infinity && arrowItem == "arrow") {
         player.removeItems(iid(arrowItem), 1)
     }
 
@@ -129,7 +129,7 @@ public func shootBow(_ player: Player, _ chargeTicks: Int) {
     arrow.flame = enchLevel(held, "flame") > 0
     arrow.potionId = potionId
     arrow.spectral = arrowItem == "spectral_arrow"
-    arrow.pickupable = !(infinity && arrowItem == "arrow") && player.gameMode != 1
+    arrow.pickupable = !(infinity && arrowItem == "arrow") && player.gameMode != GameMode.creative
     player.world.addEntity(arrow)
     player.world.hooks.playSound("entity.arrow.shoot", player.x, player.y, player.z, 1, 1 / (Double.random(in: 0..<1) * 0.4 + 1.2) + power * 0.5)
     player.damageHeld(1)

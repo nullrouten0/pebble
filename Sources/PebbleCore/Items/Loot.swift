@@ -56,16 +56,14 @@ public func enchantStackRandomly(_ s: ItemStack, _ rng: inout RandomX, _ level: 
     let isBook = def.name == "book" || def.name == "enchanted_book"
     let candidates = ENCHANTMENTS.filter { !$0.curse && (isBook || appliesTo($0, def)) }
     if candidates.isEmpty { return s }
+    /// the highest level of `e` that power `l` reaches (at least 1)
+    func levelFor(_ e: EnchantmentDef, _ l: Int) -> Int {
+        (1...max(1, e.maxLevel)).last { l >= e.minPower($0) } ?? 1
+    }
     var picked: [EnchInstance] = []
     var l = level
     let first = candidates[rng.nextInt(candidates.count)]
-    var flv = 1
-    var i = first.maxLevel
-    while i >= 1 {
-        if l >= first.minPower(i) { flv = i; break }
-        i -= 1
-    }
-    picked.append(EnchInstance(first.id, flv))
+    picked.append(EnchInstance(first.id, levelFor(first, l)))
     while rng.nextFloat() < Double(level + 1) / 50.0 && picked.count < 4 {
         let remaining = candidates.filter { c in
             picked.allSatisfy { p in
@@ -75,13 +73,7 @@ public func enchantStackRandomly(_ s: ItemStack, _ rng: inout RandomX, _ level: 
         }
         if remaining.isEmpty { break }
         let next = remaining[rng.nextInt(remaining.count)]
-        var nlv = 1
-        var j = next.maxLevel
-        while j >= 1 {
-            if l >= next.minPower(j) { nlv = j; break }
-            j -= 1
-        }
-        picked.append(EnchInstance(next.id, nlv))
+        picked.append(EnchInstance(next.id, levelFor(next, l)))
         l = l / 2
     }
     if isBook { return ItemStack(iid("enchanted_book"), 1, ench: picked) }

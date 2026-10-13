@@ -3,6 +3,15 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.8 — 2026-10-13 — one copy of each
+
+No visible changes: code that existed twice now exists once (the noise
+permutation shuffle, name prettifying, angle wrapping, item pickup for
+local and LAN players, the box geometry for TNT/falling blocks and the
+block-crack overlay, the enchantment level pick), the chunk renderer
+compiles one pipeline where it compiled two identical ones, and explosions
+track destroyed blocks by exact position.
+
 ## 1.4.7 — 2026-10-13 — fall damage, spiders, mobs that remember
 
 - **Falls over 5 blocks follow the rules again.** Feather Falling now

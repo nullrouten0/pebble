@@ -102,27 +102,32 @@ public final class Player: LivingEntity {
         if sleepTicks > 0 { sleepTicks += 1 }
         if portalTicks > 0 && insidePortalKind == nil { portalTicks = max(0, portalTicks - 4) }
         // item magnet pickup (a LAN guest's pickups happen on the host)
-        if age % 2 == 0 && !dead && !world.isRemote {
-            for e in world.getEntitiesNear(x, y + 0.5, z, 1.6) {
-                if let item = e as? ItemEntity, item.pickupDelay <= 0 {
-                    let before = item.stack.count
-                    if give(item.stack) {
-                        world.hooks.playSound("entity.item.pickup", x, y, z, 0.3, 1.4 + Double.random(in: 0..<1) * 0.6)
-                        item.remove()
-                    } else if item.stack.count != before {
-                        world.hooks.playSound("entity.item.pickup", x, y, z, 0.3, 1.4)
-                    }
-                } else if let orb = e as? XPOrb {
-                    addXP(orb.amount)
-                    world.hooks.playSound("entity.experience_orb.pickup", x, y, z, 0.4, 0.8 + Double.random(in: 0..<1) * 0.6)
-                    orb.remove()
-                }
-            }
-        }
+        if age % 2 == 0 && !dead && !world.isRemote { pickUpNearby() }
         // elytra
         if elytraFlying {
             tickElytra()
             if onGround || inWater || !hasElytra() { elytraFlying = false }
+        }
+    }
+
+    /// items and XP orbs within reach go into the inventory. Runs for the
+    /// local player, and on the host for each LAN guest's proxy (whose give()
+    /// and addXP() forward to the guest through its NetPlayerLink)
+    public func pickUpNearby() {
+        for e in world.getEntitiesNear(x, y + 0.5, z, 1.6) {
+            if let item = e as? ItemEntity, item.pickupDelay <= 0 {
+                let before = item.stack.count
+                if give(item.stack) {
+                    world.hooks.playSound("entity.item.pickup", x, y, z, 0.3, 1.4 + Double.random(in: 0..<0.6))
+                    item.remove()
+                } else if item.stack.count != before {
+                    world.hooks.playSound("entity.item.pickup", x, y, z, 0.3, 1.4)
+                }
+            } else if let orb = e as? XPOrb {
+                addXP(orb.amount)
+                world.hooks.playSound("entity.experience_orb.pickup", x, y, z, 0.4, 0.8 + Double.random(in: 0..<0.6))
+                orb.remove()
+            }
         }
     }
 
@@ -664,7 +669,7 @@ public final class Player: LivingEntity {
         deathTime = 1
         // falls over 5 blocks get vanilla's "fell from a high place" wording
         data.deathCause = source == .fall && fallDistance > 5 ? "fall_high" : source.rawValue
-        data.deathAttacker = lastAttacker.map { prettyEntityName($0.type) }
+        data.deathAttacker = lastAttacker.map { prettify($0.type) }
         world.hooks.playSound("entity.player.death", x, y, z, 1, 1)
         if !world.rule("keepInventory") {
             for i in 0..<inventory.count {

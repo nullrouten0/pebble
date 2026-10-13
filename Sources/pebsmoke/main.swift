@@ -1243,7 +1243,6 @@ if let g = loadJSON("entity-goldens.json") {
     func hex(_ x: Double) -> String {
         String(x.bitPattern >> 32, radix: 16) + "-" + String(x.bitPattern & 0xffff_ffff, radix: 16)
     }
-    func ifloor(_ x: Double) -> Int { Int(x.rounded(.down)) }
     func num(_ k: String) -> Int { (g[k] as! NSNumber).intValue }
     func hash32(_ k: String) -> UInt32 { UInt32(truncating: g[k] as! NSNumber) }
 
@@ -1615,7 +1614,6 @@ if let g = loadJSON("systems-goldens.json") {
     func hex(_ x: Double) -> String {
         String(x.bitPattern >> 32, radix: 16) + "-" + String(x.bitPattern & 0xffff_ffff, radix: 16)
     }
-    func ifloor(_ x: Double) -> Int { Int(x.rounded(.down)) }
     /// deterministic Number→string: integral doubles print without ".0"
     func detNum(_ x: Double) -> String {
         if x == x.rounded() && abs(x) < 1e15 { return String(Int(x)) }

@@ -3077,14 +3077,9 @@ public final class GameCore {
     }
 }
 
-// ---- death messages -------------------------------------------------------------
-/// "wither_skeleton" → "Wither Skeleton"
-public func prettyEntityName(_ type: String) -> String {
-    type.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
-}
-
 // ---- small math helpers -------------------------------------------------------
-func wrapAngle(_ a: Double) -> Double {
+/// radians into (-π, π]
+public func wrapAngle(_ a: Double) -> Double {
     var a = a
     while a > .pi { a -= .pi * 2 }
     while a < -.pi { a += .pi * 2 }

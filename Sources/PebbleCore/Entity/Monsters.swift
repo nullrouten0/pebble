@@ -422,7 +422,7 @@ public final class Enderman: Monster {
         if target == nil && age % 10 == 0 {
             for e in world.getEntitiesNear(x, y, z, 32, filter: { ($0 as? Entity)?.isPlayer ?? false }) {
                 guard let p = e as? LivingEntity else { continue }
-                if p.gameMode == 1 { continue }
+                if p.gameMode == GameMode.creative { continue }
                 if p.wearingPumpkin { continue }
                 // is the player looking at my head?
                 let dx = x - p.x, dy = (y + 2.55) - p.eyeY(), dz = z - p.z

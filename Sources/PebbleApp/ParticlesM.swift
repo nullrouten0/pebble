@@ -62,7 +62,7 @@ final class ParticleSystemM {
     /// spawn by type name; `cell` carries the block cell for 'block' particles, `note` for notes
     func spawn(_ world: World, _ type: String, _ x: Double, _ y: Double, _ z: Double,
                _ count: Int, _ spread: Double = 0.3, cell: Int = 0, note: Int = 0, groundY: Double = 0) {
-        let lightOf = world.lightAt(ifloorD(x), ifloorD(y), ifloorD(z)) / 15
+        let lightOf = world.lightAt(ifloor(x), ifloor(y), ifloor(z)) / 15
         for _ in 0..<count {
             let ox = (rand() - 0.5) * 2 * spread
             let oy = (rand() - 0.5) * 2 * spread
@@ -83,7 +83,7 @@ final class ParticleSystemM {
                 let u = rand() * 0.75, v = rand() * 0.75
                 p.u0 = u; p.v0 = v; p.u1 = u + 0.25; p.v1 = v + 0.25
                 if TINT_OF[id] == 1 || TINT_OF[id] == 2 {
-                    let bm = BIOMES[world.biomeAt(ifloorD(x), ifloorD(y), ifloorD(z))]
+                    let bm = BIOMES[world.biomeAt(ifloor(x), ifloor(y), ifloor(z))]
                     let c = TINT_OF[id] == 1 ? (bm?.grassColor ?? 0x91bd59) : (bm?.foliageColor ?? 0x77ab2f)
                     p.r = Double((c >> 16) & 255) / 255; p.g = Double((c >> 8) & 255) / 255; p.b = Double(c & 255) / 255
                 }
@@ -294,7 +294,7 @@ final class ParticleSystemM {
             p.vx *= p.drag; p.vy *= p.drag; p.vz *= p.drag
             let nx = p.x + p.vx, ny = p.y + p.vy, nz = p.z + p.vz
             if p.collide {
-                let cell = world.getBlock(ifloorD(nx), ifloorD(ny), ifloorD(nz))
+                let cell = world.getBlock(ifloor(nx), ifloor(ny), ifloor(nz))
                 let id = cell >> 4
                 if id != 0 && blockDefs[id].solid {
                     p.vx = 0; p.vz = 0
@@ -356,4 +356,3 @@ final class ParticleSystemM {
     }
 }
 
-@inline(__always) func ifloorD(_ x: Double) -> Int { Int(x.rounded(.down)) }

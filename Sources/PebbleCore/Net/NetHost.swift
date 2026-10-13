@@ -684,23 +684,7 @@ public final class NetHost {
                 withActor(c, echo: true) { fireLaser(p.world, p, wide: p.sneaking, tick: p.useItemTicks) }
             }
             // item / XP pickup (lands in the guest's inventory via NetPlayerLink)
-            if p.age % 2 == 0 {
-                for e in p.world.getEntitiesNear(p.x, p.y + 0.5, p.z, 1.6) {
-                    if let item = e as? ItemEntity, item.pickupDelay <= 0 {
-                        let before = item.stack.count
-                        if p.give(item.stack) {
-                            p.world.hooks.playSound("entity.item.pickup", p.x, p.y, p.z, 0.3, 1.4 + Double.random(in: 0..<0.6))
-                            item.remove()
-                        } else if item.stack.count != before {
-                            p.world.hooks.playSound("entity.item.pickup", p.x, p.y, p.z, 0.3, 1.4)
-                        }
-                    } else if let orb = e as? XPOrb {
-                        p.addXP(orb.amount)
-                        p.world.hooks.playSound("entity.experience_orb.pickup", p.x, p.y, p.z, 0.4, 0.8 + Double.random(in: 0..<0.6))
-                        orb.remove()
-                    }
-                }
-            }
+            if p.age % 2 == 0 { p.pickUpNearby() }
         }
     }
 

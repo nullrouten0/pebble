@@ -314,7 +314,7 @@ public final class EnderDragon: LivingEntity {
         var best: LivingEntity? = nil
         var bestD = Double.infinity
         for e in world.entities {
-            guard let p = e as? LivingEntity, p.isPlayer, !p.dead, p.gameMode != 1 else { continue }
+            guard let p = e as? LivingEntity, p.isPlayer, !p.dead, p.gameMode != GameMode.creative else { continue }
             let d = distanceToSq(p)
             if d < bestD { bestD = d; best = p }
         }

@@ -10,10 +10,9 @@ public func explode(_ world: World, _ x: Double, _ y: Double, _ z: Double, _ pow
 
     // --- block destruction: 16×16 rays from center ---
     var destroyedList: [(Int, Int, Int)] = []
-    var destroyedSet = Set<Int64>()
+    var destroyedSet = Set<BlockPos>()   // (an XOR-packed Int64 key could collide below y=0)
     func addDestroyed(_ bx: Int, _ by: Int, _ bz: Int) {
-        let key = (Int64(bx) << 40) ^ (Int64(by) << 20) ^ Int64(bz)
-        if destroyedSet.insert(key).inserted {
+        if destroyedSet.insert(BlockPos(bx, by, bz)).inserted {
             destroyedList.append((bx, by, bz))
         }
     }

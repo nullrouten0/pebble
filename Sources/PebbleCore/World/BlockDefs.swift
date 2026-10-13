@@ -173,7 +173,8 @@ public final class BlockDef {
 public var blockDefs: [BlockDef] = []
 private var byName: [String: Int] = [:]
 
-func prettify(_ name: String) -> String {
+/// "wither_skeleton" → "Wither Skeleton" (block, item, biome and mob names)
+public func prettify(_ name: String) -> String {
     name.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
 }
 

@@ -200,6 +200,34 @@ struct CompositeUniforms {
     var params2: SIMD4<Float> = .zero   // ultraOn, aoStrength, volStrength
 }
 
+/// box corners per face (down, up, north, south, west, east), each corner as
+/// (max x?, max y?, max z?), in the winding the chunk shader expects
+private let BOX_FACE_CORNERS: [[(Bool, Bool, Bool)]] = [
+    [(false, false, true), (true, false, true), (true, false, false), (false, false, false)],
+    [(false, true, false), (true, true, false), (true, true, true), (false, true, true)],
+    [(true, false, false), (true, true, false), (false, true, false), (false, false, false)],
+    [(false, false, true), (false, true, true), (true, true, true), (true, false, true)],
+    [(false, false, false), (false, true, false), (false, true, true), (false, false, true)],
+    [(true, false, true), (true, true, true), (true, true, false), (true, false, false)],
+]
+private let BOX_CORNER_UV: [(Float, Float)] = [(0, 1), (1, 1), (1, 0), (0, 0)]
+
+/// a box as six chunk-format quads (xyz, uv, packed attribute word, full-bright
+/// tint), for the entity cubes and the crack overlay; `attr` packs each face
+private func appendBoxQuads(_ out: inout [Float], _ outIdx: inout [UInt32],
+                            _ x0: Float, _ y0: Float, _ z0: Float, _ x1: Float, _ y1: Float, _ z1: Float,
+                            _ attr: (Int) -> UInt32) {
+    for face in 0..<6 {
+        let a = Float(bitPattern: attr(face)), tint = Float(bitPattern: 0xffffff)
+        let base = UInt32(out.count / 7)
+        for (i, c) in BOX_FACE_CORNERS[face].enumerated() {
+            let (u, v) = BOX_CORNER_UV[i]
+            out.append(contentsOf: [c.0 ? x1 : x0, c.1 ? y1 : y0, c.2 ? z1 : z0, u, v, a, tint])
+        }
+        outIdx.append(contentsOf: [base, base + 1, base + 2, base + 2, base + 3, base])
+    }
+}
+
 /// projectile entity type → the item its sprite shows (built once, not per frame)
 private let SPRITE_ITEMS: [String: String] = [
     "snowball": "snowball", "egg": "egg", "ender_pearl": "ender_pearl", "xp_bottle": "experience_bottle",
@@ -360,7 +388,8 @@ final class WorldRenderer {
         }
 
         opaquePipeline = pipe("chunk_vs", "chunk_fs", vd: chunkVD)
-        cutoutPipeline = pipe("chunk_vs", "chunk_fs", vd: chunkVD)
+        // the same state: cutout differs only by the alpha-test uniform (fog.z)
+        cutoutPipeline = opaquePipeline
         translucentPipeline = pipe("chunk_vs", "chunk_fs", vd: chunkVD, blend: true)
         shadowPipeline = pipe("shadow_vs", nil, vd: chunkVD, color: .invalid)
         skyPipeline = pipe("sky_vs", "sky_fs", vd: nil)
@@ -910,7 +939,7 @@ final class WorldRenderer {
         var fogStart = Float(drawDistance) * 16 * 0.55
         var fogEnd = Float(drawDistance) * 16 * 0.95
         if cam.underwater {
-            let wc = BIOMES[world.biomeAt(ifloorD(cam.x), ifloorD(cam.y), ifloorD(cam.z))]?.waterColor ?? 0x3f76e4
+            let wc = BIOMES[world.biomeAt(ifloor(cam.x), ifloor(cam.y), ifloor(cam.z))]?.waterColor ?? 0x3f76e4
             fogColor = SIMD3<Float>(Float((wc >> 16) & 255) / 255 * 0.4, Float((wc >> 8) & 255) / 255 * 0.45, Float(wc & 255) / 255 * 0.6)
             fogStart = 4
             fogEnd = 28 + Float(cam.nightVision) * 40
@@ -1339,8 +1368,8 @@ final class WorldRenderer {
         // contact (blob) shadows: a flat dark disc projected onto the ground
         // under each living entity, drawn just before its model.
         func groundYUnder(_ x: Double, _ feetY: Double, _ z: Double) -> Double? {
-            let bx = ifloorD(x), bz = ifloorD(z)
-            var y = ifloorD(feetY + 0.05)
+            let bx = ifloor(x), bz = ifloor(z)
+            var y = ifloor(feetY + 0.05)
             var steps = 0
             while steps < 24 {
                 let id = w.getBlock(bx, y, bz) >> 4
@@ -1360,13 +1389,13 @@ final class WorldRenderer {
             let ix = ent.prevX + (ent.x - ent.prevX) * partial
             let iy = ent.prevY + (ent.y - ent.prevY) * partial
             let iz = ent.prevZ + (ent.z - ent.prevZ) * partial
-            let yaw = ent.prevYaw + wrapAngleD(ent.yaw - ent.prevYaw) * partial
-            let bx = ifloorD(ent.x), by = ifloorD(ent.y + ent.height * 0.5), bz = ifloorD(ent.z)
+            let yaw = ent.prevYaw + wrapAngle(ent.yaw - ent.prevYaw) * partial
+            let bx = ifloor(ent.x), by = ifloor(ent.y + ent.height * 0.5), bz = ifloor(ent.z)
             let deathFlip = (liv?.deathTime ?? 0) > 0 ? min(1.0, Double(liv!.deathTime) / 20) : 0
             var pose = EntityPose()
             pose.x = ix; pose.y = iy; pose.z = iz
             pose.yaw = yaw
-            pose.headYaw = liv != nil ? wrapAngleD(liv!.headYaw - yaw) : 0
+            pose.headYaw = liv != nil ? wrapAngle(liv!.headYaw - yaw) : 0
             pose.pitch = ent.pitch
             pose.limbSwing = liv?.limbSwing ?? 0
             pose.limbAmp = liv?.limbAmp ?? 0
@@ -1556,7 +1585,7 @@ final class WorldRenderer {
             let ix = ent.prevX + (ent.x - ent.prevX) * partial
             let iy = ent.prevY + (ent.y - ent.prevY) * partial
             let iz = ent.prevZ + (ent.z - ent.prevZ) * partial
-            let bx = ifloorD(ent.x), by = ifloorD(ent.y + 0.3), bz = ifloorD(ent.z)
+            let bx = ifloor(ent.x), by = ifloor(ent.y + 0.3), bz = ifloor(ent.z)
             let sky = max(0, Double(w.getSkyLight(bx, by, bz)) - w.skyDarken())
             let light = max(Double(w.info.ambientLight),
                             max(sky * dayLight * 15 / max(1, 15 - w.skyDarken()), Double(w.getBlockLight(bx, by, bz))))
@@ -1607,26 +1636,7 @@ final class WorldRenderer {
             v |= (flash ? 1 : 0) << 25
             return UInt32(v)
         }
-        let Bv: UInt32 = 0xffffff
-        let faces: [(Int, [[Float]])] = [
-            (0, [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]]),
-            (1, [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]),
-            (2, [[x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z0]]),
-            (3, [[x0, y0, z1], [x0, y1, z1], [x1, y1, z1], [x1, y0, z1]]),
-            (4, [[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]]),
-            (5, [[x1, y0, z1], [x1, y1, z1], [x1, y1, z0], [x1, y0, z0]]),
-        ]
-        let uvs: [[Float]] = [[0, 1], [1, 1], [1, 0], [0, 0]]
-        for (face, corners) in faces {
-            let layer = tileOf(face)
-            let base = UInt32(out.count / 7)
-            for i in 0..<4 {
-                let c = corners[i]
-                out.append(contentsOf: [c[0], c[1], c[2], uvs[i][0], uvs[i][1],
-                                        Float(bitPattern: u32(layer, face)), Float(bitPattern: Bv)])
-            }
-            outIdx.append(contentsOf: [base, base + 1, base + 2, base + 2, base + 3, base])
-        }
+        appendBoxQuads(&out, &outIdx, x0, y0, z0, x1, y1, z1) { face in u32(tileOf(face), face) }
     }
 
     private func drawCubes(_ enc: MTLRenderCommandEncoder, game: GameCore, viewProj: simd_float4x4,
@@ -1652,7 +1662,7 @@ final class WorldRenderer {
             let ix = Float(ent.prevX + (ent.x - ent.prevX) * partial - camPos.x)
             let iy = Float(ent.prevY + (ent.y - ent.prevY) * partial - camPos.y)
             let iz = Float(ent.prevZ + (ent.z - ent.prevZ) * partial - camPos.z)
-            let bx = ifloorD(ent.x), by = ifloorD(ent.y + 0.5), bz = ifloorD(ent.z)
+            let bx = ifloor(ent.x), by = ifloor(ent.y + 0.5), bz = ifloor(ent.z)
             let half: Float = 0.49
             let fuse = (ent as? TNTEntity)?.fuse ?? 0
             packCube(&verts, &idx, ix - half, iy, iz - half, ix + half, iy + half * 2, iz + half,
@@ -1702,27 +1712,9 @@ final class WorldRenderer {
             let layer = tileId("destroy_\(stage)")
             let g: Float = 0.004
             let A = UInt32((layer & 4095) | (3 << 15) | (15 << 17) | (15 << 21))
-            let uvs: [[Float]] = [[0, 1], [1, 1], [1, 0], [0, 0]]
             for b in scratch {
-                let x0 = Float(b.x0) - g, y0 = Float(b.y0) - g, z0 = Float(b.z0) - g
-                let x1 = Float(b.x1) + g, y1 = Float(b.y1) + g, z1 = Float(b.z1) + g
-                let faces: [[[Float]]] = [
-                    [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]],
-                    [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]],
-                    [[x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z0]],
-                    [[x0, y0, z1], [x0, y1, z1], [x1, y1, z1], [x1, y0, z1]],
-                    [[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]],
-                    [[x1, y0, z1], [x1, y1, z1], [x1, y1, z0], [x1, y0, z0]],
-                ]
-                for fi in 0..<6 {
-                    let base = UInt32(verts.count / 7)
-                    for i in 0..<4 {
-                        let c = faces[fi][i]
-                        verts.append(contentsOf: [c[0], c[1], c[2], uvs[i][0], uvs[i][1],
-                                                  Float(bitPattern: A | UInt32(fi << 12)), Float(bitPattern: 0xffffff)])
-                    }
-                    idx.append(contentsOf: [base, base + 1, base + 2, base + 2, base + 3, base])
-                }
+                appendBoxQuads(&verts, &idx, Float(b.x0) - g, Float(b.y0) - g, Float(b.z0) - g,
+                               Float(b.x1) + g, Float(b.y1) + g, Float(b.z1) + g) { face in A | UInt32(face << 12) }
             }
             let vb = verts.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
             let ib = idx.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count)! }
@@ -1803,9 +1795,4 @@ final class WorldRenderer {
     }
 }
 
-@inline(__always) func wrapAngleD(_ a: Double) -> Double {
-    var a = a
-    while a > .pi { a -= .pi * 2 }
-    while a < -.pi { a += .pi * 2 }
-    return a
-}
+

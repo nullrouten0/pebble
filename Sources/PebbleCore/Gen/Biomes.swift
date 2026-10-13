@@ -52,7 +52,7 @@ public final class BiomeDef {
          features: [String], monsters: [SpawnEntry], creatures: [SpawnEntry],
          waterCreatures: [SpawnEntry], ambient: [SpawnEntry], mood: String) {
         self.id = id; self.name = name
-        displayName = name.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
+        displayName = prettify(name)
         self.temperature = temperature; self.downfall = downfall
         self.grassColor = grassColor; self.foliageColor = foliageColor
         self.waterColor = waterColor; self.fogTint = fogTint
