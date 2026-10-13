@@ -286,11 +286,10 @@ open class Hoglin: Monster {
         attackDamage = 6
         xpReward = 5
         addMonsterGoals(1.2)
-        goals.add(AvoidEntityGoal(self, 1, { _ in false }, 8, 1.3))
     }
     open override func tick() {
         super.tick()
-        // flee warped fungus
+        // flee warped fungus (blocks, which AvoidEntityGoal can't see)
         if age % 20 == 0 {
             var dx = -4
             while dx <= 4 {

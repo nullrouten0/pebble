@@ -133,7 +133,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int) -> G
         for oz in (cz - 1)...(cz + 1) {
             for ox in (cx - 1)...(cx + 1) {
                 let centerBiome = gen.surfaceBiomeAt(Double(ox * 16 + 8), Double(oz * 16 + 8))
-                let feats = biomeDef(centerBiome.rawValue).features
+                let feats = biomeDef(centerBiome.rawValue).featureParts
                 var salt: UInt32 = 9000
                 for f in feats {
                     var rng = chunkRandom(seed, ox, oz, salt)
@@ -144,7 +144,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int) -> G
                 // only for the target chunk clipped dripstone/moss/sculk flat
                 // at every chunk face (their radius reaches up to 5 blocks)
                 for cb in [Biome.lushCaves, .dripstoneCaves, .deepDark] {
-                    let feats2 = biomeDef(cb.rawValue).features
+                    let feats2 = biomeDef(cb.rawValue).featureParts
                     var salt2 = UInt32(12000 + cb.rawValue * 100)
                     for f in feats2 {
                         var rng = chunkRandom(seed, ox, oz, salt2)
@@ -205,7 +205,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int) -> G
         for oz in (cz - 1)...(cz + 1) {
             for ox in (cx - 1)...(cx + 1) {
                 let centerBiome = gen.biomeAt(Double(ox * 16 + 8), Double(oz * 16 + 8))
-                let feats = biomeDef(centerBiome).features
+                let feats = biomeDef(centerBiome).featureParts
                 var salt: UInt32 = 9500
                 for f in feats {
                     var rng = chunkRandom(seed, ox, oz, salt)
@@ -240,7 +240,7 @@ public func generateChunk(_ dim: Dim, _ seed: UInt32, _ cx: Int, _ cz: Int) -> G
     for oz in (cz - 1)...(cz + 1) {
         for ox in (cx - 1)...(cx + 1) {
             let centerBiome = gen.biomeColumn(Double(ox * 16 + 8), Double(oz * 16 + 8))
-            let feats = biomeDef(centerBiome).features
+            let feats = biomeDef(centerBiome).featureParts
             var salt: UInt32 = 9900
             for f in feats {
                 var rng = chunkRandom(seed, ox, oz, salt)

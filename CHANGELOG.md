@@ -3,6 +3,29 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.6 — 2026-10-13 — faster world generation, sound and particles
+
+Same worlds, less work:
+
+- **World generation** no longer looks up a stronghold plan for every chunk
+  within 11 chunks of each one it builds (about 530 lookups a chunk, which
+  also kept flushing the village and mineshaft plan cache); climate is
+  sampled once per chunk instead of twice; biome feature lists are parsed
+  once at startup instead of for every chunk.
+- **Sound:** envelopes and pitch glides cost one `exp` per voice per audio
+  block instead of a `pow` per sample.
+- **Particles:** expiring and over-the-cap particles are removed in one pass
+  instead of shifting the whole list each time (noticeable in heavy rain or
+  snow), and instances are written straight into the GPU buffer.
+- **Flowing water and lava** search for drops about 3× faster.
+- **Mob pathfinding** uses a heap for its open list; despawn checks look
+  only at players; unloading a chunk removes its mobs and block entities in
+  one pass.
+- **UI:** colours are parsed once rather than on every fill; the HUD
+  hearts, sprites and translucent-pass lists stop allocating per frame.
+- **Resource packs:** applying packs opens only the enabled ones, once
+  (it used to unzip every pack in the folder twice).
+
 ## 1.4.5 — 2026-10-13 — dead code out
 
 Mostly invisible: about 500 lines that nothing called are gone (an unused

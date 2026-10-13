@@ -90,6 +90,9 @@ public final class World {
     public var chunks: [Int64: Chunk] = [:]
     public var entities: [EntityRef] = []
     public var entityById: [Int: EntityRef] = [:]
+    /// the Players in `entities` (local and LAN guests), for the per-mob
+    /// "nearest player" checks that used to scan every entity
+    public private(set) var players: [Player] = []
     /// leaves woken by a neighbor change: only these re-check their reach to a
     /// log on random ticks. Like vanilla, untouched generated trees keep every
     /// leaf (2-3% of generated canopy sits past the 6-block reach and shed
@@ -521,9 +524,12 @@ public final class World {
         }
     }
     public func releaseChunkBlockEntities(_ c: Chunk) {
-        for be in c.blockEntities.values {
-            untrackTickingBE(be)
+        // one pass over the ticking list for the whole chunk, not one per block entity
+        var gone = Set<ObjectIdentifier>()
+        for be in c.blockEntities.values where tickingBE.remove(ObjectIdentifier(be)) != nil {
+            gone.insert(ObjectIdentifier(be))
         }
+        if !gone.isEmpty { tickingBEList.removeAll { gone.contains(ObjectIdentifier($0)) } }
     }
 
     // MARK: - entities
@@ -531,12 +537,27 @@ public final class World {
         if let gate = onLocalSpawn, !gate(e) { return }
         entities.append(e)
         entityById[e.id] = e
+        if let p = e as? Player { players.append(p) }
     }
     public func removeEntity(_ e: EntityRef) {
         if let i = entities.firstIndex(where: { $0 === e }) {
             entities.remove(at: i)
         }
         entityById.removeValue(forKey: e.id)
+        if e is Player { players.removeAll { $0 === e } }
+    }
+    /// removeEntity for every match, in one pass (the rest keep their order)
+    public func removeEntities(where match: (EntityRef) -> Bool) {
+        var gone: [EntityRef] = []
+        entities.removeAll { e in
+            if !match(e) { return false }
+            gone.append(e)
+            return true
+        }
+        for e in gone {
+            entityById.removeValue(forKey: e.id)
+            if e is Player { players.removeAll { $0 === e } }
+        }
     }
     public func getEntitiesInBox(_ box: AABB, except: EntityRef? = nil, filter: ((EntityRef) -> Bool)? = nil) -> [EntityRef] {
         var out: [EntityRef] = []

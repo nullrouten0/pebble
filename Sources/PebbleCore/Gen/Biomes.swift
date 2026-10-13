@@ -38,6 +38,8 @@ public final class BiomeDef {
     public let under: UInt16
     public let underwaterTop: UInt16
     public let features: [String]
+    /// `features` split on ":" once, here — worldgen runs ~200 a chunk
+    public let featureParts: [[String]]
     public let monsters: [SpawnEntry]
     public let creatures: [SpawnEntry]
     public let waterCreatures: [SpawnEntry]
@@ -55,7 +57,9 @@ public final class BiomeDef {
         self.grassColor = grassColor; self.foliageColor = foliageColor
         self.waterColor = waterColor; self.fogTint = fogTint
         self.top = top; self.under = under; self.underwaterTop = underwaterTop
-        self.features = features; self.monsters = monsters; self.creatures = creatures
+        self.features = features
+        featureParts = features.map { $0.split(separator: ":").map(String.init) }
+        self.monsters = monsters; self.creatures = creatures
         self.waterCreatures = waterCreatures; self.ambient = ambient; self.mood = mood
     }
 }

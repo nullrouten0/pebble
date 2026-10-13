@@ -1408,11 +1408,9 @@ public final class GameCore {
             }
         }
         // entities standing in the chunk were captured in the record; drop the live ones
-        for e in Array(w.entities) {
-            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
-            if floorDiv(ifloor(ent.x), 16) == c.cx && floorDiv(ifloor(ent.z), 16) == c.cz {
-                w.removeEntity(e)
-            }
+        w.removeEntities { e in
+            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { return false }
+            return floorDiv(ifloor(ent.x), 16) == c.cx && floorDiv(ifloor(ent.z), 16) == c.cz
         }
         w.releaseChunkBlockEntities(c)
         w.removeChunk(c.cx, c.cz)

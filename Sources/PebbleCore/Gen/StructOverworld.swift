@@ -300,7 +300,6 @@ func registerOverworldStructures() {
                 pieces.append(piece(rx0, cy - 6, rz0, rx1, cy + 30, rz1) { b in
                     for i in 4...(4 + len) {
                         let px = centerX + dx * i, pz = centerZ + dz * i
-                        _ = ctx.heightAt(px, pz)
                         for w in -1...1 {
                             let wx = px + (dz != 0 ? w : 0), wz = pz + (dx != 0 ? w : 0)
                             let wy = ctx.heightAt(wx, wz)

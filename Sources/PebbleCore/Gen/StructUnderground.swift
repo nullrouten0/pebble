@@ -6,15 +6,22 @@ import Foundation
 private let AIR = 0
 
 // written from the concurrent gen threads, so every access holds the lock
-private var strongholdCache: (seed: UInt32, positions: [(Int, Int)])?
+private var strongholdCache: (seed: UInt32, positions: [(Int, Int)], set: Set<Int64>)?
 private let strongholdLock = NSLock()
 private func strongholdChunks(_ seed: UInt32) -> [(Int, Int)] {
     strongholdLock.lock()
     defer { strongholdLock.unlock() }
     if let c = strongholdCache, c.seed == seed { return c.positions }
     let positions = strongholdPositions(seed)
-    strongholdCache = (seed, positions)
+    strongholdCache = (seed, positions, Set(positions.map { strongholdKey($0.0, $0.1) }))
     return positions
+}
+private func strongholdKey(_ cx: Int, _ cz: Int) -> Int64 { (Int64(cx) << 32) | Int64(UInt32(truncatingIfNeeded: cz)) }
+private func isStrongholdChunk(_ seed: UInt32, _ cx: Int, _ cz: Int) -> Bool {
+    _ = strongholdChunks(seed)   // fills the cache for this seed
+    strongholdLock.lock()
+    defer { strongholdLock.unlock() }
+    return strongholdCache?.set.contains(strongholdKey(cx, cz)) ?? false
 }
 
 func registerUndergroundStructures() {
@@ -128,10 +135,7 @@ func registerUndergroundStructures() {
         // corridors ≈ 160 blocks ≈ 10 chunks — too small and the outer rooms
         // (the PORTAL ROOM is always last/farthest) get sliced off
         id: "stronghold", spacing: 1, separation: 0, salt: 0, maxRadiusChunks: 11,
-        check: { ctx, ocx, ocz, _ in
-            for (sx, sz) in strongholdChunks(ctx.seed) where sx == ocx && sz == ocz { return true }
-            return false
-        },
+        check: { ctx, ocx, ocz, _ in isStrongholdChunk(ctx.seed, ocx, ocz) },
         plan: { _, ocx, ocz, rng in
             var pieces: [StructPiece] = []
             let SB: [(Int, Double)] = [(Int(cell(B.stone_bricks)), 7), (Int(cell(B.mossy_stone_bricks)), 2), (Int(cell(B.cracked_stone_bricks)), 2)]
@@ -270,7 +274,8 @@ func registerUndergroundStructures() {
             }
             return StructurePlan(id: "stronghold", pieces: pieces,
                                  ref: StructRefBox(cx - 170, baseY - 10, cz - 170, cx + 170, baseY + 40, cz + 170))
-        }
+        },
+        isOrigin: isStrongholdChunk
     ))
 
     registerStructure(StructureDef(

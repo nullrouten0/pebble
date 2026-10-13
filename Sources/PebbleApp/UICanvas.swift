@@ -98,8 +98,23 @@ final class UICanvas {
         return SIMD4<Float>(1, 1, 1, 1)
     }
 
-    func setFill(_ s: String) { fillStyle = UICanvas.parse(s) }
-    func setStroke(_ s: String) { strokeStyle = UICanvas.parse(s) }
+    /// ~100 fills a frame name their colour as a CSS string; parse each one once.
+    /// (Bounded: a few call sites interpolate their strings.)
+    private var colorCache: [String: SIMD4<Float>] = [:]
+    func color(_ s: String) -> SIMD4<Float> {
+        if let c = colorCache[s] { return c }
+        let c = UICanvas.parse(s)
+        if colorCache.count >= 1024 { colorCache.removeAll(keepingCapacity: true) }
+        colorCache[s] = c
+        return c
+    }
+    func setFill(_ s: String) { fillStyle = color(s) }
+    func setStroke(_ s: String) { strokeStyle = color(s) }
+    func setFill(_ c: SIMD4<Float>) { fillStyle = c }
+    /// 0xRRGGBB, opaque
+    func setFill(rgb v: UInt32) {
+        fillStyle = SIMD4<Float>(Float((v >> 16) & 255) / 255, Float((v >> 8) & 255) / 255, Float(v & 255) / 255, 1)
+    }
 
     // ---- transform stack --------------------------------------------------------
     func save() { stack.append(transform) }

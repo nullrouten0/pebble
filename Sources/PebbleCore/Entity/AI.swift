@@ -35,6 +35,9 @@ func walkable(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ avoidWater: Bool) 
     return bid != 0 && blockDefs[bid].solid
 }
 
+/// vertical steps tried per direction, in order (first walkable wins)
+private let PATH_STEP_DY = [0, 1, -1, -2, -3]
+
 public func findPath(_ world: World, _ fromX: Double, _ fromY: Double, _ fromZ: Double,
                      _ toX: Double, _ toY: Double, _ toZ: Double,
                      _ maxNodes: Int = 600, _ avoidWater: Bool = false) -> [PathNode]? {
@@ -50,7 +53,42 @@ public func findPath(_ world: World, _ fromX: Double, _ fromY: Double, _ fromZ: 
             self.x = x; self.y = y; self.z = z; self.g = g; self.f = f; self.parent = parent
         }
     }
-    var open: [Node] = [Node(sx, sy, sz, 0, 0, nil)]
+    // open list: a binary min-heap on (f, push order) — pops exactly what a
+    // linear scan for the first lowest f did, in O(log n) instead of O(n)
+    var open: [(f: Double, seq: Int, node: Node)] = [(0, 0, Node(sx, sy, sz, 0, 0, nil))]
+    var pushed = 1
+    @inline(__always) func less(_ a: (f: Double, seq: Int, node: Node), _ b: (f: Double, seq: Int, node: Node)) -> Bool {
+        a.f < b.f || (a.f == b.f && a.seq < b.seq)
+    }
+    func push(_ n: Node) {
+        open.append((n.f, pushed, n))
+        pushed += 1
+        var i = open.count - 1
+        while i > 0 {
+            let up = (i - 1) / 2
+            if !less(open[i], open[up]) { break }
+            open.swapAt(i, up)
+            i = up
+        }
+    }
+    func pop() -> Node {
+        let top = open[0].node
+        let last = open.removeLast()
+        if !open.isEmpty {
+            open[0] = last
+            var i = 0
+            while true {
+                let l = 2 * i + 1, r = l + 1
+                var m = i
+                if l < open.count && less(open[l], open[m]) { m = l }
+                if r < open.count && less(open[r], open[m]) { m = r }
+                if m == i { break }
+                open.swapAt(i, m)
+                i = m
+            }
+        }
+        return top
+    }
     var seen: [K: Double] = [K(x: sx, y: sy, z: sz): 0]
     var best: Node? = nil
     var bestH = Double.infinity
@@ -58,16 +96,13 @@ public func findPath(_ world: World, _ fromX: Double, _ fromY: Double, _ fromZ: 
     while !open.isEmpty {
         iter += 1
         if iter > maxNodes { break }
-        // pop lowest f
-        var bi = 0
-        for i in 1..<open.count where open[i].f < open[bi].f { bi = i }
-        let cur = open.remove(at: bi)
+        let cur = pop()
         let h = Double(abs(cur.x - tx) + abs(cur.y - ty) + abs(cur.z - tz))
         if h < bestH { bestH = h; best = cur }
         if cur.x == tx && abs(cur.y - ty) <= 1 && cur.z == tz { best = cur; break }
         for (dx, _, dz) in NEIGHBORS {
             let diag = dx != 0 && dz != 0
-            for dy in [0, 1, -1, -2, -3] {
+            for dy in PATH_STEP_DY {
                 if diag && dy != 0 { continue }
                 let nx = cur.x + dx, ny = cur.y + dy, nz = cur.z + dz
                 if dy == 1 {
@@ -86,7 +121,7 @@ public func findPath(_ world: World, _ fromX: Double, _ fromY: Double, _ fromZ: 
                 if let prev = seen[k], prev <= g { continue }
                 seen[k] = g
                 let hh = Double(abs(nx - tx) + abs(ny - ty) + abs(nz - tz))
-                open.append(Node(nx, ny, nz, g, g + hh * 1.1, cur))
+                push(Node(nx, ny, nz, g, g + hh * 1.1, cur))
                 break // take first valid dy per direction
             }
         }
@@ -95,9 +130,10 @@ public func findPath(_ world: World, _ fromX: Double, _ fromY: Double, _ fromZ: 
     var path: [PathNode] = []
     var n: Node? = bestNode
     while let cur = n {
-        path.insert(PathNode(x: cur.x, y: cur.y, z: cur.z), at: 0)
+        path.append(PathNode(x: cur.x, y: cur.y, z: cur.z))
         n = cur.parent
     }
+    path.reverse()
     if !path.isEmpty { path.removeFirst() }
     return path
 }
@@ -294,11 +330,9 @@ open class Mob: LivingEntity {
         // despawn rules
         if !persistent && category == "monster" {
             var nearestPlayer = Double.infinity
-            for e in world.entities {
-                if let ent = e as? Entity, ent.isPlayer {
-                    let d = (ent.x - x) * (ent.x - x) + (ent.y - y) * (ent.y - y) + (ent.z - z) * (ent.z - z)
-                    nearestPlayer = min(nearestPlayer, d)
-                }
+            for p in world.players {
+                let d = (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y) + (p.z - z) * (p.z - z)
+                nearestPlayer = min(nearestPlayer, d)
             }
             if nearestPlayer > 128 * 128 { remove(); return }
             if nearestPlayer > 32 * 32 && rng.nextFloat() < 1.0 / 800 { remove(); return }

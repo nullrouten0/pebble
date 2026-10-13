@@ -286,7 +286,7 @@ final class HUD {
             let def = effectDef(e.id)
             cv.setFill(def.beneficial ? "rgba(30,30,80,0.7)" : "rgba(80,30,30,0.7)")
             cv.fillRect(efX, 4, 22, 22)
-            cv.setFill("#" + String(format: "%06x", def.color))
+            cv.setFill(rgb: UInt32(truncatingIfNeeded: def.color))
             cv.fillRect(efX + 4, 8, 14, 10)
             let secs = e.duration / 20
             let t = e.duration < 0 ? "∞" : "\(secs / 60):\(String(format: "%02d", secs % 60))"
@@ -344,18 +344,19 @@ final class HUD {
         }
     }
 
+    private static let HEART_COLORS: [String: (String, String)] = [
+        "bg": ("#3f1414", "#1f0a0a"),
+        "normal": ("#ff2020", "#a80000"),
+        "poison": ("#94a061", "#586038"),
+        "wither": ("#3a3a3a", "#1c1c1c"),
+        "frozen": ("#60c8e8", "#3088a8"),
+        "absorb": ("#e8c83c", "#a8862c"),
+    ]
+    private static let HEART_ROWS = [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]
     private func drawHeart(_ cv: UICanvas, _ x: Double, _ y: Double, _ kind: String, _ half: Bool) {
-        let colors: [String: (String, String)] = [
-            "bg": ("#3f1414", "#1f0a0a"),
-            "normal": ("#ff2020", "#a80000"),
-            "poison": ("#94a061", "#586038"),
-            "wither": ("#3a3a3a", "#1c1c1c"),
-            "frozen": ("#60c8e8", "#3088a8"),
-            "absorb": ("#e8c83c", "#a8862c"),
-        ]
-        let (main, dark) = colors[kind] ?? colors["normal"]!
-        let rows = [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."]
-        for (ry, row) in rows.enumerated() {
+        let (mainCSS, darkCSS) = Self.HEART_COLORS[kind] ?? Self.HEART_COLORS["normal"]!
+        let main = cv.color(mainCSS), dark = cv.color(darkCSS)
+        for (ry, row) in Self.HEART_ROWS.enumerated() {
             for (rx, ch) in row.enumerated() where ch == "#" {
                 if half && rx >= 4 { continue }
                 cv.setFill(ry < 3 ? main : dark)

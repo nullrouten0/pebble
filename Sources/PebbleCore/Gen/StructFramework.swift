@@ -71,10 +71,15 @@ public struct StructureDef {
     public let maxRadiusChunks: Int
     public let check: (GenCtx, Int, Int, Rng) -> Bool
     public let plan: (GenCtx, Int, Int, Rng) -> StructurePlan?
+    /// cheap pre-filter on (seed, ocx, ocz) for structures with a fixed list of
+    /// origins: spacing-1 strongholds would otherwise run getPlan for every
+    /// chunk within their radius (~529 per chunk built)
+    public let isOrigin: ((UInt32, Int, Int) -> Bool)?
 
     public init(id: String, spacing: Int, separation: Int, salt: UInt32, maxRadiusChunks: Int,
                 check: @escaping (GenCtx, Int, Int, Rng) -> Bool,
-                plan: @escaping (GenCtx, Int, Int, Rng) -> StructurePlan?) {
+                plan: @escaping (GenCtx, Int, Int, Rng) -> StructurePlan?,
+                isOrigin: ((UInt32, Int, Int) -> Bool)? = nil) {
         self.id = id
         self.spacing = spacing
         self.separation = separation
@@ -82,6 +87,7 @@ public struct StructureDef {
         self.maxRadiusChunks = maxRadiusChunks
         self.check = check
         self.plan = plan
+        self.isOrigin = isOrigin
     }
 }
 
@@ -233,7 +239,10 @@ public func rotF(_ facing: Int, _ rot: Int) -> Int {
 public var STRUCTURES: [StructureDef] = []
 public func registerStructure(_ def: StructureDef) { STRUCTURES.append(def) }
 
-private var planCache: [String: StructurePlan?] = [:]
+private struct PlanKey: Hashable {
+    let dim: Int, id: String, ocx: Int, ocz: Int
+}
+private var planCache: [PlanKey: StructurePlan?] = [:]
 private let planCacheLock = NSLock()
 
 public func structureOriginFor(_ def: StructureDef, _ seed: UInt32, _ rcx: Int, _ rcz: Int) -> (Int, Int) {
@@ -243,7 +252,7 @@ public func structureOriginFor(_ def: StructureDef, _ seed: UInt32, _ rcx: Int, 
 }
 
 public func getPlan(_ def: StructureDef, _ ctx: GenCtx, _ ocx: Int, _ ocz: Int) -> StructurePlan? {
-    let key = "\(ctx.dim):\(def.id):\(ocx):\(ocz)"
+    let key = PlanKey(dim: ctx.dim, id: def.id, ocx: ocx, ocz: ocz)
     planCacheLock.lock()
     if let cached = planCache[key] {
         planCacheLock.unlock()
@@ -275,6 +284,7 @@ public func buildStructuresForChunk(_ ctx: GenCtx, _ cx: Int, _ cz: Int, _ sink:
             for rcx in rc0x...rc1x {
                 let (ocx, ocz) = structureOriginFor(def, ctx.seed, rcx, rcz)
                 if abs(ocx - cx) > r || abs(ocz - cz) > r { continue }
+                if let isOrigin = def.isOrigin, !isOrigin(ctx.seed, ocx, ocz) { continue }
                 guard let plan = getPlan(def, ctx, ocx, ocz) else { continue }
                 for (pi, piece) in plan.pieces.enumerated() {
                     // does the piece intersect this chunk?

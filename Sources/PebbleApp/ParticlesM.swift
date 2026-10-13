@@ -30,7 +30,6 @@ struct ParticleUniforms {
 
 final class ParticleSystemM {
     private var particles: [Particle] = []
-    private var instData = [Float](repeating: 0, count: MAX_PARTICLES * 12)
     // 3-buffer ring: with ~3 frames in flight the GPU may still read frame
     // N-2's instances while the CPU writes frame N (same scheme as UICanvas)
     private let instBufs: [MTLBuffer]
@@ -50,7 +49,9 @@ final class ParticleSystemM {
     }
 
     private func push(_ p: Particle) {
-        if particles.count >= MAX_PARTICLES { particles.removeFirst() }
+        // over the cap the oldest go, in batches: removeFirst() per push shifted
+        // all 4096 every time once rain or snow filled the list
+        if particles.count >= MAX_PARTICLES * 2 { particles.removeFirst(particles.count - MAX_PARTICLES) }
         particles.append(p)
     }
 
@@ -282,15 +283,13 @@ final class ParticleSystemM {
     }
 
     func tick(_ world: World) {
-        var i = particles.count - 1
-        while i >= 0 {
-            particles[i].life += 1
-            if particles[i].life >= particles[i].maxLife {
-                particles.remove(at: i)
-                i -= 1
-                continue
-            }
+        if particles.count > MAX_PARTICLES { particles.removeFirst(particles.count - MAX_PARTICLES) }
+        // compact in place: live particles slide down over expired ones, in order
+        var kept = 0
+        for i in particles.indices {
             var p = particles[i]
+            p.life += 1
+            if p.life >= p.maxLife { continue }
             p.vy -= p.gravity
             p.vx *= p.drag; p.vy *= p.drag; p.vz *= p.drag
             let nx = p.x + p.vx, ny = p.y + p.vy, nz = p.z + p.vz
@@ -303,15 +302,16 @@ final class ParticleSystemM {
                         p.vy = 0
                         p.life = max(p.life, p.maxLife - 4)
                     }
-                    particles[i] = p
-                    i -= 1
+                    particles[kept] = p
+                    kept += 1
                     continue
                 }
             }
             p.x = nx; p.y = ny; p.z = nz
-            particles[i] = p
-            i -= 1
+            particles[kept] = p
+            kept += 1
         }
+        particles.removeLast(particles.count - kept)
     }
 
     func render(_ enc: MTLRenderCommandEncoder, pipeline: MTLRenderPipelineState,
@@ -320,8 +320,13 @@ final class ParticleSystemM {
                 right: SIMD3<Float>, up: SIMD3<Float>, dayLight: Double) {
         let n = min(particles.count, MAX_PARTICLES)
         if n == 0 { return }
+        let first = particles.count - n   // the newest, if spawns ran past the cap this frame
+        let instBuf = instBufs[instCursor]
+        instCursor = (instCursor + 1) % instBufs.count
+        // written straight into this frame's ring-buffer slot
+        let instData = instBuf.contents().bindMemory(to: Float.self, capacity: n * 12)
         for i in 0..<n {
-            let p = particles[i]
+            let p = particles[first + i]
             let o = i * 12
             instData[o] = Float(p.x - camPos.x)
             instData[o + 1] = Float(p.y - camPos.y)
@@ -336,11 +341,6 @@ final class ParticleSystemM {
             instData[o + 9] = Float(p.g)
             instData[o + 10] = Float(p.b)
             instData[o + 11] = Float(p.light)
-        }
-        let instBuf = instBufs[instCursor]
-        instCursor = (instCursor + 1) % instBufs.count
-        instData.withUnsafeBytes { raw in
-            instBuf.contents().copyMemory(from: raw.baseAddress!, byteCount: n * 48)
         }
         var u = ParticleUniforms(
             viewProj: viewProj,

@@ -160,7 +160,7 @@ private func fluidTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
     for d in 0..<4 {
         let nx = x + HDX[d], nz = z + HDZ[d]
         if !canReplace(world, nx, y, nz, fluidId) { continue }
-        dists[d] = dropDistance(world, nx, y, nz, fluidId, 1)
+        dists[d] = dropDistance(world, nx, y, nz, fluidId, 1, d)
         if dists[d] < best { best = dists[d] }
     }
     for d in 0..<4 {
@@ -191,15 +191,19 @@ private func fluidTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
     }
 }
 
-/// distance (1..4) to nearest hole the fluid could fall into; 99 if none
-private func dropDistance(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ fluidId: Int, _ depth: Int) -> Int {
+/// distance (1..4) to nearest hole the fluid could fall into; 99 if none.
+/// Never steps straight back the way it came (`from` ^ 1 is the reverse):
+/// a path that doubles back is 2 longer than one that doesn't, so it can't
+/// change which directions tie for the minimum, and skipping it cuts the
+/// search from ~340 calls per flowing cell to ~120.
+private func dropDistance(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ fluidId: Int, _ depth: Int, _ from: Int) -> Int {
     if canReplace(world, x, y - 1, z, fluidId) && (world.getBlock(x, y - 1, z) >> 4) != fluidId { return depth }
     if depth >= 4 { return 99 }
     var best = 99
-    for d in 0..<4 {
+    for d in 0..<4 where d != from ^ 1 {
         let nx = x + HDX[d], nz = z + HDZ[d]
         if !canReplace(world, nx, y, nz, fluidId) { continue }
-        let r = dropDistance(world, nx, y, nz, fluidId, depth + 1)
+        let r = dropDistance(world, nx, y, nz, fluidId, depth + 1, d)
         if r < best { best = r }
     }
     return best

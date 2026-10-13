@@ -457,6 +457,18 @@ final class AudioEngineM {
             var lt = t
             let panL = Float(min(1, 1 - v.pan) * v.gain)
             let panR = Float(min(1, 1 + v.pan) * v.gain)
+            // exponential curves advance by a constant factor per sample: one
+            // exp() to enter each curve per block, then a multiply (pow() per
+            // sample per voice was millions of calls a second with music on)
+            let decaySpan = max(0.001, v.dur - v.attack)
+            let decayLog = Foundation.log(0.001 / max(0.001, v.vol))
+            let decayStep = Foundation.exp(decayLog * dt / decaySpan)
+            var decayEnv = -1.0   // < 0: not entered yet this block
+            let glides = !v.isNoise && v.endFreq > 0 && v.dur > 0
+            let glideLog = glides ? Foundation.log(max(20, v.endFreq) / v.freq) : 0
+            let glideStep = glides ? Foundation.exp(glideLog * dt / v.dur) : 1
+            let glideEnd = v.freq * Foundation.exp(glideLog)
+            var glideFreq = -1.0
             for i in 0..<n {
                 let rel = lt - v.start
                 lt += dt
@@ -469,8 +481,12 @@ final class AudioEngineM {
                 } else if rel >= v.dur {
                     env = 0
                 } else {
-                    let f = (rel - v.attack) / max(0.001, v.dur - v.attack)
-                    env = v.vol * Foundation.pow(0.001 / max(0.001, v.vol), f)
+                    if decayEnv < 0 {
+                        decayEnv = v.vol * Foundation.exp(decayLog * (rel - v.attack) / decaySpan)
+                    } else {
+                        decayEnv *= decayStep
+                    }
+                    env = decayEnv
                 }
                 if env <= 0 { continue }
                 var sample: Double
@@ -484,8 +500,16 @@ final class AudioEngineM {
                     sample = y
                 } else {
                     var f = v.freq
-                    if v.endFreq > 0 && v.dur > 0 {
-                        f = v.freq * Foundation.pow(max(20, v.endFreq) / v.freq, min(1, rel / v.dur))
+                    if glides {
+                        if rel >= v.dur {
+                            f = glideEnd   // glide done (only audible when attack > dur)
+                        } else if glideFreq < 0 {
+                            glideFreq = v.freq * Foundation.exp(glideLog * rel / v.dur)
+                            f = glideFreq
+                        } else {
+                            glideFreq *= glideStep
+                            f = glideFreq
+                        }
                     }
                     if v.vibrato > 0 {
                         v.lfoPhase += v.vibrato * dt

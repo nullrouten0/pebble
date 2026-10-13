@@ -431,8 +431,8 @@ private let FLOWER_SETS: [String: [UInt16]] = [
     "swamp": [B.blue_orchid],
 ]
 
-public func runFeature(_ key: String, _ s: ChunkSink, _ rng: inout RandomX, _ ocx: Int, _ ocz: Int, _ seed: UInt32, _ biomeAt: (Int, Int) -> Int) {
-    let parts = key.split(separator: ":").map(String.init)
+/// one biome feature, pre-split (`BiomeDef.featureParts`): ["patch", "short_grass", "24"]
+public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, _ ocx: Int, _ ocz: Int, _ seed: UInt32, _ biomeAt: (Int, Int) -> Int) {
     let name = parts[0]
     let baseX = ocx * 16, baseZ = ocz * 16
     func intArg(_ i: Int, _ def: Int = 0) -> Int { parts.count > i ? (Int(parts[i]) ?? def) : def }

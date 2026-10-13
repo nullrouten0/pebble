@@ -86,7 +86,6 @@ public struct AquiferInfo {
 
 public struct TerrainResult {
     public let heights: [Int16]
-    public let climates: [Climate]
     public let surfaceBiomes: [UInt8]
 }
 
@@ -220,10 +219,11 @@ public final class OverworldGen {
         for gz in 0..<NZ {
             for gx in 0..<NX {
                 let wx = Double(baseX + gx * 4), wz = Double(baseZ + gz * 4)
-                // sample climate at the lattice point's TRUE position — the old
+                // climate at the lattice point's TRUE position — the old
                 // min(15,…) clamp reused the x/z=15 column for the x/z=16 edge,
-                // so adjacent chunks disagreed about their shared boundary
-                let cl = climate.at(wx, wz)
+                // so adjacent chunks disagreed about their shared boundary.
+                // climGrid sampled exactly these 5×5 points above.
+                let cl = climGrid[gz * 5 + gx]
                 let target = baseHeight(cl)
                 let amp = SPLINE_3D_AMP.at(cl.e) * clampD(mapRange(cl.c, -0.19, -0.05, 0.35, 1), 0.35, 1)
                 for gy in 0..<NY {
@@ -345,7 +345,7 @@ public final class OverworldGen {
             }
         }
 
-        return TerrainResult(heights: heights, climates: climates, surfaceBiomes: surfaceBiomes)
+        return TerrainResult(heights: heights, surfaceBiomes: surfaceBiomes)
     }
 
     /// worm carvers + ravines, deterministic per source chunk, range 4

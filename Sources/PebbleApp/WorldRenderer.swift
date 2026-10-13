@@ -200,6 +200,15 @@ struct CompositeUniforms {
     var params2: SIMD4<Float> = .zero   // ultraOn, aoStrength, volStrength
 }
 
+/// projectile entity type → the item its sprite shows (built once, not per frame)
+private let SPRITE_ITEMS: [String: String] = [
+    "snowball": "snowball", "egg": "egg", "ender_pearl": "ender_pearl", "xp_bottle": "experience_bottle",
+    "thrown_potion": "splash_potion", "firework": "firework_rocket", "eye_of_ender": "ender_eye",
+    "fishing_bobber": "string", "wither_skull": "wither_skeleton_skull_item", "dragon_fireball": "fire_charge",
+    "fireball": "fire_charge", "shulker_bullet": "shulker_shell", "llama_spit": "snowball",
+    "rocket": "firework_rocket", "void_bomb": "heart_of_the_sea",
+]
+
 final class WorldRenderer {
     let device: MTLDevice
     let queue: MTLCommandQueue
@@ -1087,10 +1096,11 @@ final class WorldRenderer {
         }
         visible.sort { $0.dist < $1.dist }
 
-        func drawLayer(_ pipeline: MTLRenderPipelineState,
-                       _ pick: (SectionGPU) -> MeshBlock?,
-                       _ list: [(gpu: SectionGPU, rel: SIMD3<Float>, dist: Float)],
-                       cull: Bool) {
+        // generic so the translucent pass can walk `visible.reversed()` without copying it
+        func drawLayer<L: Sequence>(_ pipeline: MTLRenderPipelineState,
+                                    _ pick: (SectionGPU) -> MeshBlock?,
+                                    _ list: L,
+                                    cull: Bool) where L.Element == (gpu: SectionGPU, rel: SIMD3<Float>, dist: Float) {
             enc.setRenderPipelineState(pipeline)
             enc.setCullMode(cull ? .back : .none)
             enc.setVertexBytes(&uni, length: MemoryLayout<ChunkSharedU>.stride, index: 1)
@@ -1520,13 +1530,6 @@ final class WorldRenderer {
                              camPos: SIMD3<Double>, cam: CamState, dayLight: Double,
                              fog: (SIMD3<Float>, Float, Float), partial: Double) {
         let w = game.world
-        let spriteMap: [String: String] = [
-            "snowball": "snowball", "egg": "egg", "ender_pearl": "ender_pearl", "xp_bottle": "experience_bottle",
-            "thrown_potion": "splash_potion", "firework": "firework_rocket", "eye_of_ender": "ender_eye",
-            "fishing_bobber": "string", "wither_skull": "wither_skeleton_skull_item", "dragon_fireball": "fire_charge",
-            "fireball": "fire_charge", "shulker_bullet": "shulker_shell", "llama_spit": "snowball",
-            "rocket": "firework_rocket", "void_bomb": "heart_of_the_sea",
-        ]
         var items: [(x: Double, y: Double, z: Double, slot: Int, size: Double, bob: Double, light: Double, emissive: Double)] = []
         for e in w.entities {
             if e.dead { continue }
@@ -1541,7 +1544,7 @@ final class WorldRenderer {
                 size = 0.3
                 emissive = 1
             } else if SPRITE_TYPES.contains(ent.type) {
-                let id = iidOpt(spriteMap[ent.type] ?? "snowball") ?? iid("snowball")
+                let id = iidOpt(SPRITE_ITEMS[ent.type] ?? "snowball") ?? iid("snowball")
                 stack = ItemStack(id, 1)
                 size = 0.35
                 if ent.type == "fireball" || ent.type == "dragon_fireball" || ent.type == "wither_skull" || ent.type == "rocket" || ent.type == "void_bomb" { emissive = 1 }

@@ -363,6 +363,12 @@ func withDefaultPack(_ userPacks: [String]) -> [String] {
     return list
 }
 
+/// open just the named packs, in order (skipping any that are gone or broken)
+func openResourcePacks(_ fileNames: [String]) -> [ResourcePack] {
+    let dir = resourcePacksDir()
+    return fileNames.compactMap { ResourcePack(url: dir.appendingPathComponent($0)) }
+}
+
 func discoverResourcePacks() -> [ResourcePack] {
     let dir = resourcePacksDir()
     guard let items = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return [] }
@@ -659,9 +665,7 @@ private func stripFrame(_ img: RGBAImage, _ i: Int) -> RGBAImage {
     return RGBAImage(width: w, height: w, pixels: Array(img.pixels[start..<(start + w * w * 4)]))
 }
 
-func buildPackAtlas(enabledFileNames: [String]) -> PackAtlasResult? {
-    let all = discoverResourcePacks()
-    let packs = enabledFileNames.compactMap { name in all.first { $0.fileName == name } }
+func buildPackAtlas(_ packs: [ResourcePack]) -> PackAtlasResult? {
     guard !packs.isEmpty else { return nil }
 
     let base = PebbleCore.buildAtlas()
@@ -841,15 +845,16 @@ func applyResourcePacks(_ userPacks: [String], game: GameCore, renderer: WorldRe
     let t0 = CFAbsoluteTimeGetCurrent()
     ensureDefaultPack()
     let enabled = withDefaultPack(userPacks)
-    if let result = buildPackAtlas(enabledFileNames: enabled) {
+    // opened once for the atlas and the GUI sheets (this used to unzip and
+    // parse every pack in the folder, twice)
+    let packs = openResourcePacks(enabled)
+    if let result = buildPackAtlas(packs) {
         renderer.installPackAtlas(result)
         initIcons(result.icon16)
         PACK_TINT_GATE = result.tintGate
         let items = result.itemIcons
         itemIconOverride = items.isEmpty ? nil : { name in items[name] }
         // GUI sheets + bitmap font from the same pack stack
-        let all = discoverResourcePacks()
-        let packs = enabled.compactMap { name in all.first { $0.fileName == name } }
         ACTIVE_PACKS = packs
         renderer.sunTex = packEntityImage(["environment/sun.png"]).flatMap { renderer.makeImageTexture($0) }
         renderer.moonTex = packEntityImage(["environment/moon_phases.png"]).flatMap { renderer.makeImageTexture($0) }
