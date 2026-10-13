@@ -96,6 +96,9 @@ public final class World {
     /// saplings around every forest); chopping a trunk wakes its leaves, and
     /// each one that decays wakes its neighbors.
     public var leafChecks = Set<BlockPos>()
+    /// recent toggle times of each redstone torch, for burnout (8 in 60 ticks)
+    var torchBurnout: [BlockPos: [Int]] = [:]
+    var torchBurnoutPruneAt = 64
     public let info: DimInfo
     public var time = 0            // total ticks elapsed (world age)
     public var dayTime = 1000      // 0..23999

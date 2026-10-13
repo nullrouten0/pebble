@@ -151,6 +151,18 @@ public final class ItemStack: Equatable, Codable {
 
 public func copyStack(_ s: ItemStack?) -> ItemStack? { s?.copy() }
 
+extension ItemStack {
+    /// false for anything this build can't look up: an item id from a newer
+    /// build's save or a bad LAN peer (itemDefs[id] would trap), an unknown
+    /// enchantment (enchDef traps), or such a stack inside a shulker box
+    public var isKnown: Bool {
+        id > 0 && id < itemDefs.count && ench.allSatisfy { ENCH_BY_ID[$0.id] != nil }
+            && (data.contents?.allSatisfy { $0?.isKnown ?? true } ?? true)
+    }
+}
+/// unknown stacks become empty slots rather than crashing the first draw
+public func knownStacks(_ a: [ItemStack?]) -> [ItemStack?] { a.map { $0?.isKnown == true ? $0 : nil } }
+
 public var itemDefs: [ItemDef] = []
 private var itemByName: [String: Int] = [:]
 public var blockToItem = [Int32](repeating: -1, count: 4096)

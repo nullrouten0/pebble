@@ -3,6 +3,38 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.4 — 2026-10-13 — crash and exploit fixes from a code review
+
+- **Anvils charge you.** Taking an anvil result when you couldn't afford
+  it used to work and just left you at level 0. Now the result can't be
+  taken until you have the levels (creative is free, as in Minecraft).
+- **Crashes fixed:** hovering an item enchanted with `/enchant <id> 0`;
+  `/tp`, `/setblock`, `/fill` and `/summon` with `nan` or huge
+  coordinates; `/effect`, `/xp` and `/fill` with numbers big enough to
+  overflow; `/host 65530`; a resource pack whose `font/ascii.png` is wider
+  than it is tall; more than 4095 different icons in one session.
+- **LAN hosts and guests check what they receive.** A guest (or host)
+  sending a bad block face, NaN or huge positions, an unknown item,
+  enchantment or effect, a second hello, or a 2-billion-XP orb can no
+  longer crash or flood the other side; bad messages are dropped and
+  unknown items become empty slots.
+- **Saves:** stacks of items this build doesn't know (say, from a newer
+  build's world) load as empty slots instead of crashing on the first draw.
+- **Shulkers open** when they shoot or peek (the lid never moved), and a
+  peek now lasts a second instead of one tick.
+- **Sound:** the audio thread no longer allocates memory while mixing,
+  which could cause crackles under load.
+- `/time add` with a negative number no longer leaves the clock negative;
+  `/gamerule` rejects values that aren't numbers.
+- Keys the game can't name (Home, Page Up…) can't be bound any more, which
+  used to leave the action on no key.
+- Resource packs with several namespaces always load from `minecraft`
+  first, instead of whichever one happened to come up first.
+- Redstone torch burnout is tracked per world, and its memory is trimmed.
+- Every `B.<block>` name used in code is in the generated block-id cache
+  (16 newer names fell back to a string lookup), and a missing one is now
+  a compile error.
+
 ## 1.4.3 — 2026-10-12 — iPhone title screen fits the screen
 
 - **Title screen on iPhone:** the version, texture credit and "Singleplayer

@@ -536,7 +536,7 @@ final class EnchantingScreen: ContainerScreen {
             if let opt {
                 cv.drawText(String(opt.level), bx + bw - 12, by + 9, 1, affordable ? "#80ff20" : "#407f10")
                 if let e = opt.preview {
-                    let label = e.id.replacingOccurrences(of: "_", with: " ") + " " + ["I", "II", "III", "IV", "V"][min(4, e.lvl - 1)] + "…"
+                    let label = e.id.replacingOccurrences(of: "_", with: " ") + " " + romanNumeral(e.lvl) + "…"
                     cv.drawText(label, bx + 4, by + 5, 1, affordable ? "#d8c8f8" : "#707070")
                 }
                 cv.drawText(String(repeating: "•", count: opt.lapis), bx + 4, by + 12, 1, "#3c5ac8")
@@ -621,7 +621,7 @@ final class AnvilScreen: ContainerScreen {
             output: true,
             onTake: { [weak self, weak game, weak ui] _ in
                 guard let self, let game, let ui else { return }
-                game.player.takeLevels(self.cost)
+                if game.player.gameMode != GameMode.creative { game.player.takeLevels(self.cost) }
                 self.left = nil
                 if let right = self.right {
                     let units = self.result?.data.repairUnits
@@ -649,6 +649,10 @@ final class AnvilScreen: ContainerScreen {
                 }
                 game.world.hooks.playSound("block.anvil.use", Double(self.pos.x) + 0.5, Double(self.pos.y) + 0.5, Double(self.pos.z) + 0.5, 1, 1)
             }))
+        containerSlots.last!.canTake = { [weak self, weak game] in
+            guard let self, let game else { return false }
+            return game.player.gameMode == GameMode.creative || game.player.xpLevel >= self.cost
+        }
     }
     func refresh() {
         let r = anvilCombine(left, right, nameField.text.isEmpty ? nil : nameField.text)
@@ -668,8 +672,9 @@ final class AnvilScreen: ContainerScreen {
     override func draw(_ ui: UIManager, _ game: GameCore, _ partial: Double) {
         super.draw(ui, game, partial)
         if cost > 0 {
-            let ok = game.player.xpLevel >= cost && cost < 40
-            ui.cv.drawText(cost >= 40 ? "Too Expensive!" : "Enchantment Cost: \(cost)",
+            // anvilCombine caps cost at 39, so vanilla's "Too Expensive!" never applies
+            let ok = game.player.gameMode == GameMode.creative || game.player.xpLevel >= cost
+            ui.cv.drawText("Enchantment Cost: \(cost)",
                            panelX + 8, panelY + 71, 1, ok ? "#80ff20" : "#ff5050")
         }
         if !textured {

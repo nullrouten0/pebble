@@ -234,6 +234,7 @@ public final class NetClient {
             game.player.addXP(try r.i32())
         case .effect:
             let id = try r.str(), dur = try r.i32(), amp = try r.u8(), amb = try r.bool()
+            guard EFFECT_BY_ID[id] != nil else { throw NetError.badFrame }  // effectDef traps
             game.player.addEffect(id, dur, amp, ambient: amb)
         case .impulse:
             let p = game.player!
@@ -261,6 +262,7 @@ public final class NetClient {
             playerNames = names
         case .blockEntity:
             guard let be = try r.decodable(BlockEntityData.self) else { return }
+            be.dropUnknownItems()
             let key = EditBatch.pack(be.x, be.y, be.z)
             if let until = localEditUntil[key], until > tickN { return }
             let w = world
@@ -339,7 +341,7 @@ public final class NetClient {
         for (i, raw) in arr.prefix(4).enumerated() {
             if raw is NSNull { p.armor[i] = nil; continue }
             guard let bytes = try? JSONSerialization.data(withJSONObject: raw),
-                  let s = try? JSONDecoder().decode(ItemStack.self, from: bytes), s.id < itemDefs.count else { continue }
+                  let s = try? JSONDecoder().decode(ItemStack.self, from: bytes), s.isKnown else { continue }
             p.armor[i] = s
         }
     }

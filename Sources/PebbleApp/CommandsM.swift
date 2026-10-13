@@ -38,13 +38,17 @@ func runCommand(_ game: GameCore, _ raw: String) {
     let world = game.world
     func fail(_ msg: String) { pushChat("§c" + msg) }
     func ok(_ msg: String) { pushChat("§7" + msg) }
+    /// a typed coordinate, kept finite and inside the world border: "nan" or
+    /// "1e300" would otherwise trap in Int() here or ifloor() on the next tick
     func parseCoord(_ s: String, _ base: Double) -> Double {
-        if s.hasPrefix("~") {
-            return base + (s.count > 1 ? Double(s.dropFirst()) ?? 0 : 0)
-        }
-        return Double(s) ?? 0
+        let v = s.hasPrefix("~") ? base + (s.count > 1 ? Double(s.dropFirst()) ?? 0 : 0) : Double(s) ?? 0
+        return v.isFinite ? max(-30_000_000, min(30_000_000, v)) : base
     }
     func arg(_ i: Int) -> String? { i < args.count ? args[i] : nil }
+    /// an integer argument clamped to a range, so later arithmetic can't overflow
+    func intArg(_ i: Int, _ def: Int, _ range: ClosedRange<Int>) -> Int {
+        max(range.lowerBound, min(range.upperBound, arg(i).flatMap { Int($0) } ?? def))
+    }
 
     switch cmd {
     case "help":
@@ -69,7 +73,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
                                  : parseCoord(args[1], p.y)
         p.setPos(x, y, z)
         p.vx = 0; p.vy = 0; p.vz = 0
-        if args.count >= 5, let yaw = Double(args[3]), let pitch = Double(args[4]) {
+        if args.count >= 5, let yaw = Double(args[3]), let pitch = Double(args[4]), yaw.isFinite, pitch.isFinite {
             p.yaw = yaw * .pi / 180
             p.pitch = max(-89.9, min(89.9, pitch)) * .pi / 180
         }
@@ -83,7 +87,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
             world.dayTime = ((v % 24000) + 24000) % 24000
             ok("Set time to \(world.dayTime)")
         } else if arg(0) == "add" {
-            world.dayTime = (world.dayTime + (arg(1).flatMap(Int.init) ?? 0)) % 24000
+            world.dayTime = ((world.dayTime + intArg(1, 0, -24000...24000) % 24000) % 24000 + 24000) % 24000
             ok("Time is now \(world.dayTime)")
         } else {
             ok("Time: \(world.dayTime) (day \(world.time / 24000))")
@@ -150,22 +154,22 @@ func runCommand(_ game: GameCore, _ raw: String) {
         guard let effId = give.first, EFFECT_BY_ID[effId] != nil else {
             return fail("Unknown effect: \(give.first ?? "?")")
         }
-        let dur = give.count > 1 ? Int(give[1]) ?? 30 : 30
-        let amp = give.count > 2 ? Int(give[2]) ?? 0 : 0
+        let dur = max(1, min(1_000_000, give.count > 1 ? Int(give[1]) ?? 30 : 30))
+        let amp = max(0, min(255, give.count > 2 ? Int(give[2]) ?? 0 : 0))
         p.addEffect(effId, dur * 20, amp)
         ok("Applied \(effId) \(amp + 1) for \(dur)s")
     case "enchant":
         guard let enchId = arg(0), let e = ENCH_BY_ID[enchId] else {
             return fail("Unknown enchantment: \(arg(0) ?? "?")")
         }
-        let lvl = arg(1).flatMap(Int.init) ?? 1
+        let lvl = intArg(1, 1, 1...255)
         guard let held = p.mainHand else { return fail("Hold an item first") }
-        held.ench = held.ench.filter { $0.id != enchId } + [EnchInstance(enchId, min(lvl, 255))]
+        held.ench = held.ench.filter { $0.id != enchId } + [EnchInstance(enchId, lvl)]
         ok("Enchanted with \(e.displayName) \(lvl)")
     case "xp", "experience":
-        let amount = arg(0).flatMap { Int($0.replacingOccurrences(of: "L", with: "")) } ?? 1
+        let amount = max(-1_000_000, min(1_000_000, arg(0).flatMap { Int($0.replacingOccurrences(of: "L", with: "")) } ?? 1))
         if arg(1) == "levels" || (arg(0) ?? "").hasSuffix("L") {
-            p.xpLevel += amount
+            p.xpLevel = max(0, min(1_000_000, p.xpLevel + amount))
             ok("Added \(amount) levels")
         } else {
             p.addXP(amount)
@@ -189,8 +193,10 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let blockName = args[6]
         let id: UInt16? = blockName == "air" ? 0 : bidOpt(blockName)
         guard let id else { return fail("Unknown block: \(blockName)") }
-        let vol = (abs(x1 - x0) + 1) * (abs(y1 - y0) + 1) * (abs(z1 - z0) + 1)
-        if vol > 32768 { return fail("Too many blocks (\(vol) > 32768)") }
+        // coordinates are within the border, so each side fits; the product may not
+        let (vxz, o1) = (abs(x1 - x0) + 1).multipliedReportingOverflow(by: abs(z1 - z0) + 1)
+        let (vol, o2) = vxz.multipliedReportingOverflow(by: abs(y1 - y0) + 1)
+        if o1 || o2 || vol > 32768 { return fail("Too many blocks (more than 32768)") }
         var n = 0
         let batch = beginEdit(world, "fill")
         for y in min(y0, y1)...max(y0, y1) {
@@ -257,7 +263,9 @@ func runCommand(_ game: GameCore, _ raw: String) {
         }
         guard world.gameRules[rule] != nil else { return fail("Unknown gamerule: \(rule)") }
         if let v = arg(1) {
-            game.setGameRule(rule, v == "true" ? 1 : v == "false" ? 0 : Double(v) ?? 0)
+            let n = v == "true" ? 1 : v == "false" ? 0 : Double(v) ?? 0
+            guard n.isFinite, abs(n) <= 1_000_000 else { return fail("Value out of range: \(v)") }
+            game.setGameRule(rule, n)
         }
         ok("\(rule) = \(world.gameRules[rule]!)")
     case "clear":

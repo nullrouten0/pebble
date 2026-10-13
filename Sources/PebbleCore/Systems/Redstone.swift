@@ -252,10 +252,6 @@ public func updateWireNetwork(_ world: World, _ x: Int, _ y: Int, _ z: Int) {
 // ---------------------------------------------------------------------------
 // Torch (with burnout)
 // ---------------------------------------------------------------------------
-private var torchBurnout: [Int64: [Int]] = [:]
-private func torchKey(_ x: Int, _ y: Int, _ z: Int) -> Int64 {
-    (Int64(x) << 40) ^ (Int64(y) << 20) ^ Int64(z)
-}
 private func torchSupportPos(_ x: Int, _ y: Int, _ z: Int, _ meta: Int) -> (Int, Int, Int) {
     if meta == 0 { return (x, y - 1, z) }
     return (x + DIR_X[meta], y + DIR_Y[meta], z + DIR_Z[meta])
@@ -281,13 +277,19 @@ private func torchTick(_ world: World, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
     let isOn = id == Int(B.redstone_torch)
     if isOn == !shouldOff { return }
     // burnout: 8 toggles in 60 ticks
-    let k = torchKey(x, y, z)
-    var hist = torchBurnout[k] ?? []
+    let k = BlockPos(x, y, z)
+    var hist = world.torchBurnout[k] ?? []
     let now = world.time
     while !hist.isEmpty && now - hist[0] > 60 { hist.removeFirst() }
     if shouldOff || hist.count < 8 {
         hist.append(now)
-        torchBurnout[k] = hist
+        world.torchBurnout[k] = hist
+        // forget torches that have been quiet for a while (the table used to
+        // grow forever); the threshold doubles, so pruning stays amortized O(1)
+        if world.torchBurnout.count > world.torchBurnoutPruneAt {
+            world.torchBurnout = world.torchBurnout.filter { now - ($0.value.last ?? 0) <= 60 }
+            world.torchBurnoutPruneAt = max(64, world.torchBurnout.count * 2)
+        }
         world.setBlock(x, y, z, Int(cell(shouldOff ? B.redstone_torch_off : B.redstone_torch, meta)))
         if hist.count >= 8 && !shouldOff {
             // burned out — re-light later

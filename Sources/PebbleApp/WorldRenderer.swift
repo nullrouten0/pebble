@@ -1397,7 +1397,7 @@ final class WorldRenderer {
             pose.crossed = pose.aiming
             pose.grazing = ent.data.grazing ?? false
             pose.sitting = (ent as? Mob)?.sitting ?? false
-            pose.open = (ent as? Shulker)?.peekAmount ?? 0
+            pose.open = ent.data.open ?? 0  // shulker lid (synced to LAN guests)
             pose.hanging = ent.type == "bat" && ent.onGround
             pose.alpha = deathFlip > 0 ? 1 - deathFlip * 0.6 : 1
             pose.elytraFlying = (ent as? Player)?.elytraFlying ?? false

@@ -53,6 +53,8 @@ final class AudioEngineM {
     /// added while the render callback was running)
     private var voices: [Voice] = []
     private var voiceInbox: [Voice] = []
+    /// the render thread's spare inbox buffer, swapped with voiceInbox each block
+    private var pickedUp: [Voice] = []
     private var discCutAt: Double? = nil
     private var engineTime = 0.0          // seconds, advanced by the render thread
 
@@ -84,6 +86,10 @@ final class AudioEngineM {
     func initEngine() {
         if inited { return }
         inited = true
+        // sized past the 512-voice cap plus a burst, so render never grows them
+        voices.reserveCapacity(1024)
+        voiceInbox.reserveCapacity(512)
+        pickedUp.reserveCapacity(512)
         for i in 0..<noise.count { noise[i] = Float.random(in: -1...1) }
         let format = engine.outputNode.outputFormat(forBus: 0)
         sampleRate = format.sampleRate > 0 ? format.sampleRate : 48000
@@ -391,21 +397,24 @@ final class AudioEngineM {
         os_unfair_lock_lock(&lock)
         let t = engineTime
         engineTime += Double(n) * dt
-        var local = voices
-        if !voiceInbox.isEmpty {
-            local.append(contentsOf: voiceInbox)
-            voiceInbox.removeAll()
+        // take the inbox by swapping buffers: the render thread must not touch
+        // the allocator, and both arrays keep their capacity for reuse
+        swap(&voiceInbox, &pickedUp)
+        let discCut = discCutAt
+        discCutAt = nil
+        os_unfair_lock_unlock(&lock)
+        if !pickedUp.isEmpty {
+            voices.append(contentsOf: pickedUp)
+            pickedUp.removeAll(keepingCapacity: true)
             // generous cap — a full generative track schedules ~250 voices
             // up front (most start in the future and cost nothing until then)
-            if local.count > 512 { local.removeFirst(local.count - 512) }
+            if voices.count > 512 { voices.removeFirst(voices.count - 512) }
         }
-        if let cut = discCutAt {
-            discCutAt = nil
-            for i in 0..<local.count where local[i].isDisc && local[i].start > cut {
-                local[i].done = true
+        if let cut = discCut {
+            for i in 0..<voices.count where voices[i].isDisc && voices[i].start > cut {
+                voices[i].done = true
             }
         }
-        os_unfair_lock_unlock(&lock)
 
         for i in 0..<n {
             outL[i] = 0
@@ -413,11 +422,11 @@ final class AudioEngineM {
         }
         let noiseMask = noise.count - 1
 
-        for vi in 0..<local.count {
-            var v = local[vi]
+        for vi in 0..<voices.count {
+            var v = voices[vi]
             let end = v.start + v.dur + 0.05
             if t >= end {
-                local[vi].done = true
+                voices[vi].done = true
                 continue
             }
             // scheduled in a future block — skip the whole sample loop
@@ -500,7 +509,7 @@ final class AudioEngineM {
                     delayR[(delayPosR + i) % delayR.count] += s * Float(v.reverbSend)
                 }
             }
-            local[vi] = v
+            voices[vi] = v
         }
 
         // cave reverb: two feedback delay taps (each line wraps on its OWN
@@ -552,10 +561,8 @@ final class AudioEngineM {
             }
         }
 
-        // write back voice state, prune finished
-        os_unfair_lock_lock(&lock)
-        voices = local.filter { !$0.done }
-        os_unfair_lock_unlock(&lock)
+        // prune finished in place (no new array on the render thread)
+        voices.removeAll(where: { $0.done })
     }
 }
 

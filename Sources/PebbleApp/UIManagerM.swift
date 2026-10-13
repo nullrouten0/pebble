@@ -6,6 +6,12 @@ import Foundation
 import QuartzCore
 import PebbleCore
 
+/// enchantment / effect level as vanilla shows it: I…X, then plain digits
+/// (also anything below 1, which only /enchant or a bad save can produce)
+func romanNumeral(_ n: Int) -> String {
+    n >= 1 && n <= 10 ? ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][n - 1] : String(n)
+}
+
 final class SlotDef {
     var x: Double
     var y: Double
@@ -14,6 +20,8 @@ final class SlotDef {
     var canPlace: ((ItemStack) -> Bool)?
     var output = false
     var onTake: ((ItemStack) -> Void)?
+    /// output slots only: false blocks the take (the anvil when you can't pay)
+    var canTake: (() -> Bool)?
     var onChange: (() -> Void)?
 
     init(x: Double, y: Double, get: @escaping () -> ItemStack?, set: @escaping (ItemStack?) -> Void,
@@ -488,7 +496,7 @@ final class UIManager {
                 let mins = e.duration / 1200
                 let secs = (e.duration % 1200) / 20
                 var line = (ed.beneficial ? "§9" : "§c") + ed.displayName
-                if e.amplifier > 0 { line += " " + ["I", "II", "III", "IV", "V"][min(4, e.amplifier)] }
+                if e.amplifier > 0 { line += " " + romanNumeral(e.amplifier + 1) }
                 if e.duration > 1 { line += " (\(mins):\(String(format: "%02d", secs)))" }
                 lines.append(line)
             }
@@ -496,7 +504,7 @@ final class UIManager {
         }
         for e in s.ench {
             let ed = enchDef(e.id)
-            lines.append("§7" + ed.displayName + (ed.maxLevel > 1 ? " " + ["I", "II", "III", "IV", "V"][min(4, e.lvl - 1)] : ""))
+            lines.append("§7" + ed.displayName + (ed.maxLevel > 1 ? " " + romanNumeral(e.lvl) : ""))
         }
         if let trim = s.data.trim {
             lines.append("§7Trim: " + trim.pattern + " (" + trim.material.replacingOccurrences(of: "_", with: " ") + ")")
@@ -518,7 +526,7 @@ final class UIManager {
         if targets.isEmpty { return }
         var rounds = 0
         while let s = slot.get(), s.count > 0, rounds < 64 {
-            guard canFullyInsert(s, targets) else { break }
+            guard slot.canTake?() ?? true, canFullyInsert(s, targets) else { break }
             let taken = copyStack(s)!
             _ = quickMoveInto(taken, targets)
             slot.onTake?(s)
@@ -545,7 +553,7 @@ final class UIManager {
         }
         if slot.output {
             // take only (all)
-            if let inSlot, cursor == nil || (canMerge(cursor!, inSlot) && cursor!.count + inSlot.count <= maxStackOf(cursor!)) {
+            if let inSlot, slot.canTake?() ?? true, cursor == nil || (canMerge(cursor!, inSlot) && cursor!.count + inSlot.count <= maxStackOf(cursor!)) {
                 if let cursor {
                     cursor.count += inSlot.count
                 } else {

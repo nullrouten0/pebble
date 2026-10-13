@@ -330,7 +330,8 @@ public final class NetHost {
     }
 
     private func handle(_ c: RemoteClient, _ type: NetMsg, _ r: inout ByteReader) throws {
-        if !c.joined && type != .hello { return }
+        // hello exactly once: a second would leave a stale linked proxy behind
+        if c.joined == (type == .hello) { return }
         switch type {
         case .hello: try onHello(c, &r)
         case .playerState: try readState(c, &r)
@@ -348,6 +349,7 @@ public final class NetHost {
             var hit: RaycastHit?
             if hasHit {
                 let x = try r.i32(), y = try r.i32(), z = try r.i32(), face = try r.u8()
+                guard face < 6 else { throw NetError.badFrame }
                 let px = try r.f64(), py = try r.f64(), pz = try r.f64(), t = try r.f64()
                 let w = c.proxy.world
                 hit = RaycastHit(x: x, y: y, z: z, face: face, cell: w.getBlock(x, y, z), t: t, px: px, py: py, pz: pz)
@@ -405,7 +407,8 @@ public final class NetHost {
             e.vx = vx; e.vy = vy; e.vz = vz
             e.pickupDelay = delay
         case .spawnXP:
-            let n = try r.i32()
+            // a full furnace's worth is a few hundred; cap one message at ~40 orbs
+            let n = min(1500, try r.i32())
             let x = try r.f64(), y = try r.f64(), z = try r.f64()
             spawnXP(c.proxy.world, x, y, z, n)
         case .chat:
@@ -417,6 +420,7 @@ public final class NetHost {
             for l in lines { sendChat(c, l) }
         case .blockEntity:
             guard let be = try r.decodable(BlockEntityData.self) else { return }
+            be.dropUnknownItems()
             let w = c.proxy.world
             if let live = w.getBlockEntity(be.x, be.y, be.z) {
                 live.copyContents(from: be)
@@ -668,7 +672,7 @@ public final class NetHost {
                 p.height = p.sneaking ? PLAYER_SNEAK_HEIGHT : PLAYER_HEIGHT
                 p.dead = s.has(GuestState.DEAD)
                 // riding: follow what the guest says it's on
-                let want = s.vehicle != 0 ? p.world.entityById[s.vehicle] as? Entity : nil
+                let want = s.vehicle != 0 ? (p.world.entityById[s.vehicle] as? Entity).flatMap { $0 is Player ? nil : $0 } : nil
                 if want !== p.vehicle {
                     if p.vehicle != nil { p.dismount() }
                     if let want, !want.dead { p.mount(want) }

@@ -104,7 +104,7 @@ public final class Boat: Entity {
         if let raw = d["chestItems"],
            let bytes = try? JSONSerialization.data(withJSONObject: raw),
            let decoded = try? JSONDecoder().decode([ItemStack?].self, from: bytes) {
-            chestItems = decoded
+            chestItems = knownStacks(decoded)
         } else {
             chestItems = Array(repeating: nil, count: 27)
         }
@@ -329,7 +329,7 @@ public final class Minecart: Entity {
         if let raw = d["chestItems"],
            let bytes = try? JSONSerialization.data(withJSONObject: raw),
            let decoded = try? JSONDecoder().decode([ItemStack?].self, from: bytes) {
-            chestItems = decoded
+            chestItems = knownStacks(decoded)
         } else {
             chestItems = Array(repeating: nil, count: 27)
         }

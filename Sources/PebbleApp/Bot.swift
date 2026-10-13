@@ -24,7 +24,9 @@ final class PhysicsBot {
         self.game = game
     }
 
-    private func key(_ code: String, _ down: Bool) {
+    /// press an action by name, through whatever key the player bound it to
+    private func key(_ action: String, _ down: Bool) {
+        let code = game.keybinds[action] ?? ""
         // widely-spaced timestamps — phase-local ticks tripped the
         // double-tap-forward sprint detector (<250ms between presses)
         if down { game.keyDown(code, now: Double(totalTicks) * 1000) }
@@ -67,7 +69,7 @@ final class PhysicsBot {
             if phaseTick == 1 {
                 cmd("/tp 0.5 199.0 0.5")
                 p.yaw = 0
-                key("KeyW", true)
+                key("forward", true)
             }
             if phaseTick == 40 {
                 let d = samples.suffix(2)
@@ -75,15 +77,15 @@ final class PhysicsBot {
                 let expect = 0.98 * 0.1 * (0.21600002 / 0.216) / (1 - 0.546)
                 pass("in-app walk speed", abs(perTick - expect) < 1e-6,
                      String(format: "%.4f b/s (vanilla 4.317)", perTick * 20))
-                key("KeyW", false)
+                key("forward", false)
                 advance()
             }
         case 3:
             // SPRINT
             if phaseTick == 1 {
                 cmd("/tp 0.5 199.0 0.5")
-                key("ControlLeft", true)
-                key("KeyW", true)
+                key("sprint", true)
+                key("forward", true)
             }
             if phaseTick == 40 {
                 let d = samples.suffix(2)
@@ -91,8 +93,8 @@ final class PhysicsBot {
                 let expect = 0.98 * 0.13 * (0.21600002 / 0.216) / (1 - 0.546)
                 pass("in-app sprint speed", abs(perTick - expect) < 1e-6,
                      String(format: "%.4f b/s (vanilla 5.612)", perTick * 20))
-                key("KeyW", false)
-                key("ControlLeft", false)
+                key("forward", false)
+                key("sprint", false)
                 advance()
             }
         case 4:
@@ -103,9 +105,9 @@ final class PhysicsBot {
             // JUMP apex from standstill
             if phaseTick == 1 {
                 jumpBaseY = p.y
-                key("Space", true)
+                key("jump", true)
             }
-            if phaseTick == 3 { key("Space", false) }
+            if phaseTick == 3 { key("jump", false) }
             if phaseTick == 30 {
                 let apex = samples.filter { $0.0 == 5 }.map { $0.2 }.max()! - jumpBaseY
                 pass("in-app jump apex", abs(apex - 1.2522) < 0.001,
@@ -117,10 +119,10 @@ final class PhysicsBot {
             if phaseTick == 1 {
                 cmd("/tp 0.5 199.0 0.5")
                 p.yaw = 0
-                key("KeyD", true)
+                key("right", true)
             }
             if phaseTick == 30 {
-                key("KeyD", false)
+                key("right", false)
                 let dx = p.x - 0.5
                 pass("in-app D strafes right (-X at yaw 0)", dx < -0.5,
                      String(format: "dx=%.2f", dx))

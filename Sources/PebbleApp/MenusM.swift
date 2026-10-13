@@ -682,6 +682,9 @@ final class SettingsScreen: Screen {
     }
     override func onKey(_ ui: UIManager, _ game: GameCore, _ key: String) -> Bool {
         if let binding = bindingKey {
+            // keys the shells can't name (Home, PageUp…) arrive as ""; binding
+            // that would leave the action on no key at all, so wait for another
+            if key.isEmpty { return true }
             game.keybinds[binding] = key
             bindingKey = nil
             game.applySettings()

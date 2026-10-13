@@ -247,13 +247,17 @@ final class ResourcePack {
             return nil
         }
         guard pathIndex.keys.contains(where: { $0.hasSuffix("pack.mcmeta") }) else { return nil }
-        // texture root: first assets/<ns>/textures/ prefix the pack contains
+        // texture root: assets/minecraft/textures/ if the pack has it, else the
+        // alphabetically first namespace with textures (dictionary order is
+        // random per launch, so "first found" could change between runs)
+        var namespaces = Set<String>()
         for k in pathIndex.keys {
             if let r = k.range(of: "assets/"), k[r.upperBound...].contains("/textures/") {
-                let ns = k[r.upperBound...].split(separator: "/")[0]
-                texRoot = "assets/\(ns)/textures/"
-                break
+                namespaces.insert(String(k[r.upperBound...].split(separator: "/")[0]))
             }
+        }
+        if let ns = namespaces.contains("minecraft") ? "minecraft" : namespaces.min() {
+            texRoot = "assets/\(ns)/textures/"
         }
         parseMeta()
     }
@@ -957,22 +961,26 @@ final class PackUI {
             blit(ascii, cell.0, cell.1, baseSize: 128)
             sheets.insert("ascii")
             let g = ascii.width / 16    // native glyph cell size
-            var widths = [Double](repeating: 6, count: 256)
-            for c in 0..<256 {
-                let gx = (c % 16) * g, gy = (c / 16) * g
-                var maxX = -1
-                for y in 0..<g {
-                    for x in 0..<g {
-                        if ascii.pixels[((gy + y) * ascii.width + gx + x) * 4 + 3] > 32 {
-                            if x > maxX { maxX = x }
+            // the scan reads a 16×16 grid of g×g cells; a short or tiny sheet
+            // would index past its pixels, so it keeps the default widths
+            if g > 0 && ascii.height >= ascii.width && ascii.pixels.count >= ascii.width * ascii.height * 4 {
+                var widths = [Double](repeating: 6, count: 256)
+                for c in 0..<256 {
+                    let gx = (c % 16) * g, gy = (c / 16) * g
+                    var maxX = -1
+                    for y in 0..<g {
+                        for x in 0..<g {
+                            if ascii.pixels[((gy + y) * ascii.width + gx + x) * 4 + 3] > 32 {
+                                if x > maxX { maxX = x }
+                            }
                         }
                     }
+                    let base = 8.0 / Double(g)
+                    widths[c] = maxX < 0 ? 4 : (Double(maxX + 1) * base + 1)
                 }
-                let base = 8.0 / Double(g)
-                widths[c] = maxX < 0 ? 4 : (Double(maxX + 1) * base + 1)
+                widths[32] = 4   // space
+                fontWidths = widths
             }
-            widths[32] = 4   // space
-            fontWidths = widths
         }
         guard !sheets.isEmpty else { return nil }
 

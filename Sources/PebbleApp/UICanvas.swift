@@ -230,6 +230,11 @@ final class UICanvas {
         if let s = slots[key] { return s }
         let cols = 64  // 1024/16
         let origin: (Int, Int)
+        if freeSlots.isEmpty && nextSlot >= cols * cols {
+            // atlas full (4095 distinct icons/tiles): start over rather than
+            // write past the texture; entries re-cache as they're drawn
+            resetIconSlots()
+        }
         if let reused = freeSlots.popLast() {
             origin = reused
         } else {

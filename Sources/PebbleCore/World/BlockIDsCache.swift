@@ -1,11 +1,12 @@
 // Generated block-id cache — every `B.<name>` used in the codebase becomes a
-// stored UInt16 resolved ONCE after block registration. Real members shadow
-// the @dynamicMemberLookup subscript, so `B.stone` is now a direct load
-// instead of a per-access string hash + dictionary find (which dominated
-// chunk lighting, collision and the mesher).
-// Regenerate: grep -ohE '\\bB\\.[a-z_0-9]+' Sources/**/*.swift | sort -u
+// stored UInt16 resolved ONCE after block registration, so `B.stone` is a
+// direct load instead of a string hash + dictionary find (which dominated
+// chunk lighting, collision and the mesher). There is no fallback: a new
+// `B.<name>` fails to compile until this file is regenerated with
+//   grep -rohE '\bB\.[a-z_0-9]+' Sources --include='*.swift' | sort -u
+// (one stored property plus one populate line per name). Strings that are
+// only known at runtime go through `B["name"]` or `bid("name")`.
 
-@dynamicMemberLookup
 public struct ResolvedBlockIDs {
     public var acacia_leaves: UInt16 = 0
     public var acacia_log: UInt16 = 0
@@ -79,6 +80,7 @@ public struct ResolvedBlockIDs {
     public var cobbled_deepslate: UInt16 = 0
     public var cobblestone: UInt16 = 0
     public var cobblestone_stairs: UInt16 = 0
+    public var cobblestone_wall: UInt16 = 0
     public var cobweb: UInt16 = 0
     public var cocoa: UInt16 = 0
     public var comparator: UInt16 = 0
@@ -228,10 +230,12 @@ public struct ResolvedBlockIDs {
     public var note_block: UInt16 = 0
     public var oak_door: UInt16 = 0
     public var oak_fence: UInt16 = 0
+    public var oak_fence_gate: UInt16 = 0
     public var oak_leaves: UInt16 = 0
     public var oak_log: UInt16 = 0
     public var oak_planks: UInt16 = 0
     public var oak_sapling: UInt16 = 0
+    public var oak_slab: UInt16 = 0
     public var oak_trapdoor: UInt16 = 0
     public var observer: UInt16 = 0
     public var obsidian: UInt16 = 0
@@ -248,9 +252,13 @@ public struct ResolvedBlockIDs {
     public var pitcher_plant: UInt16 = 0
     public var podzol: UInt16 = 0
     public var pointed_dripstone: UInt16 = 0
+    public var polished_andesite: UInt16 = 0
+    public var polished_basalt: UInt16 = 0
     public var polished_blackstone_bricks: UInt16 = 0
     public var polished_blackstone_button: UInt16 = 0
     public var polished_blackstone_pressure_plate: UInt16 = 0
+    public var polished_deepslate: UInt16 = 0
+    public var polished_granite: UInt16 = 0
     public var poppy: UInt16 = 0
     public var potatoes: UInt16 = 0
     public var powder_snow: UInt16 = 0
@@ -267,12 +275,14 @@ public struct ResolvedBlockIDs {
     public var rail: UInt16 = 0
     public var red_bed: UInt16 = 0
     public var red_carpet: UInt16 = 0
+    public var red_concrete: UInt16 = 0
     public var red_mushroom: UInt16 = 0
     public var red_mushroom_block: UInt16 = 0
     public var red_sand: UInt16 = 0
     public var red_sandstone: UInt16 = 0
     public var red_terracotta: UInt16 = 0
     public var red_tulip: UInt16 = 0
+    public var red_wool: UInt16 = 0
     public var redstone_block: UInt16 = 0
     public var redstone_lamp: UInt16 = 0
     public var redstone_lamp_on: UInt16 = 0
@@ -310,6 +320,7 @@ public struct ResolvedBlockIDs {
     public var smoker_lit: UInt16 = 0
     public var smooth_basalt: UInt16 = 0
     public var smooth_sandstone: UInt16 = 0
+    public var smooth_stone: UInt16 = 0
     public var sniffer_egg: UInt16 = 0
     public var snow: UInt16 = 0
     public var snow_block: UInt16 = 0
@@ -320,14 +331,18 @@ public struct ResolvedBlockIDs {
     public var soul_soil: UInt16 = 0
     public var spawner: UInt16 = 0
     public var spore_blossom: UInt16 = 0
+    public var spruce_fence: UInt16 = 0
     public var spruce_leaves: UInt16 = 0
     public var spruce_log: UInt16 = 0
     public var spruce_planks: UInt16 = 0
     public var spruce_sapling: UInt16 = 0
+    public var spruce_slab: UInt16 = 0
+    public var spruce_stairs: UInt16 = 0
     public var sticky_piston: UInt16 = 0
     public var stone: UInt16 = 0
     public var stone_brick_slab: UInt16 = 0
     public var stone_brick_stairs: UInt16 = 0
+    public var stone_brick_wall: UInt16 = 0
     public var stone_bricks: UInt16 = 0
     public var stone_button: UInt16 = 0
     public var stone_pressure_plate: UInt16 = 0
@@ -361,15 +376,15 @@ public struct ResolvedBlockIDs {
     public var weeping_vines: UInt16 = 0
     public var wet_sponge: UInt16 = 0
     public var wheat: UInt16 = 0
+    public var white_bed: UInt16 = 0
     public var white_carpet: UInt16 = 0
+    public var white_concrete: UInt16 = 0
     public var white_terracotta: UInt16 = 0
     public var white_tulip: UInt16 = 0
     public var white_wool: UInt16 = 0
     public var wither_skeleton_skull: UInt16 = 0
     public var yellow_terracotta: UInt16 = 0
 
-    @inline(__always)
-    public subscript(dynamicMember name: String) -> UInt16 { bid(name) }
     public subscript(_ name: String) -> UInt16 { bid(name) }
 }
 
@@ -447,6 +462,7 @@ public func populateBlockIDs() {
     b.cobbled_deepslate = bid("cobbled_deepslate")
     b.cobblestone = bid("cobblestone")
     b.cobblestone_stairs = bid("cobblestone_stairs")
+    b.cobblestone_wall = bid("cobblestone_wall")
     b.cobweb = bid("cobweb")
     b.cocoa = bid("cocoa")
     b.comparator = bid("comparator")
@@ -596,10 +612,12 @@ public func populateBlockIDs() {
     b.note_block = bid("note_block")
     b.oak_door = bid("oak_door")
     b.oak_fence = bid("oak_fence")
+    b.oak_fence_gate = bid("oak_fence_gate")
     b.oak_leaves = bid("oak_leaves")
     b.oak_log = bid("oak_log")
     b.oak_planks = bid("oak_planks")
     b.oak_sapling = bid("oak_sapling")
+    b.oak_slab = bid("oak_slab")
     b.oak_trapdoor = bid("oak_trapdoor")
     b.observer = bid("observer")
     b.obsidian = bid("obsidian")
@@ -616,9 +634,13 @@ public func populateBlockIDs() {
     b.pitcher_plant = bid("pitcher_plant")
     b.podzol = bid("podzol")
     b.pointed_dripstone = bid("pointed_dripstone")
+    b.polished_andesite = bid("polished_andesite")
+    b.polished_basalt = bid("polished_basalt")
     b.polished_blackstone_bricks = bid("polished_blackstone_bricks")
     b.polished_blackstone_button = bid("polished_blackstone_button")
     b.polished_blackstone_pressure_plate = bid("polished_blackstone_pressure_plate")
+    b.polished_deepslate = bid("polished_deepslate")
+    b.polished_granite = bid("polished_granite")
     b.poppy = bid("poppy")
     b.potatoes = bid("potatoes")
     b.powder_snow = bid("powder_snow")
@@ -635,12 +657,14 @@ public func populateBlockIDs() {
     b.rail = bid("rail")
     b.red_bed = bid("red_bed")
     b.red_carpet = bid("red_carpet")
+    b.red_concrete = bid("red_concrete")
     b.red_mushroom = bid("red_mushroom")
     b.red_mushroom_block = bid("red_mushroom_block")
     b.red_sand = bid("red_sand")
     b.red_sandstone = bid("red_sandstone")
     b.red_terracotta = bid("red_terracotta")
     b.red_tulip = bid("red_tulip")
+    b.red_wool = bid("red_wool")
     b.redstone_block = bid("redstone_block")
     b.redstone_lamp = bid("redstone_lamp")
     b.redstone_lamp_on = bid("redstone_lamp_on")
@@ -678,6 +702,7 @@ public func populateBlockIDs() {
     b.smoker_lit = bid("smoker_lit")
     b.smooth_basalt = bid("smooth_basalt")
     b.smooth_sandstone = bid("smooth_sandstone")
+    b.smooth_stone = bid("smooth_stone")
     b.sniffer_egg = bid("sniffer_egg")
     b.snow = bid("snow")
     b.snow_block = bid("snow_block")
@@ -688,14 +713,18 @@ public func populateBlockIDs() {
     b.soul_soil = bid("soul_soil")
     b.spawner = bid("spawner")
     b.spore_blossom = bid("spore_blossom")
+    b.spruce_fence = bid("spruce_fence")
     b.spruce_leaves = bid("spruce_leaves")
     b.spruce_log = bid("spruce_log")
     b.spruce_planks = bid("spruce_planks")
     b.spruce_sapling = bid("spruce_sapling")
+    b.spruce_slab = bid("spruce_slab")
+    b.spruce_stairs = bid("spruce_stairs")
     b.sticky_piston = bid("sticky_piston")
     b.stone = bid("stone")
     b.stone_brick_slab = bid("stone_brick_slab")
     b.stone_brick_stairs = bid("stone_brick_stairs")
+    b.stone_brick_wall = bid("stone_brick_wall")
     b.stone_bricks = bid("stone_bricks")
     b.stone_button = bid("stone_button")
     b.stone_pressure_plate = bid("stone_pressure_plate")
@@ -729,7 +758,9 @@ public func populateBlockIDs() {
     b.weeping_vines = bid("weeping_vines")
     b.wet_sponge = bid("wet_sponge")
     b.wheat = bid("wheat")
+    b.white_bed = bid("white_bed")
     b.white_carpet = bid("white_carpet")
+    b.white_concrete = bid("white_concrete")
     b.white_terracotta = bid("white_terracotta")
     b.white_tulip = bid("white_tulip")
     b.white_wool = bid("white_wool")

@@ -689,7 +689,8 @@ public final class ElderGuardian: Guardian {
 // SHULKER --------------------------------------------------------------------------------
 public final class Shulker: Monster {
     public override var type: String { "shulker" }
-    public var peekAmount = 0.0
+    /// ticks left on a peek: a one-tick 0.3 would just twitch the lid
+    private var peekTicks = 0
     public override init(world: World) {
         super.init(world: world)
         width = 1; height = 1
@@ -716,7 +717,9 @@ public final class Shulker: Monster {
                 world.hooks.playSound("entity.shulker.shoot", x, y, z, 1, 1)
             }
         } else {
-            data.open = rng.nextFloat() < 0.05 ? 0.3 : 0
+            if rng.nextFloat() < 0.05 { peekTicks = 20 }
+            if peekTicks > 0 { peekTicks -= 1 }
+            data.open = peekTicks > 0 ? 0.3 : 0
         }
     }
     @discardableResult

@@ -134,8 +134,14 @@ struct ByteReader {
     mutating func i32() throws -> Int { Int(try le(Int32.self)) }
     mutating func u32() throws -> Int { Int(try le(UInt32.self)) }
     mutating func i64() throws -> Int { Int(try le(Int64.self)) }
-    mutating func f32() throws -> Double { Double(Float(bitPattern: try le(UInt32.self))) }
-    mutating func f64() throws -> Double { Double(bitPattern: try le(UInt64.self)) }
+    // every float on the wire is a position, velocity, angle, health or level:
+    // a NaN, infinity or 1e300 is a bad frame, never a value (ifloor would trap)
+    mutating func f32() throws -> Double { try sane(Double(Float(bitPattern: try le(UInt32.self)))) }
+    mutating func f64() throws -> Double { try sane(Double(bitPattern: try le(UInt64.self))) }
+    private func sane(_ v: Double) throws -> Double {
+        guard v.isFinite, abs(v) < 1e9 else { throw NetError.badFrame }
+        return v
+    }
     mutating func str() throws -> String {
         let n = try u16()
         return String(decoding: try take(n), as: UTF8.self)
@@ -168,8 +174,7 @@ extension ByteWriter {
 extension ByteReader {
     mutating func stack() throws -> ItemStack? {
         let d = try blob()
-        let nItems = itemDefs.count
-        guard let s = try? JSONDecoder().decode(ItemStack.self, from: d), s.id > 0, s.id < nItems else { return nil }
+        guard let s = try? JSONDecoder().decode(ItemStack.self, from: d), s.isKnown else { return nil }
         return s
     }
 }
@@ -201,6 +206,7 @@ func decodeChunkPayload(_ d: Data, height: Int) -> (blocks: [UInt16], biomes: [U
     let biomes = [UInt8](raw[(raw.startIndex + nBlocks * 2)..<(raw.startIndex + nBlocks * 2 + nBiomes)])
     var r = ByteReader([UInt8](raw[(raw.startIndex + nBlocks * 2 + nBiomes)...]))
     let bes = (try? r.decodable([BlockEntityData].self)) ?? nil
+    bes?.forEach { $0.dropUnknownItems() }
     return (blocks, biomes, bes ?? [])
 }
 

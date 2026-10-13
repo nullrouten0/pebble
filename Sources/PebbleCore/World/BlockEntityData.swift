@@ -86,6 +86,13 @@ public final class BlockEntityData: Codable {
 
     /// take every field but the position from `o`, in place — a LAN update
     /// lands in the object an open container screen is already showing
+    /// empties slots holding stacks this build can't look up (see isKnown)
+    public func dropUnknownItems() {
+        if let i = items { items = knownStacks(i) }
+        if disc?.isKnown == false { disc = nil }
+        if item?.isKnown == false { item = nil }
+    }
+
     public func copyContents(from o: BlockEntityData) {
         type = o.type
         items = o.items

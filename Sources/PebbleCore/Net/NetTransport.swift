@@ -39,7 +39,14 @@ private func tcpParams() -> NWParameters {
     return p
 }
 
-private var nextConnId = 1
+/// host connections are made on the listener queue, guest ones on main
+private let connIdLock = NSLock()
+nonisolated(unsafe) private var nextConnId = 1
+private func takeConnId() -> Int {
+    connIdLock.lock(); defer { connIdLock.unlock() }
+    nextConnId += 1
+    return nextConnId - 1
+}
 
 /// one framed TCP connection
 final class NetConn {
@@ -60,8 +67,7 @@ final class NetConn {
     var queuedBytes: Int { lock.lock(); defer { lock.unlock() }; return _queued }
 
     init(_ c: NWConnection) {
-        id = nextConnId
-        nextConnId += 1
+        id = takeConnId()
         conn = c
         queue = DispatchQueue(label: "pebble.net.\(id)")
     }
@@ -147,7 +153,7 @@ final class NetListener {
     /// tries `port` and the next few if it's taken
     init(port: UInt16, name: String, onConn: @escaping (NWConnection) -> Void) throws {
         var lastErr: Error = NetError.badFrame
-        for p in port..<(port + 10) {
+        for p in port...(port > UInt16.max - 9 ? UInt16.max : port + 9) {
             do {
                 let l = try NWListener(using: tcpParams(), on: NWEndpoint.Port(rawValue: p)!)
                 // Bonjour instance names are capped at 63 bytes

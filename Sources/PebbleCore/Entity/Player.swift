@@ -739,12 +739,10 @@ public final class Player: LivingEntity {
         while inventory.count < 36 { inventory.append(nil) }
         while enderChest.count < 27 { enderChest.append(nil) }
         while armor.count < 4 { armor.append(nil) }
-        let nItems = UInt16(itemDefs.count)
-        func valid(_ s: ItemStack?) -> ItemStack? { (s?.id ?? 0) < nItems ? s : nil }
-        for i in 0..<inventory.count { inventory[i] = valid(inventory[i]) }
-        for i in 0..<enderChest.count { enderChest[i] = valid(enderChest[i]) }
-        for i in 0..<armor.count { armor[i] = valid(armor[i]) }
-        offHand = valid(offHand)
+        inventory = knownStacks(inventory)
+        enderChest = knownStacks(enderChest)
+        armor = knownStacks(armor)
+        if offHand?.isKnown == false { offHand = nil }
         selectedSlot = min(8, max(0, inum(d["selectedSlot"])))
         hunger = (d["hunger"] as? NSNumber)?.intValue ?? 20
         saturation = (d["saturation"] as? NSNumber)?.doubleValue ?? 5

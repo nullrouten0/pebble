@@ -271,5 +271,6 @@ public func blockExists(_ name: String) -> Bool { byName[name] != nil }
 
 /// block id lookup: `B.stone` is a stored field resolved once at registration
 /// (BlockIDsCache.swift) — a direct load on every hot path. Interpolated names
-/// (`B["\(w)_slab"]`) and unlisted members fall back to the byName dictionary.
+/// (`B["\(w)_slab"]`) use the byName dictionary; an unlisted `B.<name>` doesn't
+/// compile until the cache is regenerated.
 public var B = ResolvedBlockIDs()
