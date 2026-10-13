@@ -9,6 +9,17 @@ Version 1.4.0. Not a main release yet: build it yourself from the branch
 (see the README banner). Known rough edges: frame rate dips while new
 terrain streams in, and iPhone layouts are only lightly polished.
 
+- **Four world wonders for `/place` (1.4.0):** `eiffel_tower` (about 150
+  tall: curved lattice legs, the great arches, three platforms, a glass room
+  and lit spire on top, a ladder up the middle), `stonehenge` (1:1: the
+  sarsen circle and lintels with the real gaps, five trilithons opening to
+  the midsummer sunrise with the great one fallen, bluestones, ditch, bank
+  and Avenue), `colosseum` (125×105 and 32 tall: three arcaded stories and
+  an attic, corridors, seating, the arena half floored over the hypogeum,
+  the south side ruined as it is in Rome) and `devils_tower` (an 80-block
+  monolith of fluted basalt columns on a talus apron with fallen columns
+  and pines). `/place` also clears tree canopies left floating over a site
+  when it cut their trunks.
 - **Headlamp (1.4.0).** Wear it in the helmet slot and a warm beam lights
   whatever you look at, about 22 blocks out, like a real headlamp. It lights
   terrain and mobs, shows as a lamp on your forehead to other players, and

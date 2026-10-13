@@ -1081,9 +1081,15 @@ public final class GameCore {
                     if !captured.contains(CaptureSink.pack(x, y, z)) { put(wx, y + dy, wz, 0) }
                     y += 1
                 }
-                while y + dy < w.info.minY + w.info.height, w.getBlockId(wx, y + dy, wz) != 0,
-                      isTreeOrPlant(w.getBlockId(wx, y + dy, wz)) {
-                    put(wx, y + dy, wz, 0)
+                // trees above that, across air gaps (a tall trunk's canopy
+                // was left floating over the site), up to the first other block
+                let treeTop = min(w.info.minY + w.info.height - 1 - dy, y + 32)
+                while y <= treeTop {
+                    let id = w.getBlockId(wx, y + dy, wz)
+                    if id != 0 {
+                        if !isTreeOrPlant(id) { break }
+                        put(wx, y + dy, wz, 0)
+                    }
                     y += 1
                 }
                 // foundation under columns that rest on the ground

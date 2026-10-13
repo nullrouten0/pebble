@@ -2285,6 +2285,44 @@ do {
     check("wipe zones round-trip through JSON", back?.done == z2.done && back?.radius == z2.radius)
 }
 
+section("world wonders (/place eiffel_tower, stonehenge, colosseum, devils_tower)")
+do {
+    func capture(_ id: String) -> (pf: Prefab, n: (String) -> Int)? {
+        guard let pf = capturePrefab(id, dim: 0, minY: -64, maxY: 320, biome: 1, variant: 0) else { return nil }
+        var counts: [Int: Int] = [:]
+        for (_, _, _, c) in pf.cells { counts[Int(c >> 4), default: 0] += 1 }
+        return (pf, { counts[Int(bid($0))] ?? 0 })
+    }
+    func size(_ pf: Prefab) -> (w: Int, d: Int, h: Int) { (pf.x1 - pf.x0 + 1, pf.z1 - pf.z0 + 1, pf.y1 - PREFAB_GROUND) }
+    if let (pf, n) = capture("eiffel_tower") {
+        let sz = size(pf)
+        check("eiffel_tower: ~150 tall on a 63-block square (\(sz.w)×\(sz.d), \(sz.h) tall)", sz.h >= 145 && sz.w == 63 && sz.d == 63)
+        check("eiffel_tower: iron lattice, a ladder to the top room, a light on the spire",
+              n("brown_terracotta") > 5000 && n("ladder") >= 125 && n("sea_lantern") == 1, "lattice \(n("brown_terracotta")), ladder \(n("ladder"))")
+    } else { check("eiffel_tower captures", false) }
+    if let (pf, n) = capture("stonehenge") {
+        let sz = size(pf)
+        check("stonehenge: henge and Avenue (\(sz.w)×\(sz.d))", sz.w >= 110 && sz.d >= 110)
+        let sarsen = n("stone") + n("andesite") + n("tuff") + n("mossy_cobblestone")
+        check("stonehenge: sarsens, lintels and bluestones",
+              sarsen > 300 && n("smooth_stone") > 60 && n("cobbled_deepslate") + n("polished_deepslate") > 40,
+              "sarsen \(sarsen), lintels \(n("smooth_stone"))")
+    } else { check("stonehenge captures", false) }
+    if let (pf, n) = capture("colosseum") {
+        let sz = size(pf)
+        check("colosseum: a 125×105 ellipse, 32 tall (\(sz.w)×\(sz.d), \(sz.h))", sz.w == 125 && sz.d >= 103 && sz.h >= 31)
+        check("colosseum: travertine arcades, brick vaults, a planked arena",
+              n("white_terracotta") > 10000 && n("bricks") > 2000 && n("spruce_planks") > 300,
+              "travertine \(n("white_terracotta")), bricks \(n("bricks")), planks \(n("spruce_planks"))")
+    } else { check("colosseum captures", false) }
+    if let (pf, n) = capture("devils_tower") {
+        let sz = size(pf)
+        check("devils_tower: ~90 tall over a 100-block apron (\(sz.w)×\(sz.d), \(sz.h))", sz.h >= 85 && sz.w >= 100)
+        check("devils_tower: basalt columns, fallen columns, pines",
+              n("basalt") > 40000 && n("spruce_log") > 30, "basalt \(n("basalt")), spruce \(n("spruce_log"))")
+    } else { check("devils_tower captures", false) }
+}
+
 section("town structures (/place city, small_school, large_school)")
 do {
     func key(_ x: Int, _ y: Int, _ z: Int) -> Int64 { (Int64(x + 4096) << 40) | (Int64(y + 4096) << 20) | Int64(z + 4096) }

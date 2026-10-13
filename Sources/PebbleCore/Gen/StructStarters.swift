@@ -25,6 +25,10 @@ public let STARTER_STRUCTURES: [StarterStructure] = [
     StarterStructure(id: "city", build: starterCity),
     StarterStructure(id: "small_school", build: starterSmallSchool),
     StarterStructure(id: "large_school", build: starterLargeSchool),
+    StarterStructure(id: "eiffel_tower", build: starterEiffelTower),
+    StarterStructure(id: "stonehenge", build: starterStonehenge),
+    StarterStructure(id: "colosseum", build: starterColosseum),
+    StarterStructure(id: "devils_tower", build: starterDevilsTower),
 ]
 
 @inline(__always) private func C(_ b: UInt16, _ m: Int = 0) -> Int { Int(cell(b, m)) }
