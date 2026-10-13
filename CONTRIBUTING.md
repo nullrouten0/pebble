@@ -45,33 +45,51 @@ cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # then add your
 ## Before you open a PR
 
 1. `swift build -c release` — clean, **zero warnings**. The codebase is warning-free and stays that way.
-2. `swift run -c release pebsmoke` (or `pebble test`) — **535/535**, from the repo root (goldens are found relative to cwd).
-3. If goldens changed, your PR description must justify **every** changed value (see below).
+2. `swift run -c release pebsmoke` (or `pebble test`) — all green, from the repo root (goldens are found relative to cwd).
+3. A fix comes with a behaviour check that would have caught it, and if a snapshot moved, the commit message says which and why (see below).
 4. Keep diffs surgical. Match the style of the file you're in — this codebase has a consistent voice (compact, comment-where-it-matters), and drive-by reformatting makes review impossible.
 
-## The golden workflow (read this twice)
+## What Pebble is aiming for
 
-`goldens/*.json` pin the engine's behavior. Two categories:
+**Vanilla Minecraft: Java Edition is the reference.** When something behaves differently from vanilla, vanilla wins: fix it, and say which vanilla rule you matched ("`FoodData.tick`: regen spends `min(saturation, 6)`"). Pebble began as a port of a JavaScript original, and comments that mention "the baseline" refer to it. Matching that original is no longer a goal, so a quirk that exists only because the original had it is a bug like any other.
 
-- **Frozen reference goldens** — `atlas`, `fmath`, `items`. These are immutable reference baselines with no generator — they can **never** be regenerated. If your change breaks one, your change is wrong.
-- **Native baselines** — `biome`, `terrain`, `feature`, `mesh`, `worldsim`, `entity`, `systems`. Regenerable with `PEBBLE_REGOLD=1 swift run -c release pebsmoke`, but only for *deliberate* behavior changes.
+**Clean code beats preserved accidents.** Dead code goes, copies get merged, and strings that stand for a fixed set of things become enums. If keeping something odd is genuinely necessary, a comment says why.
 
-The required procedure for a behavior change:
+## Tests: three kinds, three rules
 
-1. Make the change. Run the suite. **Read every failure.**
-2. For each failing check, explain to yourself (and in the PR) why your change moved that value. "Terrain hashes pass but feature hashes changed, consistent with my flower fix" — that level.
-3. Only then regold, and re-run to confirm green.
-4. Sanity-check the regold: `PEBBLE_REGOLD` rewrites whole files, and JSON key order shuffles, so byte diffs lie. Compare semantically (e.g. `python3 -c 'import json; print(json.load(open("a"))==json.load(open("b")))'`) and confirm that only the files you expected actually changed values.
+`pebble test` runs pebsmoke. Its checks come in three kinds, and they're treated differently:
 
-Never blanket-regold to make red go green. The suite caught real bugs precisely because nobody did that.
+**Contract checks** guard what players are owed, and they don't change:
+
+- the same seed builds the same chunk on every machine (the portable `fmath` probes and seeded terrain);
+- every save format Pebble has written still loads (plain and compressed chunk records, block/item palettes, older world records).
+
+If a change breaks one of these, the change is wrong. The only exception is a deliberate format change that ships with a migration, agreed in an issue first.
+
+**Behaviour checks** state a rule in plain words: "a chicken takes no damage from a 12-block fall", "a 40-level anvil job is Too Expensive", the independently derived vanilla physics constants. Every bug fix should add one. They don't care how the code is shaped, which is what makes them the most valuable tests here.
+
+**Snapshots** (`goldens/*.json`) hash whole runs: biomes, terrain, features, meshes, the 55-mob zoo, combat, world simulation, items/recipes/loot and the fallback atlas. They are change detectors, not a spec. When one fails:
+
+1. Read every failure and work out why your change moved it. A snapshot that moves for a reason you can't explain is a bug; catching those is what snapshots are for.
+2. Regenerate just the ones you meant to move: `pebble test --regold terrain,feature` (names are the `goldens/<name>-goldens.json` files; `--regold all` for everything). It prints each key whose value changed, so you can check nothing else moved.
+3. Say in the commit message which snapshots moved and why.
+
+Never regenerate to make red go green.
+
+### World generation and existing worlds
+
+Every chunk a player has generated is saved (since 1.5), so a change to world generation only affects land nobody has visited yet. Generation changes are welcome; note them in the changelog as affecting new chunks.
+
+Worlds created before 1.5 only saved chunks that were changed, so their untouched land is regenerated from the seed whenever it loads. These worlds are generator version 1 (`WorldRecord.genVersion`), and anything that would reshape their land must keep the version-1 behaviour behind that check (as feature salts do), or say plainly in the changelog that old worlds will change.
 
 ## Conventions that are load-bearing
 
 These are not style preferences. Violating them corrupts worlds or breaks determinism in ways the test suite will catch days later:
 
-- **Registration order is ABI.** Blocks, items, biomes, and enchantments get their numeric ids from registration order, and those ids are in every saved world. Never insert, remove, or reorder registrations. New items/blocks are **appended at the end**, after the frozen baseline range, and baseline checks cover only that prefix (`BASE_ITEM_COUNT` in pebsmoke).
-- **Sim code uses the deterministic layer only.** `detSin/detCos/detAtan2` (never `Foundation.sin` in sim paths), `RandomX`/`hash2`/`hash3` (never `Double.random` — cosmetic-only exceptions exist in app-side rendering/audio), `detRound` for half-step rounding.
+- **Block and item ids belong to each world.** Numeric ids come from registration order, but every world saves a palette (the block and item names behind its ids), and opening a world whose palette differs from this build migrates it once. So registrations can be inserted, reordered or removed. A removed block loads as air, and a removed item loads as an empty slot. To rename one, add the old name to `BLOCK_ALIASES` / `ITEM_ALIASES` so existing worlds keep it. Biome and enchantment ids are still saved as raw numbers and names respectively; append new biomes at the end.
+- **Sim code uses the deterministic layer only** (this is what makes seeds portable). `detSin/detCos/detAtan2` (never `Foundation.sin` in sim paths), `RandomX`/`hash2`/`hash3` (never `Double.random` — cosmetic-only exceptions exist in app-side rendering/audio), `detRound` for half-step rounding.
 - **No unordered iteration in sim decisions.** Swift `Dictionary`/`Set` iteration order is hash-seeded per process. If iteration order can affect world state, use an insertion-ordered array (see `tickingBEList`) or `.sorted()`.
+- **Random draws aren't sacred.** Adding, removing or reordering draws in entity, system or generation code is fine. It moves snapshots, which you regenerate with a reason. Don't keep a draw whose value nobody uses just to hold the stream still. (Old code does this in a few places; remove those when you're nearby.)
 - **Structure-piece RNG: draw, then check.** Builder RNG must be a pure function of (structure, piece). Draw every random value *before* any chunk-relative `b.get()` test — short-circuiting a draw on local chunk contents desyncs the stream across the chunks that rebuild the same piece. Also: `b.get()` returns **−1 outside the building chunk**; guard before casting.
 - **Threading contract.** Chunks are built on the gen queue and published only via `adoptChunk` on main. UI/renderer state is main-thread-only. Saves go through the serial save queue. The audio render thread owns the voice list; talk to it through the inbox. One-time registration uses `let`-initialized globals (dispatch_once), not boolean guards.
 - **GPU buffers the CPU rewrites per frame must be ring-buffered** (3 deep — see UICanvas, particles) or staged through blit encoders (see atlas animations). The renderer has no semaphore; it relies on the 3-drawable limit.
@@ -111,7 +129,7 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 | `PEBBLE_PROF=1` | print per-stage load/tick timings |
 | `PEBBLE_PACKDEBUG=1` | log texture tile coverage and entity-skin resolution |
 | `PEBBLE_GEOM_DEBUG=1` | log entity geometry construction |
-| `PEBBLE_REGOLD=1` | **rewrites golden baselines** — see [the golden workflow](#the-golden-workflow-read-this-twice) |
+| `PEBBLE_REGOLD=terrain,feature` | **rewrites those snapshots** (`all` for every one); `pebble test --regold …` sets it — see [Tests](#tests-three-kinds-three-rules) |
 
 Scripted steps you can mix into `PEBBLE_CMD`:
 
@@ -129,7 +147,7 @@ Scripted steps you can mix into `PEBBLE_CMD`:
 
 ## Scope & conduct
 
-Please open an issue to coordinate before large networking or architecture PRs; uncoordinated ones will likely be declined. Performance work is welcome but must keep goldens green and come with before/after numbers. Be a normal, decent person in issues and reviews; that's the whole code of conduct.
+Please open an issue to coordinate before large networking or architecture PRs; uncoordinated ones will likely be declined. Performance work is welcome; it should leave snapshots unchanged unless it says why, and come with before/after numbers. Be a normal, decent person in issues and reviews; that's the whole code of conduct.
 
 By contributing you agree your contributions are licensed under the repository's MIT license.
 
