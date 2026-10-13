@@ -33,7 +33,7 @@ If you find a way for a crafted save file, texture archive, or LAN message to do
 - **Email:** briangaoo2@gmail.com — subject line starting with `[pebble security]`
 - Include: macOS version, a minimal reproducing file if possible, and what you observed.
 
-Plain crashes / hangs from malformed files are ordinary bugs — file those as [regular GitHub issues](https://github.com/thebriangao/pebble/issues) with the offending file attached (the README lists what else to include). This is a beta; reports of every kind are incredibly welcome.
+Plain crashes / hangs from malformed files are ordinary bugs — file those as [regular GitHub issues](https://github.com/nullrouten0/pebble/issues) with the offending file attached (the README lists what else to include). This is a beta; reports of every kind are incredibly welcome.
 
 You can expect an acknowledgment within a few days. There's no bug bounty; you'll get credit in the changelog and my genuine thanks.
 
