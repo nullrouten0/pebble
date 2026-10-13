@@ -67,6 +67,9 @@ public struct WorldRecord: Codable {
     public var nextEntityId: Int
     /// Infinity Wipe blast zones (Systems/InfinityWipe.swift); nil when none
     public var wipes: [WipeZone]?
+    /// world generator version (GEN_VERSION when created); absent in worlds
+    /// made before 1.5, which are version 1
+    public var genVersion: Int?
 
     public init(id: String, name: String, seed: Int32, gameMode: Int, difficulty: Int) {
         self.id = id
@@ -84,6 +87,7 @@ public struct WorldRecord: Codable {
         dragonKilled = false
         gatewaysSpawned = 0
         nextEntityId = 1
+        genVersion = GEN_VERSION
     }
 }
 

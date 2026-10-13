@@ -193,6 +193,38 @@ registerAllBiomes()
 check("biome count = enum count", BIOMES.count == Biome.allCases.count, "got \(BIOMES.count)")
 
 
+/// snapshots named in PEBBLE_REGOLD ("terrain,feature", or "all" / "1") are
+/// rewritten from this run instead of checked — `pebble test --regold …`
+let REGOLD: Set<String> = Set((ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] ?? "")
+    .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
+func regolding(_ name: String) -> Bool { REGOLD.contains(name) || REGOLD.contains("all") || REGOLD.contains("1") }
+
+/// write a regenerated golden file with sorted keys (so it's byte-stable),
+/// printing every key path whose value changed — check that only what you
+/// meant to move moved
+func writeGolden(_ path: String, _ data: Data) {
+    guard let new = try? JSONSerialization.jsonObject(with: data) else { return }
+    let old = FileManager.default.contents(atPath: path).flatMap { try? JSONSerialization.jsonObject(with: $0) }
+    func diff(_ a: Any?, _ b: Any?, _ at: String, _ out: inout [String]) {
+        if let da = a as? [String: Any], let db = b as? [String: Any] {
+            for k in Set(da.keys).union(db.keys).sorted() { diff(da[k], db[k], at + "/" + k, &out) }
+        } else if let la = a as? [Any], let lb = b as? [Any], la.count == lb.count {
+            for i in la.indices { diff(la[i], lb[i], at + "[\(i)]", &out) }
+        } else if !((a as? NSObject)?.isEqual(b) ?? (a == nil && b == nil)) {
+            out.append(at)
+        }
+    }
+    var changed: [String] = []
+    diff(old, new, "", &changed)
+    if let sorted = try? JSONSerialization.data(withJSONObject: new, options: [.sortedKeys]) {
+        try? sorted.write(to: URL(fileURLWithPath: path))
+    }
+    let file = (path as NSString).lastPathComponent
+    if changed.isEmpty { print("    \(file): no values changed") }
+    for c in changed.prefix(40) { print("    \(file) changed: \(c)") }
+    if changed.count > 40 { print("    \(file): …and \(changed.count - 40) more") }
+}
+
 /// candidate paths for a golden file — goldens/ beside the package manifest,
 /// tolerant of being run from the repo root, its parent, or a subdirectory
 func goldenPaths(_ name: String) -> [String] {
@@ -287,11 +319,11 @@ if let g = loadJSON("biome-goldens.json") {
             }
         }
     }
-    check("10 BiomeDef spot checks (fields, features, spawns)", defOK)
+    check("10 BiomeDef spot checks (fields, features, spawns)", defOK || regolding("biome"))
 
     let temps = g["tempSamples"] as! [[String: Any]]
     // native baseline since the vanilla snow-lapse fix (PEBBLE_REGOLD regenerates)
-    if ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil {
+    if regolding("biome") {
         let captured = temps.map { s -> [String: Any] in
             let b = (s["b"] as! NSNumber).intValue
             let y = (s["y"] as! NSNumber).intValue
@@ -301,9 +333,14 @@ if let g = loadJSON("biome-goldens.json") {
             guard let d = FileManager.default.contents(atPath: path),
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["tempSamples"] = captured
+            // the spot-checked biomes' feature lists follow the code too
+            obj["defChecks"] = defs.map { d -> [String: Any] in
+                var d = d
+                if let def = BIOMES[(d["b"] as! NSNumber).intValue] { d["features"] = def.features }
+                return d
+            }
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
-                print("    REGENERATED tempSamples (\(captured.count))")
+                writeGolden(path, out)
             }
             break
         }
@@ -384,7 +421,7 @@ if let g = loadJSON("terrain-goldens.json") {
 
     // native baseline since the #26 worldgen quality pass (regenerate with
     // PEBBLE_REGOLD=1 after deliberate generation changes)
-    let tRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+    let tRegold = regolding("terrain")
     var tCaptured: [[String: Any]] = []
     let chunkList = g["chunks"] as! [[String: Any]]
     for (i, c) in chunkList.enumerated() {
@@ -473,7 +510,7 @@ if let g = loadJSON("terrain-goldens.json") {
             }
             obj["caveSamples"] = caves
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED terrain chunks (\(tCaptured.count)) + scalar samples -> \(path)")
             }
             break
@@ -552,22 +589,31 @@ if let g = loadJSON("feature-goldens.json") {
         h = (h ^ ((u >> 24) & 0xff)) &* 16777619
         return h
     }
-    // native baseline since the #26 worldgen quality pass (regenerate with
-    // PEBBLE_REGOLD=1 after deliberate generation changes)
-    let fRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
-    var fCaptured: [[String: Any]] = []
-    let cases = g["cases"] as! [[String: Any]]
+    // "cases" is a CONTRACT: generator version 1 must keep building exactly
+    // these chunks, because worlds made before 1.5 regenerate untouched land
+    // from the seed. Never regenerated. "casesV2" is the snapshot for new
+    // worlds (same chunks, current generator): --regold feature.
+    let contractCases = g["cases"] as! [[String: Any]]
     var totalMs = 0.0
+    for (version, key) in [(1, "cases"), (2, "casesV2")] {
+    let fRegold = version >= 2 && regolding("feature")
+    var fCaptured: [[String: Any]] = []
+    let stored = g[key] as? [[String: Any]]
+    if stored == nil && !fRegold {
+        check("feature-goldens.json has \(key)", false, "missing: run pebble test --regold feature")
+        continue
+    }
+    let cases = stored ?? contractCases
     for c in cases {
         let seed = (c["seed"] as! NSNumber).uint32Value
         let cx = (c["cx"] as! NSNumber).intValue
         let cz = (c["cz"] as! NSNumber).intValue
         let dim = Dim(rawValue: (c["dim"] as! NSNumber).intValue)!
         let t0 = DispatchTime.now()
-        let out = generateChunk(dim, seed, cx, cz)
+        let out = generateChunk(dim, seed, cx, cz, genVersion: version)
         let ms = Double(DispatchTime.now().uptimeNanoseconds - t0.uptimeNanoseconds) / 1e6
         totalMs += ms
-        let label = "d\(dim.rawValue) seed \(seed) (\(cx),\(cz))"
+        let label = "gen v\(version) d\(dim.rawValue) seed \(seed) (\(cx),\(cz))"
         let hBlocks = fnvU16(out.blocks)
         let hBiomes = fnvU8(out.biomes)
         var beHash: UInt32 = 2166136261
@@ -613,16 +659,16 @@ if let g = loadJSON("feature-goldens.json") {
         for path in goldenPaths("feature-goldens.json") {
             guard let d = FileManager.default.contents(atPath: path),
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
-            obj["cases"] = fCaptured
+            obj[key] = fCaptured
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
-                print("    REGENERATED feature cases (\(fCaptured.count)) -> \(path)")
+                writeGolden(path, out)
             }
             break
         }
-        check("features: goldens regenerated (native baseline)", true)
+        check("features: \(key) regenerated", true)
     }
-    print("  · full pipeline avg \(String(format: "%.1f", totalMs / Double(cases.count)))ms/chunk (debug build)")
+    }
+    print("  · full pipeline avg \(String(format: "%.1f", totalMs / Double(contractCases.count * 2)))ms/chunk")
 } else {
     check("feature-goldens.json loadable", false, "not found — run from the repo root (goldens/)")
 }
@@ -631,33 +677,36 @@ if let g = loadJSON("feature-goldens.json") {
 section("atlas painters (vs goldens)")
 
 if let g = loadJSON("atlas-goldens.json") {
-    let hashes = g["hashes"] as! [String: NSNumber]
+    // a snapshot of every painted tile (the fallback atlas used without a pack)
     let t0 = DispatchTime.now()
     let atlas = buildAtlas()
     let ms = Double(DispatchTime.now().uptimeNanoseconds - t0.uptimeNanoseconds) / 1e6
-    let baseCount = (g["count"] as! NSNumber).intValue
-    check("tile count (baseline range intact)", atlas.count >= baseCount,
-          "got \(atlas.count) want >= \(g["count"]!)")
     check("no missing painters", atlas.missing.isEmpty, "missing: \(atlas.missing.prefix(10))")
-    let names = Array(allTileNames().prefix(baseCount))
-    var mismatches: [String] = []
-    for (i, n) in names.enumerated() {
-        let h = fnvU8(atlas.pixels[i])
-        if h != hashes[n]?.uint32Value {
-            mismatches.append(n)
+    let names = allTileNames()
+    var hashes: [String: NSNumber] = [:]
+    for (i, n) in names.enumerated() where i < atlas.pixels.count { hashes[n] = NSNumber(value: fnvU8(atlas.pixels[i])) }
+    let sampleName = (g["sampleName"] as? String) ?? "grass_block_side"
+    if regolding("atlas") {
+        let sample = names.firstIndex(of: sampleName).map { Data(atlas.pixels[$0]).base64EncodedString() } ?? ""
+        let obj: [String: Any] = ["count": atlas.count, "hashes": hashes, "sampleName": sampleName, "sampleB64": sample]
+        if let path = goldenPaths("atlas-goldens.json").first(where: { FileManager.default.fileExists(atPath: $0) }),
+           let data = try? JSONSerialization.data(withJSONObject: obj) {
+            writeGolden(path, data)
         }
-    }
-    check("\(names.count) baseline tiles pixel-identical [\(String(format: "%.0f", ms))ms]", mismatches.isEmpty,
-          "\(mismatches.count) mismatched: \(mismatches.prefix(12))")
-    if !mismatches.isEmpty, let b64 = g["sampleB64"] as? String,
-       let sampleName = g["sampleName"] as? String,
-       mismatches.contains(sampleName),
-       let data = Data(base64Encoded: b64) {
-        let want = [UInt8](data)
-        let got = atlas.pixels[names.firstIndex(of: sampleName)!]
-        for i in 0..<min(want.count, got.count) where want[i] != got[i] {
-            print("    \(sampleName) byte[\(i)] px(\(i / 4 % 16),\(i / 64)) ch\(i % 4) got \(got[i]) want \(want[i])")
-            break
+        check("atlas: snapshot regenerated", true)
+    } else {
+        let want = g["hashes"] as! [String: NSNumber]
+        check("tile count", atlas.count == (g["count"] as! NSNumber).intValue, "got \(atlas.count) want \(g["count"]!)")
+        let mismatches = names.filter { hashes[$0] != want[$0] }
+        check("\(names.count) tiles pixel-identical [\(String(format: "%.0f", ms))ms]", mismatches.isEmpty,
+              "\(mismatches.count) differ: \(mismatches.prefix(12))")
+        if mismatches.contains(sampleName), let b64 = g["sampleB64"] as? String, let data = Data(base64Encoded: b64),
+           let idx = names.firstIndex(of: sampleName) {
+            let wantPx = [UInt8](data), gotPx = atlas.pixels[idx]
+            for k in 0..<min(wantPx.count, gotPx.count) where wantPx[k] != gotPx[k] {
+                print("    \(sampleName) byte[\(k)] px(\(k / 4 % 16),\(k / 64)) ch\(k % 4) got \(gotPx[k]) want \(wantPx[k])")
+                break
+            }
         }
     }
 } else {
@@ -689,7 +738,7 @@ if let g = loadJSON("mesh-goldens.json") {
     func litChunk(_ seed: UInt32, _ cx: Int, _ cz: Int) -> LitChunk {
         let key = "\(seed):\(cx),\(cz)"
         if let c = litCache[key] { return c }
-        let out = generateOverworldChunk(seed, cx, cz)
+        let out = generateChunk(.overworld, seed, cx, cz)
         let light = computeLocalLight(blocks: out.blocks, height: WORLD_H, hasSky: true)
         let c = LitChunk(blocks: out.blocks, biomes: out.biomes, sky: light.sky, blk: light.blk)
         litCache[key] = c
@@ -737,7 +786,7 @@ if let g = loadJSON("mesh-goldens.json") {
     if let lights = g["lights"] as? [[String: Any]] {
         var lightOK = true
         var lightCaptured: [[String: Any]] = []
-        let lRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+        let lRegold = regolding("mesh")
         for l in lights {
             let key = l["key"] as! String
             let parts = key.split(separator: ":")
@@ -763,7 +812,7 @@ if let g = loadJSON("mesh-goldens.json") {
                       var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
                 obj["lights"] = lightCaptured
                 if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                    try? out.write(to: URL(fileURLWithPath: path))
+                    writeGolden(path, out)
                     print("    REGENERATED mesh lights (\(lightCaptured.count))")
                 }
                 break
@@ -776,7 +825,7 @@ if let g = loadJSON("mesh-goldens.json") {
 
     // native baseline since the emitCross perpendicular-diagonal fix
     // (regenerate with PEBBLE_REGOLD=1 after deliberate mesher changes)
-    let meshRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+    let meshRegold = regolding("mesh")
     var meshCaptured: [[String: Any]] = []
     let meshCases = g["cases"] as! [[String: Any]]
     for c in meshCases {
@@ -851,7 +900,7 @@ if let g = loadJSON("mesh-goldens.json") {
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["cases"] = meshCaptured
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED mesh cases (\(meshCaptured.count)) -> \(path)")
             }
             break
@@ -916,7 +965,7 @@ if let g = loadJSON("worldsim-goldens.json") {
     let world = World(dim: .overworld, seed: 12345)
     for cz in -1...1 {
         for cx in -1...1 {
-            let out = generateOverworldChunk(12345, cx, cz)
+            let out = generateChunk(.overworld, 12345, cx, cz)
             let light = computeLocalLight(blocks: out.blocks, height: WORLD_H, hasSky: true)
             let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
             c.blocks = out.blocks
@@ -954,7 +1003,7 @@ if let g = loadJSON("worldsim-goldens.json") {
 
     // native baseline since the #26 worldgen quality pass (regenerate with
     // PEBBLE_REGOLD=1 after deliberate generation changes)
-    let wsRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+    let wsRegold = regolding("worldsim")
     var wsCaptured: [[String: Any]] = []
     let stages = g["stages"] as! [[String: Any]]
     var stageIdx = 0
@@ -1019,7 +1068,7 @@ if let g = loadJSON("worldsim-goldens.json") {
             obj["time"] = world.time
             obj["dayTime"] = world.dayTime
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED worldsim stages (\(wsCaptured.count)) -> \(path)")
             }
             break
@@ -1042,12 +1091,20 @@ registerAllRecipes()
 registerAllLootTables()
 
 if let g = loadJSON("items-goldens.json") {
-    // hashString === the baseline script's fnv (UTF-16 unit & 0xffff per char)
-    func num(_ k: String) -> Int { (g[k] as! NSNumber).intValue }
-    func hash32(_ k: String) -> UInt32 { UInt32(truncating: g[k] as! NSNumber) }
+    // a snapshot of every recipe, enchantment, effect, potion and loot table:
+    // each value is checked against the golden, or captured under --regold items
+    let regold = regolding("items")
+    var got: [String: Any] = [:]
+    func snap(_ key: String, _ value: Any, _ label: String) {
+        got[key] = value
+        if regold { return }
+        let want = g[key]
+        let same = (value as AnyObject).isEqual(want)
+        check(label, same, same ? "" : "got \(value) want \(want ?? "nothing")")
+    }
+    func h(_ s: String) -> NSNumber { NSNumber(value: hashString(s)) }
 
-    // recipes: the baseline prefix (new recipes are appended after it, like items)
-    let craftSer = craftingRecipes.prefix(num("craftCount")).map { r -> String in
+    let craftSer = craftingRecipes.map { r -> String in
         switch r {
         case .shaped(let w, let h, let grid, let out, let count):
             return "S|\(w)|\(h)|\(grid.map { $0 ?? "." }.joined(separator: ","))|\(out)|\(count)"
@@ -1055,117 +1112,63 @@ if let g = loadJSON("items-goldens.json") {
             return "L|\(inputs.joined(separator: ","))|\(out)|\(count)"
         }
     }.joined(separator: ";")
-    check("crafting recipe count", craftingRecipes.count >= num("craftCount"),
-          "got \(craftingRecipes.count) want at least \(num("craftCount"))")
-    check("crafting recipes hash", hashString(craftSer) == hash32("craftH"),
-          "got \(hashString(craftSer)) want \(hash32("craftH"))")
-
+    snap("craftCount", craftingRecipes.count, "crafting recipe count")
+    snap("craftH", h(craftSer), "crafting recipes hash")
     let smeltSer = smeltingRecipes.map {
         "\($0.input)>\($0.output)|\(Int(($0.xp * 1000 + 0.5).rounded(.down)))|\($0.kind)"
     }.joined(separator: ";")
-    check("smelting recipe count", smeltingRecipes.count == num("smeltCount"),
-          "got \(smeltingRecipes.count) want \(num("smeltCount"))")
-    check("smelting recipes hash", hashString(smeltSer) == hash32("smeltH"),
-          "got \(hashString(smeltSer)) want \(hash32("smeltH"))")
+    snap("smeltCount", smeltingRecipes.count, "smelting recipe count")
+    snap("smeltH", h(smeltSer), "smelting recipes hash")
+    snap("cutCount", stonecuttingRecipes.count, "stonecutting recipe count")
+    snap("cutH", h(stonecuttingRecipes.map { "\($0.input)>\($0.output)x\($0.count)" }.joined(separator: ";")), "stonecutting recipes hash")
+    snap("smithCount", smithingRecipes.count, "smithing recipe count")
+    snap("smithH", h(smithingRecipes.map { "\($0.template)+\($0.base)+\($0.addition)>\($0.output)" }.joined(separator: ";")), "smithing recipes hash")
+    snap("tagsH", h(TAGS.keys.sorted().map { "\($0):\(TAGS[$0]!.joined(separator: ","))" }.joined(separator: ";")), "tags hash")
+    snap("trimMaterials", TRIM_MATERIALS.joined(separator: ","), "trim materials")
 
-    let cutSer = stonecuttingRecipes.map { "\($0.input)>\($0.output)x\($0.count)" }.joined(separator: ";")
-    check("stonecutting recipe count", stonecuttingRecipes.count == num("cutCount"),
-          "got \(stonecuttingRecipes.count) want \(num("cutCount"))")
-    check("stonecutting recipes hash", hashString(cutSer) == hash32("cutH"),
-          "got \(hashString(cutSer)) want \(hash32("cutH"))")
-
-    let smithSer = smithingRecipes.map { "\($0.template)+\($0.base)+\($0.addition)>\($0.output)" }.joined(separator: ";")
-    check("smithing recipe count", smithingRecipes.count == num("smithCount"),
-          "got \(smithingRecipes.count) want \(num("smithCount"))")
-    check("smithing recipes hash", hashString(smithSer) == hash32("smithH"),
-          "got \(hashString(smithSer)) want \(hash32("smithH"))")
-
-    let tagsSer = TAGS.keys.sorted().map { "\($0):\(TAGS[$0]!.joined(separator: ","))" }.joined(separator: ";")
-    check("tags hash", hashString(tagsSer) == hash32("tagsH"),
-          "got \(hashString(tagsSer)) want \(hash32("tagsH"))")
-    check("trim materials", TRIM_MATERIALS.joined(separator: ",") == (g["trimMaterials"] as! String))
-
-    // enchantments
-    check("enchantment count", ENCHANTMENTS.count == num("enchCount"),
-          "got \(ENCHANTMENTS.count) want \(num("enchCount"))")
-    let enchGold = g["enchEntries"] as! [[String: Any]]
-    var enchOK = true, appliesOK = true
-    for (i, eg) in enchGold.enumerated() {
-        let e = ENCHANTMENTS[i]
-        let wantId = eg["id"] as! String
-        if e.id != wantId { enchOK = false; print("    ench[\(i)] id \(e.id) want \(wantId)"); continue }
+    // enchantments: definitions, power windows, and which items each applies to
+    snap("enchCount", ENCHANTMENTS.count, "enchantment count")
+    let enchEntries: [[String: Any]] = ENCHANTMENTS.map { e in
         var s = "\(e.id)|\(e.maxLevel)|\(e.weight)|\(e.target)|\(e.treasure ? 1 : 0)|\(e.curse ? 1 : 0)|\(e.tradeable ? 1 : 0)|\(e.exclusiveGroup ?? "-")"
         for l in 1...e.maxLevel { s += "|\(e.minPower(l))..\(e.maxPower(l))" }
-        if hashString(s) != UInt32(truncating: eg["h"] as! NSNumber) {
-            enchOK = false; print("    ench[\(i)] \(e.id) def hash mismatch: \(s)")
-        }
-        // baseline prefix only — items appended after the baseline (vines)
-        // aren't covered by the baseline-generated bitmaps
-        let applies = itemDefs.prefix(BASE_ITEM_COUNT).map { appliesTo(e, $0) ? "1" : "0" }.joined()
-        if hashString(applies) != UInt32(truncating: eg["applies"] as! NSNumber) {
-            appliesOK = false; print("    ench[\(i)] \(e.id) appliesTo bits mismatch")
-        }
+        let applies = itemDefs.map { appliesTo(e, $0) ? "1" : "0" }.joined()
+        return ["id": e.id, "h": h(s), "applies": h(applies)]
     }
-    check("39 enchantment defs + power windows bit-identical", enchOK)
-    check("appliesTo over baseline \(BASE_ITEM_COUNT) items × 39 enchs", appliesOK)
-
-    let compatSer = ENCHANTMENTS.map { a in
-        ENCHANTMENTS.map { b in compatible(a, b) ? "1" : "0" }.joined()
-    }.joined(separator: "|")
-    check("compatibility matrix hash", hashString(compatSer) == hash32("compatH"),
-          "got \(hashString(compatSer)) want \(hash32("compatH"))")
-
-    let enchabilitySer = itemDefs.prefix(BASE_ITEM_COUNT).map { "\($0.name):\(enchantability($0))" }.joined(separator: ";")
-    check("enchantability over baseline items", hashString(enchabilitySer) == hash32("enchabilityH"),
-          "got \(hashString(enchabilitySer)) want \(hash32("enchabilityH"))")
+    snap("enchEntries", enchEntries, "\(ENCHANTMENTS.count) enchantment defs, power windows and appliesTo")
+    snap("compatH", h(ENCHANTMENTS.map { a in ENCHANTMENTS.map { b in compatible(a, b) ? "1" : "0" }.joined() }.joined(separator: "|")),
+         "compatibility matrix hash")
+    snap("enchabilityH", h(itemDefs.map { "\($0.name):\(enchantability($0))" }.joined(separator: ";")), "enchantability hash")
 
     // effects / potions / brewing
-    let effectsSer = EFFECTS.map { "\($0.id)|\($0.displayName)|\($0.color)|\($0.beneficial ? 1 : 0)|\($0.instant ? 1 : 0)" }.joined(separator: ";")
-    check("effect count", EFFECTS.count == num("effectsCount"), "got \(EFFECTS.count) want \(num("effectsCount"))")
-    check("effects hash", hashString(effectsSer) == hash32("effectsH"),
-          "got \(hashString(effectsSer)) want \(hash32("effectsH"))")
-
-    let potionsSer = POTIONS.map { p in
+    snap("effectsCount", EFFECTS.count, "effect count")
+    snap("effectsH", h(EFFECTS.map { "\($0.id)|\($0.displayName)|\($0.color)|\($0.beneficial ? 1 : 0)|\($0.instant ? 1 : 0)" }.joined(separator: ";")),
+         "effects hash")
+    snap("potionsCount", POTIONS.count, "potion count")
+    snap("potionsH", h(POTIONS.map { p in
         "\(p.id)|\(p.displayName)|\(p.color)|\(p.effects.map { "\($0.effect):\($0.duration):\($0.amplifier)" }.joined(separator: ","))"
-    }.joined(separator: ";")
-    check("potion count", POTIONS.count == num("potionsCount"), "got \(POTIONS.count) want \(num("potionsCount"))")
-    check("potions hash", hashString(potionsSer) == hash32("potionsH"),
-          "got \(hashString(potionsSer)) want \(hash32("potionsH"))")
+    }.joined(separator: ";")), "potions hash")
+    snap("brewCount", BREW_RECIPES.count, "brew recipe count")
+    snap("brewH", h(BREW_RECIPES.map { "\($0.base)+\($0.ingredient)>\($0.result)" }.joined(separator: ";")), "brew recipes hash")
 
-    let brewSer = BREW_RECIPES.map { "\($0.base)+\($0.ingredient)>\($0.result)" }.joined(separator: ";")
-    check("brew recipe count", BREW_RECIPES.count == num("brewCount"), "got \(BREW_RECIPES.count) want \(num("brewCount"))")
-    check("brew recipes hash", hashString(brewSer) == hash32("brewH"),
-          "got \(hashString(brewSer)) want \(hash32("brewH"))")
-
-    // loot tables — 40 rolls per table, full stack serialization in RNG lockstep
+    // loot tables — 40 rolls per table, full stack serialization
     func serStack(_ s: ItemStack) -> String {
         var str = "\(itemDef(s.id).name)x\(s.count)"
         if !s.ench.isEmpty { str += "e[\(s.ench.map { "\($0.id):\($0.lvl)" }.joined(separator: ","))]" }
         if let pot = s.data.potion { str += "p[\(pot)]" }
         return str
     }
-    let lootGold = g["lootTables"] as! [[String: Any]]
-    check("loot table count + order", allLootTables() == lootGold.map { $0["name"] as! String },
-          "got \(allLootTables().count) tables")
-    var lootOK = true
-    for lg in lootGold {
-        let name = lg["name"] as! String
+    let loot: [[String: Any]] = allLootTables().map { name in
         var rng = RandomX(hashString(name))
         var parts: [String] = []
         for _ in 0..<40 {
             for s in rollLoot(name, &rng) { parts.append(serStack(s)) }
             parts.append(";")
         }
-        let h = hashString(parts.joined(separator: "|"))
-        if h != UInt32(truncating: lg["h"] as! NSNumber) {
-            lootOK = false
-            print("    loot \(name): got \(h) want \(UInt32(truncating: lg["h"] as! NSNumber))")
-        }
+        return ["name": name, "h": h(parts.joined(separator: "|"))]
     }
-    check("\(lootGold.count) loot tables × 40 rolls in RNG lockstep", lootOK)
+    snap("lootTables", loot, "\(loot.count) loot tables × 40 rolls")
 
-    // direct enchantStackRandomly probes (raw strings for debuggability)
-    let probeGold = g["enchProbes"] as! [String]
+    // enchantStackRandomly probes (raw strings, so a diff is readable)
     var probes: [String] = []
     for item in ["diamond_sword", "book", "fishing_rod", "diamond_chestplate", "diamond_pickaxe", "bow", "iron_boots", "diamond_hoe"] {
         for lvl in [1, 5, 10, 15, 20, 25, 30, 39, 50] {
@@ -1174,14 +1177,13 @@ if let g = loadJSON("items-goldens.json") {
             probes.append("\(item)@\(lvl)=\(itemDef(s.id).name):\(s.ench.map { "\($0.id):\($0.lvl)" }.joined(separator: ","))")
         }
     }
-    var probesOK = probes.count == probeGold.count
-    if probesOK {
-        for (i, p) in probes.enumerated() where p != probeGold[i] {
-            probesOK = false
-            print("    probe[\(i)] got \(p) want \(probeGold[i])")
-        }
+    snap("enchProbes", probes, "\(probes.count) enchant-randomly probes")
+
+    if regold, let path = goldenPaths("items-goldens.json").first(where: { FileManager.default.fileExists(atPath: $0) }),
+       let data = try? JSONSerialization.data(withJSONObject: got) {
+        writeGolden(path, data)
+        check("items: snapshot regenerated", true)
     }
-    check("\(probeGold.count) enchant-randomly probes byte-identical", probesOK)
 } else {
     check("items-goldens.json loadable", false, "not found — run from the repo root (goldens/)")
 }
@@ -1255,7 +1257,7 @@ if let g = loadJSON("entity-goldens.json") {
         let world = World(dim: .overworld, seed: 12345)
         for cz in -2...2 {
             for cx in -2...2 {
-                let out = generateOverworldChunk(12345, cx, cz)
+                let out = generateChunk(.overworld, 12345, cx, cz)
                 let light = computeLocalLight(blocks: out.blocks, height: WORLD_H, hasSky: true)
                 let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
                 c.blocks = out.blocks
@@ -1346,7 +1348,7 @@ if let g = loadJSON("entity-goldens.json") {
     // native baseline since entity-pushing landed (regenerate with
     // PEBBLE_REGOLD=1 after deliberate entity-behavior changes)
     let zooGold = g["zooStages"] as! [[String: Any]]
-    let zooRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+    let zooRegold = regolding("entity")
     var zooCaptured: [[String: Any]] = []
     var zooIdx = 0
     var zooOK = true
@@ -1369,7 +1371,7 @@ if let g = loadJSON("entity-goldens.json") {
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["zooStages"] = zooCaptured
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED zooStages (\(zooCaptured.count) checkpoints) -> \(path)")
             }
             break
@@ -1402,7 +1404,7 @@ if let g = loadJSON("entity-goldens.json") {
     // contains the player → native baseline since the vanilla-physics change
     // (regenerate with PEBBLE_REGOLD=1 after deliberate physics changes)
     let combatGold = g["combatStages"] as! [[String: Any]]
-    let combatRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+    let combatRegold = regolding("entity")
     var combatCaptured: [[String: Any]] = []
     var combatIdx = 0
     var combatOK = true
@@ -1427,7 +1429,7 @@ if let g = loadJSON("entity-goldens.json") {
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["combatStages"] = combatCaptured
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED combatStages (\(combatCaptured.count) checkpoints) -> \(path)")
             }
             break
@@ -1450,7 +1452,7 @@ if let g = loadJSON("entity-goldens.json") {
     // regression baseline now (regenerate with PEBBLE_REGOLD=1 after deliberate
     // physics changes) — these are native baselines, regenerated deliberately
     let physGold = g["physStages"] as! [[String: Any]]
-    let regold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+    let regold = regolding("entity")
     var physCaptured: [[String: Any]] = []
     var physIdx = 0
     var physOK = true
@@ -1485,7 +1487,7 @@ if let g = loadJSON("entity-goldens.json") {
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["physStages"] = physCaptured
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED physStages (\(physCaptured.count) checkpoints) -> \(path)")
             }
             break
@@ -1549,7 +1551,7 @@ if let g = loadJSON("entity-goldens.json") {
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["pathProbes"] = pathCaptured
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED pathProbes (8)")
             }
             break
@@ -1578,14 +1580,14 @@ if let g = loadJSON("entity-goldens.json") {
         .joined(separator: "|")
     // native baseline since the vanilla-1.20 spawn-light rework (regenerate
     // with PEBBLE_REGOLD=1 after deliberate spawning changes)
-    if ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil {
+    if regolding("entity") {
         for path in goldenPaths("entity-goldens.json") {
             guard let d = FileManager.default.contents(atPath: path),
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             obj["spawnCount"] = spawnWorld.entities.count - 1
             obj["spawnH"] = hashString(spawnedSer)
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED spawnCount=\(spawnWorld.entities.count - 1) spawnH")
             }
             break
@@ -1605,7 +1607,7 @@ if let g = loadJSON("entity-goldens.json") {
 // ---------------------------------------------------------------------------
 section("systems: crafting/BEs/redstone/explosion/interact/portals (vs goldens)")
 // terrain-dependent systems goldens re-baseline under PEBBLE_REGOLD
-let sysRegold = ProcessInfo.processInfo.environment["PEBBLE_REGOLD"] != nil
+let sysRegold = regolding("systems")
 var sysCaptured: [String: Any] = [:]
 registerAllSystems()
 
@@ -1622,7 +1624,7 @@ if let g = loadJSON("systems-goldens.json") {
         let world = World(dim: .overworld, seed: 12345)
         for cz in -1...1 {
             for cx in -1...1 {
-                let out = generateOverworldChunk(12345, cx, cz)
+                let out = generateChunk(.overworld, 12345, cx, cz)
                 let light = computeLocalLight(blocks: out.blocks, height: WORLD_H, hasSky: true)
                 let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
                 c.blocks = out.blocks
@@ -1980,7 +1982,7 @@ if let g = loadJSON("systems-goldens.json") {
                   var obj = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
             for (k, v) in sysCaptured { obj[k] = v }
             if let out = try? JSONSerialization.data(withJSONObject: obj) {
-                try? out.write(to: URL(fileURLWithPath: path))
+                writeGolden(path, out)
                 print("    REGENERATED systems keys: \(sysCaptured.keys.sorted().joined(separator: ", "))")
             }
             break
@@ -2689,12 +2691,27 @@ do {
     check("knownStacks empties only the bad slot",
           knownStacks([ItemStack(iid("stone"), 1), ItemStack(9999, 1), nil]).map { $0 != nil } == [true, false, false])
     check("leather boots count as leather boots", { p.armor[3] = ItemStack(iid("leather_boots"), 1); defer { p.armor[3] = nil }; return p.wearsLeatherBoots }())
+    // every generated chunk is saved, not just edited ones, so changes to
+    // world generation can't reshape land a player has already seen
+    g.saveAndFlush(synchronous: true)
+    let rec = g.worldRec!
+    let spawnKey = g.db.chunkKey(rec.id, 0, floorDiv(ifloor(p.x), 16), floorDiv(ifloor(p.z), 16))
+    check("an untouched chunk the player stood in is saved", g.db.getChunkKeys(rec.id).contains(spawnKey))
+    check("a new world uses the current generator", rec.genVersion == GEN_VERSION && w.genVersion == GEN_VERSION)
     // a player's death records the high-fall wording
     p.health = 1
     p.invulnTicks = 0   // the Feather Falling check above just hurt it
     p.fallDistance = 20
     p.onLand(20)
     check("dying from a long fall reads \"fell from a high place\"", p.data.deathCause == "fall_high")
+    // a world saved before 1.5 has no genVersion: it keeps generator 1
+    var old = g.worldRec!
+    g.exitToTitle()
+    old = g.db.listWorlds().first { $0.id == old.id } ?? old
+    old.genVersion = nil
+    g.db.putWorld(old)
+    g.loadWorld(old.id)
+    check("a pre-1.5 world reopens on generator version 1", g.world.genVersion == 1)
     g.exitToTitle()
 }
 

@@ -600,13 +600,6 @@ public func runFeature(_ parts: [String], _ s: ChunkSink, _ rng: inout RandomX, 
             }
         }
 
-    case "bee_nest", "cocoa", "badlands_gold", "emerald_ore":
-        // placed elsewhere — bee nests and cocoa by the tree builders, badlands
-        // gold and emeralds by Terrain.placeOres. The entries stay in the biome
-        // lists because each feature's salt is its position there: dropping one
-        // would reseed every feature after it and change existing worlds.
-        return
-
     case "huge_mushroom":
         let count = intArg(1)
         for _ in 0..<count {

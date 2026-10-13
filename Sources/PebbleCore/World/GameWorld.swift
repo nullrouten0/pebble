@@ -87,6 +87,8 @@ public struct BlockPos: Hashable {
 public final class World {
     public let dim: Dim
     public let seed: UInt32
+    /// which generator builds this world's new chunks (WorldRecord.genVersion)
+    public var genVersion = GEN_VERSION
     public var chunks: [Int64: Chunk] = [:]
     public var entities: [EntityRef] = []
     public var entityById: [Int: EntityRef] = [:]

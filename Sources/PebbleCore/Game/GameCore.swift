@@ -586,6 +586,7 @@ public final class GameCore {
         resetEntityIds(max(1, rec.nextEntityId))
         for d in [Dim.overworld, .nether, .end] {
             let w = World(dim: d, seed: UInt32(bitPattern: rec.seed))
+            w.genVersion = rec.genVersion ?? 1
             if let ds = rec.dims["\(d.rawValue)"] {
                 w.time = ds.time
                 w.dayTime = ds.dayTime
@@ -705,10 +706,12 @@ public final class GameCore {
         db.putWorld(rec)
         db.putPlayer(rec.id, ["dim": dim.rawValue, "data": player.save()])
         db.putAdvancements(rec.id, advancements.save())
-        // all modified chunks across all dims
+        // modified chunks, and every chunk never saved yet, across all dims.
+        // Saving each generated chunk once means later changes to world
+        // generation only reach land nobody has visited (CONTRIBUTING).
         var records: [ChunkRecord] = []
-        for (d, w) in worlds {
-            for c in w.chunks.values where c.modified {
+        for (d, w) in worlds where !w.isRemote {
+            for c in w.chunks.values where c.modified || !savedChunkKeys.contains(db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)) {
                 records.append(chunkRecord(rec.id, d, w, c))
             }
         }
@@ -804,6 +807,7 @@ public final class GameCore {
         let worldId = rec.id
         let d = w.dim
         let seed = w.seed
+        let genVersion = w.genVersion
         let height = w.info.height
         let hasSky = w.info.hasSky
         let saved = savedChunkKeys.contains(db.chunkKey(worldId, d.rawValue, cx, cz))
@@ -832,7 +836,7 @@ public final class GameCore {
                 c = LoadProf.shared.time("mkchunk") { Self.makeChunk(cx, cz, minY, height, blocks, savedRec.biomes!, light.sky, light.blk) }
             } else {
                 // fresh generation; a corrupt/entity-only record still re-attaches its entities
-                let out = LoadProf.shared.time("gen") { generateChunk(d, seed, cx, cz) }
+                let out = LoadProf.shared.time("gen") { generateChunk(d, seed, cx, cz, genVersion: genVersion) }
                 var blocks = out.blocks
                 cut(&blocks)
                 let light = LoadProf.shared.time("light") { computeLocalLight(blocks: blocks, height: height, hasSky: hasSky) }
@@ -1329,7 +1333,7 @@ public final class GameCore {
                         continue
                     }
                 }
-                let out = generateChunk(w.dim, w.seed, cx, cz)
+                let out = generateChunk(w.dim, w.seed, cx, cz, genVersion: w.genVersion)
                 let light = computeLocalLight(blocks: out.blocks, height: w.info.height, hasSky: w.info.hasSky)
                 adoptChunk(w, Self.makeChunk(cx, cz, w.info.minY, w.info.height, out.blocks, out.biomes, light.sky, light.blk),
                            out.blockEntities, saved != nil ? nil : out.entities, saved)
@@ -1387,9 +1391,11 @@ public final class GameCore {
     }
 
     private func unloadChunk(_ w: World, _ c: Chunk) {
-        // persist if edited, if live entities stand in it, or if its record may
-        // be stale: entities have left it, or block entities (chest contents,
-        // furnaces, signs) changed in place, which doesn't mark the chunk
+        // persist if it was never saved (every generated chunk is kept, so
+        // generation changes can't reshape visited land), if edited, if live
+        // entities stand in it, or if its record may be stale: entities have
+        // left it, or block entities (chest contents, furnaces, signs) changed
+        // in place, which doesn't mark the chunk
         var hasEntities = false
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
@@ -1398,10 +1404,10 @@ public final class GameCore {
                 break
             }
         }
-        if let rec = worldRec {
+        if let rec = worldRec, !w.isRemote {   // a LAN guest's chunks are the host's to keep
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
             let stale = c.savedEntities || !c.blockEntities.isEmpty
-            if c.modified || hasEntities || (stale && savedChunkKeys.contains(dbKey)) {
+            if !savedChunkKeys.contains(dbKey) || c.modified || hasEntities || stale {
                 let record = chunkRecord(rec.id, w.dim, w, c)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record

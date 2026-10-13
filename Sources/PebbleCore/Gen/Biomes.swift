@@ -38,8 +38,13 @@ public final class BiomeDef {
     public let under: UInt16
     public let underwaterTop: UInt16
     public let features: [String]
-    /// `features` split on ":" once, here — worldgen runs ~200 a chunk
+    /// `features` split on ":" once, here — worldgen runs ~200 a chunk.
+    /// Retired entries ("retired:…") stay in: generator version 1 counts them.
     public let featureParts: [[String]]
+    /// generator version 2: the live features, each with a salt hashed from
+    /// this biome's name and the feature's own text (repeats get a count), so
+    /// adding, removing or reordering one leaves the others' placement alone
+    public let seededFeatures: [(parts: [String], salt: UInt32)]
     public let monsters: [SpawnEntry]
     public let creatures: [SpawnEntry]
     public let waterCreatures: [SpawnEntry]
@@ -59,6 +64,13 @@ public final class BiomeDef {
         self.top = top; self.under = under; self.underwaterTop = underwaterTop
         self.features = features
         featureParts = features.map { $0.split(separator: ":").map(String.init) }
+        var seen: [String: UInt32] = [:]
+        seededFeatures = zip(features, featureParts).compactMap { text, parts in
+            if parts.first == "retired" { return nil }
+            let n = seen[text, default: 0]
+            seen[text] = n + 1
+            return (parts, hashString("\(name)|\(text)") &+ n &* 0x9e37_79b9)
+        }
         self.monsters = monsters; self.creatures = creatures
         self.waterCreatures = waterCreatures; self.ambient = ambient; self.mood = mood
     }
@@ -98,6 +110,11 @@ private let registerAllBiomesOnce: Void = {
     }
 
     let GRASS_PATCH = "patch:short_grass:24"
+    /// a feature that no longer runs, kept only so generator-version-1 worlds
+    /// (created before 1.5, which salt features by list position) still match:
+    /// bee nests and cocoa come from the tree builders, badlands gold and
+    /// emeralds from Terrain.placeOres
+    func RETIRED(_ feature: String) -> String { "retired:" + feature }
     func TREES(_ kind: String, _ count: Int, _ extra: Double = 0.1) -> String { "trees:\(kind):\(count):\(extra)" }
 
     // oceans
@@ -122,7 +139,7 @@ private let registerAllBiomesOnce: Void = {
 
     // temperate
     biome(.plains, "plains", temperature: 0.8, downfall: 0.4,
-          features: [TREES("oak_sparse", 0, 0.05), "flowers:plains:8", GRASS_PATCH, "pumpkin:32", "bee_nest:oak:40"],
+          features: [TREES("oak_sparse", 0, 0.05), "flowers:plains:8", GRASS_PATCH, "pumpkin:32", RETIRED("bee_nest:oak:40")],
           creatures: DEF_CREATURES + [("horse", 5, 2, 6), ("donkey", 1, 1, 3)])
     biome(.sunflowerPlains, "sunflower_plains", temperature: 0.8, downfall: 0.4,
           features: ["patch:sunflower:20", TREES("oak_sparse", 0, 0.05), "flowers:plains:8", GRASS_PATCH],
@@ -150,13 +167,13 @@ private let registerAllBiomesOnce: Void = {
           monsters: DEF_MONSTERS + [("slime", 100, 1, 1)],
           creatures: [("frog", 10, 2, 5)], mood: "dark")
     biome(.forest, "forest", temperature: 0.7, downfall: 0.8,
-          features: [TREES("oak_birch", 10), "flowers:forest:4", GRASS_PATCH, "patch:brown_mushroom:16", "bee_nest:oak:80"],
+          features: [TREES("oak_birch", 10), "flowers:forest:4", GRASS_PATCH, "patch:brown_mushroom:16", RETIRED("bee_nest:oak:80")],
           creatures: DEF_CREATURES + [("wolf", 5, 4, 4)])
     biome(.flowerForest, "flower_forest", temperature: 0.7, downfall: 0.8,
-          features: [TREES("oak_birch", 4), "flowers:flower_forest:40", GRASS_PATCH, "bee_nest:oak:20"],
+          features: [TREES("oak_birch", 4), "flowers:flower_forest:40", GRASS_PATCH, RETIRED("bee_nest:oak:20")],
           creatures: [("rabbit", 8, 2, 3)])
     biome(.birchForest, "birch_forest", temperature: 0.6, downfall: 0.6, grassColor: 0x88bb67, foliageColor: 0x6ba941,
-          features: [TREES("birch", 10), "flowers:forest:4", GRASS_PATCH, "bee_nest:birch:80"])
+          features: [TREES("birch", 10), "flowers:forest:4", GRASS_PATCH, RETIRED("bee_nest:birch:80")])
     biome(.oldGrowthBirchForest, "old_growth_birch_forest", temperature: 0.6, downfall: 0.6, grassColor: 0x88bb67, foliageColor: 0x6ba941,
           features: [TREES("tall_birch", 10), "flowers:forest:4", GRASS_PATCH])
     biome(.darkForest, "dark_forest", temperature: 0.7, downfall: 0.8, grassColor: 0x507a32, foliageColor: 0x59ae30,
@@ -183,14 +200,14 @@ private let registerAllBiomesOnce: Void = {
     biome(.windsweptSavanna, "windswept_savanna", temperature: 1.1, downfall: 0, grassColor: 0xbfb755, foliageColor: 0xaea42a,
           features: [TREES("acacia", 1), "patch:short_grass:40"])
     biome(.windsweptHills, "windswept_hills", temperature: 0.2, downfall: 0.3,
-          features: [TREES("spruce", 0, 0.05), GRASS_PATCH, "emerald_ore:1"],
+          features: [TREES("spruce", 0, 0.05), GRASS_PATCH, RETIRED("emerald_ore:1")],
           creatures: DEF_CREATURES + [("llama", 5, 4, 6)])
     biome(.windsweptGravellyHills, "windswept_gravelly_hills", temperature: 0.2, downfall: 0.3, top: gravel, under: gravel,
-          features: [TREES("spruce", 0, 0.05), "emerald_ore:1"])
+          features: [TREES("spruce", 0, 0.05), RETIRED("emerald_ore:1")])
     biome(.windsweptForest, "windswept_forest", temperature: 0.2, downfall: 0.3, top: cell(B.coarse_dirt),
-          features: [TREES("oak_spruce", 3), GRASS_PATCH, "emerald_ore:1"])
+          features: [TREES("oak_spruce", 3), GRASS_PATCH, RETIRED("emerald_ore:1")])
     biome(.jungle, "jungle", temperature: 0.95, downfall: 0.9, grassColor: 0x59c93c, foliageColor: 0x30bb0b,
-          features: [TREES("jungle", 14), "patch:short_grass:50", "patch:fern:20", "melon:32", "vines:40", "flowers:jungle:6", "cocoa:8"],
+          features: [TREES("jungle", 14), "patch:short_grass:50", "patch:fern:20", "melon:32", "vines:40", "flowers:jungle:6", RETIRED("cocoa:8")],
           creatures: DEF_CREATURES + [("parrot", 40, 1, 2), ("panda", 1, 1, 2), ("ocelot", 2, 1, 3), ("chicken", 10, 4, 4)])
     biome(.sparseJungle, "sparse_jungle", temperature: 0.95, downfall: 0.8, grassColor: 0x64c73f, foliageColor: 0x3eb80f,
           features: [TREES("jungle_sparse", 2), "patch:short_grass:40", "melon:64", "vines:20"],
@@ -200,18 +217,18 @@ private let registerAllBiomesOnce: Void = {
           creatures: DEF_CREATURES + [("parrot", 40, 1, 2), ("panda", 80, 1, 2), ("ocelot", 2, 1, 3)])
     let bTop = cell(B.red_sand), bUnder = cell(B.terracotta)
     biome(.badlands, "badlands", temperature: 2.0, downfall: 0, grassColor: 0x90814d, foliageColor: 0x9e814d, top: bTop, under: bUnder, underwaterTop: bTop,
-          features: ["patch:dead_bush:6", "cactus:2", "badlands_gold:1"], creatures: [])
+          features: ["patch:dead_bush:6", "cactus:2", RETIRED("badlands_gold:1")], creatures: [])
     biome(.erodedBadlands, "eroded_badlands", temperature: 2.0, downfall: 0, grassColor: 0x90814d, foliageColor: 0x9e814d, top: bTop, under: bUnder, underwaterTop: bTop,
-          features: ["hoodoo:6", "patch:dead_bush:6", "cactus:2", "badlands_gold:1"], creatures: [])
+          features: ["hoodoo:6", "patch:dead_bush:6", "cactus:2", RETIRED("badlands_gold:1")], creatures: [])
     biome(.woodedBadlands, "wooded_badlands", temperature: 2.0, downfall: 0, grassColor: 0x90814d, foliageColor: 0x9e814d, top: cell(B.coarse_dirt), under: bUnder, underwaterTop: bTop,
-          features: [TREES("oak_small", 3), "patch:dead_bush:6", "badlands_gold:1"], creatures: [])
+          features: [TREES("oak_small", 3), "patch:dead_bush:6", RETIRED("badlands_gold:1")], creatures: [])
 
     // mountain
     biome(.meadow, "meadow", temperature: 0.5, downfall: 0.8, grassColor: 0x83bb6d, foliageColor: 0x63a948,
           features: ["flowers:meadow:30", "patch:tall_grass:20", TREES("oak_bee", 0, 0.02)],
           creatures: [("sheep", 12, 2, 4), ("donkey", 1, 1, 2), ("rabbit", 2, 2, 6)])
     biome(.cherryGrove, "cherry_grove", temperature: 0.5, downfall: 0.8, grassColor: 0xb6db61, foliageColor: 0xb6db61, waterColor: 0x5db7ef,
-          features: [TREES("cherry", 4), "patch:pink_petals:30", "flowers:cherry:6", "bee_nest:cherry:40"],
+          features: [TREES("cherry", 4), "patch:pink_petals:30", "flowers:cherry:6", RETIRED("bee_nest:cherry:40")],
           creatures: [("sheep", 12, 2, 4), ("rabbit", 2, 2, 6), ("pig", 10, 4, 4)])
     biome(.grove, "grove", temperature: -0.2, downfall: 0.8, top: cell(B.snow_block), under: cell(B.dirt),
           features: [TREES("spruce", 10)],

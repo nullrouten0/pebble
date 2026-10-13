@@ -194,7 +194,14 @@ cmd_update() {
 cmd_run()  { open "$APP" 2>/dev/null || die "Pebble isn't installed yet — run: pebble install"; }
 cmd_test() {
     if [ "${1:-}" = "ios" ]; then cmd_test_ios; return; fi
-    need_swift; (cd "$REPO" && "$PEBBLE_SWIFT" run -c release pebsmoke)
+    # --regold terrain,feature (or all): rewrite those snapshots from this run
+    # and list every value that changed (see CONTRIBUTING, "Tests")
+    local regold=""
+    if [ "${1:-}" = "--regold" ]; then
+        [ -n "${2:-}" ] || die "usage: pebble test --regold <name,name…|all>  (names: goldens/<name>-goldens.json)"
+        regold="$2"
+    fi
+    need_swift; (cd "$REPO" && PEBBLE_REGOLD="$regold" "$PEBBLE_SWIFT" run -c release pebsmoke)
 }
 
 # the golden suite inside the iOS Simulator runtime (same seeds, same worlds)
@@ -285,7 +292,8 @@ case "${1:-}" in
         echo "  ./pebble install    build from source and install ~/Applications/$APP_NAME.app"
         echo "  pebble update       pull the latest version and update the live app"
         echo "  pebble run          launch Pebble"
-        echo "  pebble test         run the golden test suite (pebble test ios: in the iOS Simulator)"
+        echo "  pebble test         run the golden test suite (pebble test ios: in the iOS Simulator;"
+        echo "                      pebble test --regold terrain,feature: regenerate those snapshots)"
         echo "  pebble ios          generate + open the iOS Xcode project (ios build | ios run: simulator)"
         ;;
 esac
