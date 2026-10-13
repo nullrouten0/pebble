@@ -274,8 +274,14 @@ public func anvilCombine(_ left: ItemStack?, _ right: ItemStack?, _ rename: Stri
     }
     if cost <= 0 { return nil }
     out.data.priorWork = prior + 1
-    return AnvilResult(out: out, cost: min(39, Int(cost.rounded(.up))))
+    // vanilla: 40 levels or more is "Too Expensive!" in survival, except that
+    // a rename alone is held at 39 so an item can always be renamed
+    let levels = Int(cost.rounded(.up))
+    return AnvilResult(out: out, cost: right == nil ? min(39, levels) : levels)
 }
+
+/// survival anvils refuse jobs costing this many levels or more
+public let ANVIL_TOO_EXPENSIVE = 40
 
 /// grindstone: strip enchants, repair by combining, return XP value
 public func grindstoneResult(_ a: ItemStack?, _ b: ItemStack?) -> (out: ItemStack, xp: Int)? {

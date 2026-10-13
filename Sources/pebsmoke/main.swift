@@ -1300,7 +1300,6 @@ if let g = loadJSON("entity-goldens.json") {
         if e is Parrot { e.data.variant = i % 5 }
         if e is Frog { e.data.variant = i % 3 }
         if e is Axolotl { e.data.variant = i % 4 }
-        if e is Panda { e.data.gene = "normal" }
         if let goat = e as? Goat { goat.screaming = false }
         if let z = e as? Zombie {
             z.baby = false; z.speed = 0.095
@@ -2672,6 +2671,16 @@ do {
     let creeper = mob("creeper") as! Creeper
     creeper.charged = true
     check("a charged creeper stays charged", (reload(creeper) as! Creeper).charged)
+    // anvil: vanilla's 40-level limit, with renames held at 39
+    let worn = ItemStack(iid("iron_sword"), 1, damage: 100)
+    worn.data.priorWork = 5
+    let worn2 = worn.copy()
+    let pricey = anvilCombine(worn, worn2, nil)
+    check("a heavily reworked repair costs 40+ (Too Expensive)", (pricey?.cost ?? 0) >= ANVIL_TOO_EXPENSIVE, "cost \(pricey?.cost ?? -1)")
+    let veteran = worn.copy()
+    veteran.data.priorWork = 6   // 63 levels of prior-work penalty
+    let rename = anvilCombine(veteran, nil, "Old Faithful")
+    check("renaming it alone stays at 39", rename?.cost == 39, "cost \(rename?.cost ?? -1)")
     // stacks from a newer build or a bad LAN peer
     // stone is item 0: the old LAN check (id > 0) silently dropped stacks of it
     check("stone (item 0) is a known stack", ItemStack(iid("stone"), 1).isKnown)

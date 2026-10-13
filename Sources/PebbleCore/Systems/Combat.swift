@@ -313,9 +313,6 @@ public func registerCombatBindings() {
         } else if t == "villager" {
             let witch = spawnMob(w, "witch", e.x, e.y, e.z, SpawnOpts())
             if witch != nil { e.remove() }
-        } else if t == "mooshroom" {
-            // toggles brown/red — flavor
-            e.data.brown = !(e.data.brown ?? false)
         }
     }
 }

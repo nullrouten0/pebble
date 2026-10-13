@@ -17,20 +17,17 @@ public struct EntityData: Codable, Equatable {
     public var variant: Int?
     public var color: Int?
     public var size: Int?
-    public var pattern: Int?
     /// creeper fuse, 0…1 (drawn as the creeper swelling)
     public var swelling: Double?
     public var grazing: Bool?
     public var buckTimer: Int?
     public var baby: Bool?
-    public var brown: Bool?
     public var sheared: Bool?
     public var charged: Bool?
     public var captain: Bool?
     public var hanging: Bool?
     public var persistent: Bool?
     public var open: Double?
-    public var gene: String?
     public var deathCause: String?
     public var deathAttacker: String?
     public var swimTarget: [Double]?

@@ -648,7 +648,8 @@ final class AnvilScreen: ContainerScreen {
             }))
         containerSlots.last!.canTake = { [weak self, weak game] in
             guard let self, let game else { return false }
-            return game.player.gameMode == GameMode.creative || game.player.xpLevel >= self.cost
+            return game.player.gameMode == GameMode.creative
+                || (self.cost < ANVIL_TOO_EXPENSIVE && game.player.xpLevel >= self.cost)
         }
     }
     func refresh() {
@@ -669,9 +670,10 @@ final class AnvilScreen: ContainerScreen {
     override func draw(_ ui: UIManager, _ game: GameCore) {
         super.draw(ui, game)
         if cost > 0 {
-            // anvilCombine caps cost at 39, so vanilla's "Too Expensive!" never applies
-            let ok = game.player.gameMode == GameMode.creative || game.player.xpLevel >= cost
-            ui.cv.drawText("Enchantment Cost: \(cost)",
+            let creative = game.player.gameMode == GameMode.creative
+            let tooExpensive = cost >= ANVIL_TOO_EXPENSIVE && !creative
+            let ok = creative || (!tooExpensive && game.player.xpLevel >= cost)
+            ui.cv.drawText(tooExpensive ? "Too Expensive!" : "Enchantment Cost: \(cost)",
                            panelX + 8, panelY + 71, 1, ok ? "#80ff20" : "#ff5050")
         }
         if !textured {

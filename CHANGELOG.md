@@ -3,6 +3,17 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.4.11 — 2026-10-13 — anvils are "Too Expensive!" again
+
+- **Anvils follow Minecraft's limit:** a job costing 40 levels or more says
+  "Too Expensive!" and can't be taken in survival (creative ignores the
+  limit). Renaming alone is held at 39, so you can always rename an item.
+  Pebble used to cap every job at 39, so heavily reworked gear could be
+  combined forever.
+- Mob data that nothing drew is gone: the brown mooshroom toggle from
+  lightning, tropical fish patterns and panda genes. Spawns are unchanged
+  (their random draws stay).
+
 ## 1.4.10 — 2026-10-13 — fewer strings standing in for types
 
 No visible changes. Which hand an item use runs in and a mob's spawning

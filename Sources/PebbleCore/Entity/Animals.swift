@@ -968,7 +968,7 @@ public final class Panda: Animal {
         attackDamage = 6
         foods = ["bamboo"]
         xpReward = 4
-        data.gene = ["normal", "lazy", "playful", "worried", "weak", "aggressive", "brown"][gameRng.nextInt(7)]
+        _ = gameRng.nextInt(7)   // was a personality gene nothing read; the draw keeps spawns the same
         addBasicGoals(0.9)
         targetGoals.add(HurtByTargetGoal(self, 1))
         goals.add(MeleeAttackGoal(self, 2, 1.1))
@@ -1269,7 +1269,7 @@ public final class TropicalFish: AbstractFish {
     public override init(world: World) {
         super.init(world: world)
         bucketItem = "tropical_fish_bucket"
-        data.pattern = gameRng.nextInt(12)
+        _ = gameRng.nextInt(12)   // was a colour pattern nothing drew; the draw keeps spawns the same
     }
     public override func drops() -> [DropEntry] { [DropEntry("tropical_fish")] }
 }

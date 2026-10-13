@@ -482,13 +482,13 @@ public final class NetClient {
         if tickN % 600 == 0 { sendSave() }
     }
 
-    private func sendInventoryIfChanged(force: Bool = false) {
+    private func sendInventoryIfChanged() {
         guard let p = game.player else { return }
         var w = ByteWriter(capacity: 2048)
         for s in p.inventory { w.stack(s) }
         for s in p.armor { w.stack(s) }
         w.stack(p.offHand)
-        if !force && w.data == invFingerprint { return }
+        if w.data == invFingerprint { return }
         invFingerprint = w.data
         send(.inventory, w)
     }
