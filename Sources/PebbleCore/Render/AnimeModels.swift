@@ -9,7 +9,7 @@ import Foundation
 
 /// what a box is for, so the painter knows how to colour it
 private enum Role {
-    case head, snout, beak, ear, body, leg, foot, tail, tailTip, wing, cheek, collar, bell, leaf, scarf, tuft
+    case head, snout, beak, ear, body, belly, bodyDark, leg, legDark, legSock, foot, tail, tailTip, wing, cheek, collar, bell, leaf, scarf, tuft
 }
 
 private struct PlacedBox {
@@ -59,24 +59,20 @@ func buildAnimeModel(_ s: AnimeAnimalSpec) -> MobModel {
     let (bw, bh, bl) = s.body
     let lh = s.legH
 
-    // ---- body, legs and where the head sits ---------------------------------
-    let headPivot: (Double, Double, Double)
-    let headZ: Double   // the head box's back-to-front placement (front face at headZ)
-    switch s.plan {
-    case .quad:
-        part("body", (0, lh, 0))
-        add("body", .body, -bw / 2, 0, -bl / 2, bw, bh, bl)
-        let lx = bw / 2 - 1.5, lz = bl / 2 - 1.5
-        for (n, x, z) in [("legFR", -lx, -lz), ("legFL", lx, -lz), ("legBR", -lx, lz), ("legBL", lx, lz)] {
-            part(n, (x, lh, z))
-            add(n, .leg, -1, -lh, -1, 2, lh, 2)
-        }
-        // the head sits up on the front of the body, overlapping it
-        headPivot = (0, lh + bh * 0.55, -bl / 2 + 1.5)
-        headZ = -hd + 2
-    case .biped:
-        part("body", (0, lh, 0))
-        add("body", .body, -bw / 2, 0, -bl / 2, bw, bh, bl)
+    /// one leg hanging from the body's underside at (x, z): w wide, lh tall
+    func leg(_ n: String, _ x: Double, _ z: Double, _ w: Double, _ role: Role = .leg) {
+        part(n, (x, lh, z))
+        add(n, role, -w / 2, -lh, -w / 2, w, lh, w)
+    }
+    /// four legs, inset from the body's corners; front and back can differ
+    func fourLegs(front: Double, back: Double, inset: Double = 1.5, role: Role = .leg) {
+        let fx = bw / 2 - max(inset, front / 2 + 0.5), bx = bw / 2 - max(inset, back / 2 + 0.5)
+        let fz = -bl / 2 + max(inset, front / 2 + 0.5), bz = bl / 2 - max(inset, back / 2 + 0.5)
+        leg("legFR", -fx, fz, front, role); leg("legFL", fx, fz, front, role)
+        leg("legBR", -bx, bz, back, role); leg("legBL", bx, bz, back, role)
+    }
+    /// two bird legs with flat feet, and a wing or flipper on each side
+    func birdLegsAndWings(wingH: Double, wingD: Double) {
         for (n, x) in [("legR", -bw / 4), ("legL", bw / 4)] {
             part(n, (x, lh, 0))
             add(n, .leg, -0.5, -lh, -0.5, 1, lh, 1)
@@ -84,8 +80,93 @@ func buildAnimeModel(_ s: AnimeAnimalSpec) -> MobModel {
         }
         for (n, x, side) in [("wingR", -bw / 2, -1.0), ("wingL", bw / 2, 1.0)] {
             part(n, (x, lh + bh - 1, 0))
-            add(n, .wing, side < 0 ? -1 : 0, -(bh - 2), -bl / 2 + 1.5, 1, bh - 2, bl - 3)
+            add(n, .wing, side < 0 ? -1 : 0, -wingH, -wingD / 2, 1, wingH, wingD)
         }
+    }
+
+    // ---- each animal's body, legs, head position and tail -------------------
+    var headPivot = (0.0, lh + bh * 0.55, -bl / 2 + 1.5)   // up on the front of the body
+    var headZ = -hd + 2                                   // the head box's front face
+    var tailBase = (0.0, lh + bh - 1.5, bl / 2)
+    var tailThick = 3.0, tailLen = 5.0, tailTip = 2.0, tailPitch = -0.5
+    part("body", (0, lh, 0))
+    add("body", .body, -bw / 2, 0, -bl / 2, bw, bh, bl)
+    switch s.shape {
+    case .mound:
+        // a soft round bun: rounded top, haunches at the back, big flat hind
+        // feet and tiny front paws
+        add("body", .body, -bw / 2 + 1, bh, -bl / 2 + 1, bw - 2, 1.5, bl - 2)
+        add("body", .body, -bw / 2 - 1, 0, bl / 2 - 4.5, 1.5, 3.5, 4)
+        add("body", .body, bw / 2 - 0.5, 0, bl / 2 - 4.5, 1.5, 3.5, 4)
+        leg("legFR", -1.5, -bl / 2 + 1, 1.5); leg("legFL", 1.5, -bl / 2 + 1, 1.5)
+        for (n, x) in [("legBR", -bw / 2 + 0.75), ("legBL", bw / 2 - 0.75)] {
+            part(n, (x, lh, bl / 2 - 2))
+            add(n, .leg, -1.25, -lh, -1.5, 2.5, lh, 3)
+            add(n, .foot, -1.25, -lh, -4.5, 2.5, 1, 3)        // long flat hind foot
+        }
+        headPivot = (0, lh + bh * 0.7, -bl / 2 + 2)
+        tailBase = (0, lh + bh * 0.6, bl / 2)
+    case .slender:
+        // a fox kit: narrow, deep chest, long thin legs, big brush tails
+        add("body", .belly, -bw / 2 + 0.5, -0.5, -bl / 2 - 0.5, bw - 1, bh, 3)
+        fourLegs(front: 1.5, back: 1.5)
+        headPivot = (0, lh + bh * 0.7, -bl / 2 + 1)
+        tailThick = 3.5; tailLen = 6; tailTip = 2.5
+    case .sleek:
+        // a cat: sleek and level, thin legs, a long thin tail held straight up
+        fourLegs(front: 1.5, back: 1.5)
+        headPivot = (0, lh + bh * 0.75, -bl / 2 + 1)
+        tailThick = 1.5; tailLen = 8; tailTip = 1.5; tailPitch = -1.25
+        tailBase = (0, lh + bh - 1, bl / 2 - 0.5)
+    case .tubby:
+        // a raccoon-dog: round pot belly sagging between stubby legs
+        add("body", .belly, -bw / 2 + 1, 0.5, -bl / 2 - 1, bw - 2, bh - 2, 1.5)
+        add("body", .belly, -bw / 2 + 1, -1, -bl / 2 + 1, bw - 2, 1.5, bl - 2)
+        add("body", .body, -bw / 2 + 1, bh, -bl / 2 + 1, bw - 2, 1, bl - 2)
+        fourLegs(front: 2.5, back: 2.5, inset: 1.5)
+        headPivot = (0, lh + bh * 0.6, -bl / 2 + 1.5)
+        tailThick = 4; tailLen = 6; tailPitch = -0.15
+        tailBase = (0, lh + bh * 0.45, bl / 2)
+    case .chunky:
+        // a panda: big round body, black shoulder band and thick black legs
+        add("body", .bodyDark, -bw / 2 + 0.5, bh, -bl / 2 + 0.5, bw - 1, 1.5, 5)
+        add("body", .body, -bw / 2 + 1, bh, -bl / 2 + 5.5, bw - 2, 1, bl - 7)
+        fourLegs(front: 3, back: 3, inset: 2, role: .legDark)
+        headPivot = (0, lh + bh * 0.65, -bl / 2 + 1.5)
+        tailThick = 2; tailLen = 2; tailPitch = -0.6
+    case .ruff:
+        // a shiba: compact, a fluffy white chest ruff, white socks, curled tail
+        add("body", .belly, -bw / 2 - 0.5, 0, -bl / 2 - 1.5, bw + 1, bh - 0.5, 2.5)
+        fourLegs(front: 2, back: 2, role: .legSock)
+        headPivot = (0, lh + bh * 0.75, -bl / 2 + 1)
+        tailThick = 3.5; tailLen = 4; tailPitch = -1.9
+    case .long:
+        // a red panda: long and low, dark legs, a huge ringed tail
+        fourLegs(front: 2, back: 2, role: .legDark)
+        headPivot = (0, lh + bh * 0.6, -bl / 2 + 1)
+        tailThick = 4; tailLen = 10; tailPitch = -0.3
+        tailBase = (0, lh + bh - 2, bl / 2)
+    case .ball:
+        // a hamster: nearly a ball, head sunk into the front, feet just peeking out
+        add("body", .body, -bw / 2 + 1, bh, -bl / 2 + 1, bw - 2, 1, bl - 2)
+        add("body", .belly, -bw / 2 + 1.5, 0.5, -bl / 2 - 0.5, bw - 3, bh - 2, 1)
+        fourLegs(front: 1.5, back: 1.5, inset: 2)
+        headPivot = (0, lh + 0.5, -bl / 2 + 2.5)
+        headZ = -hd + 2.5
+    case .egg:
+        // a penguin: an upright egg, wider at the bottom, white belly bulge
+        add("body", .body, -bw / 2 - 0.5, 0, -bl / 2 - 0.5, bw + 1, 3, bl + 1)
+        add("body", .body, -bw / 2 + 1, bh, -bl / 2 + 1, bw - 2, 1, bl - 2)
+        add("body", .belly, -bw / 2 + 1.5, 1, -bl / 2 - 1, bw - 3, bh - 2.5, 1)
+        birdLegsAndWings(wingH: bh - 1.5, wingD: 3)
+        headPivot = (0, lh + bh + 0.5, 0)
+        headZ = -hd / 2
+    case .puffball:
+        // a chick: a fluffy ball on thin legs, tiny wings
+        add("body", .body, -bw / 2 + 1, bh, -bl / 2 + 1, bw - 2, 1, bl - 2)
+        add("body", .body, -bw / 2 + 1, -1, -bl / 2 + 1, bw - 2, 1, bl - 2)
+        add("body", .body, -bw / 2 - 0.5, 1, -bl / 2 + 1, bw + 1, bh - 2, bl - 2)
+        birdLegsAndWings(wingH: 3, wingD: 3)
         headPivot = (0, lh + bh, 0)
         headZ = -hd / 2
     }
@@ -142,8 +223,8 @@ func buildAnimeModel(_ s: AnimeAnimalSpec) -> MobModel {
         add("earR", .tuft, 0.5, hh, earZ, 1, 1.5, 1)
     }
 
-    // ---- tails ---------------------------------------------------------------
-    let tailBase: (Double, Double, Double) = s.plan == .quad ? (0, lh + bh - 1.5, bl / 2) : (0, lh + 1.5, bl / 2)
+    // ---- tails (sized and angled by the body shape above) ----------------------
+    let half = tailThick / 2
     switch s.tail {
     case .none:
         break
@@ -151,26 +232,26 @@ func buildAnimeModel(_ s: AnimeAnimalSpec) -> MobModel {
         part("tail", tailBase)
         add("tail", .tailTip, -1.5, -1.5, -0.5, 3, 3, 2)
     case .stub:
-        part("tail", tailBase, rot: (-0.5, 0, 0))
-        add("tail", .tail, -1, -1, 0, 2, 2, 3)
-    case .fluffy:
-        part("tail", tailBase, rot: (-0.35, 0, 0))
-        add("tail", .tail, -1.5, -1.5, 0, 3, 3, 5)
-        add("tail", .tailTip, -1.5, -1.5, 5, 3, 3, 2)
+        part("tail", tailBase, rot: (tailPitch, 0, 0))
+        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+    case .thin:
+        part("tail", tailBase, rot: (tailPitch, 0, 0))
+        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+        add("tail", .tailTip, -half, -half, tailLen, tailThick, tailThick, tailTip)
     case .triple:
-        for (n, yaw) in [("tail", 0.0), ("tail2", -0.55), ("tail3", 0.55)] {
+        for (n, yaw) in [("tail", 0.0), ("tail2", -0.6), ("tail3", 0.6)] {
             part(n, tailBase, rot: (-0.95, yaw, 0))   // fanned up and out
-            add(n, .tail, -1.5, -1.5, 0, 3, 3, 5)
-            add(n, .tailTip, -1.5, -1.5, 5, 3, 3, 2)
+            add(n, .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+            add(n, .tailTip, -half, -half, tailLen, tailThick, tailThick, tailTip)
         }
     case .curl:
         // up over the back, the way a shiba carries it
-        part("tail", tailBase, rot: (-1.9, 0, 0))
-        add("tail", .tail, -1.5, -1.5, 0, 3, 3, 4)
-        add("tail", .tailTip, -1, -1, 4, 2, 2, 2)
+        part("tail", tailBase, rot: (tailPitch, 0, 0))
+        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+        add("tail", .tailTip, -half + 0.5, -half + 0.5, tailLen, tailThick - 1, tailThick - 1, 2)
     case .ringed:
-        part("tail", tailBase, rot: (-0.55, 0, 0))
-        add("tail", .tail, -1.5, -1.5, 0, 3, 3, 7)
+        part("tail", tailBase, rot: (tailPitch, 0, 0))
+        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
     }
 
     let texH = max(32, ((packer.usedHeight + 15) / 16) * 16)
@@ -236,10 +317,23 @@ private func paintAnime(_ k: EntitySkin, _ s: AnimeAnimalSpec, _ boxes: [PlacedB
                 k.fill(left.0 + d - band, left.1, band, h, s.dark, 0.04)
                 k.fill(front.0, front.1, w, h, s.dark, 0.04)
             }
-        case .leg:
-            let c = s.plan == .biped ? s.dark : (s.extra == .pandaPatches || s.extra == .mask ? s.dark : s.fur)
+        case .belly:
+            k.box(u, v, w, h, d, s.light, 0.04)
+        case .bodyDark:
+            k.box(u, v, w, h, d, s.dark, 0.05)
+        case .leg, .legDark, .legSock:
+            let c = s.plan == .biped || pb.role == .legDark ? s.dark : s.fur
             k.box(u, v, w, h, d, c, 0.05)
-            k.fill(front.0, front.1 + h - 1, w, 1, shadeColor(c, 0.8), 0.03)     // paw
+            if pb.role == .legSock {
+                // white socks on the lower half of each leg
+                let sock = max(1, h / 2)
+                for (fx, fw) in [(right.0, d), (front.0, w), (left.0, d), (back.0, w)] {
+                    k.fill(fx, front.1 + h - sock, fw, sock, s.light, 0.03)
+                }
+                k.fill(bottom.0, bottom.1, w, d, s.light, 0.03)
+            } else {
+                k.fill(front.0, front.1 + h - 1, w, 1, shadeColor(c, 0.8), 0.03)     // paw
+            }
         case .foot:
             k.box(u, v, w, h, d, s.dark, 0.04)
         case .tail:
@@ -259,7 +353,10 @@ private func paintAnime(_ k: EntitySkin, _ s: AnimeAnimalSpec, _ boxes: [PlacedB
         case .wing:
             k.box(u, v, w, h, d, shadeColor(s.fur, 0.9), 0.05)
         case .cheek:
-            k.box(u, v, w, h, d, s.light, 0.04)
+            // halfway between fur and belly, so the pouches read as cheeks
+            let mid = (((s.fur >> 16 & 255) + (s.light >> 16 & 255)) / 2) << 16
+                | (((s.fur >> 8 & 255) + (s.light >> 8 & 255)) / 2) << 8 | ((s.fur & 255) + (s.light & 255)) / 2
+            k.box(u, v, w, h, d, mid, 0.04)
             k.fill(right.0, right.1 + 1, d, 1, s.accent, 0.03)
             k.fill(left.0, left.1 + 1, d, 1, s.accent, 0.03)
         case .collar:
