@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/nullrouten0
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `817 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `851 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 
@@ -21,7 +21,7 @@ Even better than a report is a PR with the fix — the rest of this file tells y
 xcode-select --install        # Swift toolchain (Swift 6, macOS 14+ SDK)
 git clone https://github.com/nullrouten0/pebble.git && cd pebble
 swift build                   # debug build, ~35s clean
-swift run -c release pebsmoke # the test suite — must print "817 passed, 0 failed"
+swift run -c release pebsmoke # the test suite — must print "851 passed, 0 failed"
 ./pebble install              # optional: build + install the real app
 ```
 
@@ -127,7 +127,7 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 | `PEBBLE_POWERBENCH=1` | the power benchmark above; `PEBBLE_BENCH_PHASES` overrides its phases |
 | `PEBBLE_PHOTOBOOTH=1` | render every mob and block to PNGs (`PEBBLE_BOOTH_MOBS=cow,sheep` / `PEBBLE_BOOTH_BLOCKS=-` to filter) |
 | `PEBBLE_PROF=1` | print per-stage load/tick timings |
-| `PEBBLE_PACKDEBUG=1` | log texture tile coverage and entity-skin resolution |
+| `PEBBLE_PACKDEBUG=1` | log texture tile coverage and entity-skin resolution; `pebble check-pack` uses it to check every tile has art in the bundled pack (run it after updating the pack, and bump `DEFAULT_PACK_RELEASE`) |
 | `PEBBLE_GEOM_DEBUG=1` | log entity geometry construction |
 | `PEBBLE_REGOLD=terrain,feature` | **rewrites those snapshots** (`all` for every one); `pebble test --regold …` sets it — see [Tests](#tests-three-kinds-three-rules) |
 

@@ -346,7 +346,8 @@ func resourcePacksDir() -> URL {
 let DEFAULT_PACK_FILE = "Faithful 32x - 1.20.1.zip"
 
 /// the bundled default pack's release: change it whenever the zip is updated
-/// (a new release keeps the file name), so every install copies it once
+/// (a new release keeps the file name), so every install copies it once.
+/// `pebble check-pack` then confirms every tile still finds its art
 let DEFAULT_PACK_RELEASE = "2026-09"
 
 /// restore the default pack into the packs folder if it went missing, and
