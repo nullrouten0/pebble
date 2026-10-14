@@ -129,11 +129,13 @@ public func copySelection(_ p: Player, cut: Bool) throws -> Clipboard {
     p.clipboard = clip
     if cut {
         let batch = beginEdit(world, "cut")
+        batch.bulkLight = w * h * l > BULK_LIGHT_CELLS
         for y in lo.y...hi.y {
             for z in lo.z...hi.z {
                 for x in lo.x...hi.x { batch.set(x, y, z, 0) }
             }
         }
+        batch.finishLight()
     }
     return clip
 }
@@ -158,6 +160,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
     guard boxLoaded(world, x0, z0, x1, z1) else { throw ClipboardError.unloaded }
     let minY = world.info.minY, maxY = world.info.minY + world.info.height - 1
     let batch = beginEdit(world, "paste")
+    batch.bulkLight = clip.cells.count > BULK_LIGHT_CELLS
     var changed = 0, outside = 0, i = 0
     for dy in 0..<clip.h {
         let y = y0 + dy
@@ -185,6 +188,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
             }
         }
     }
+    batch.finishLight()
     return PasteResult(changed: changed, outside: outside,
                        lo: BlockPos(x0, y0, z0), hi: BlockPos(x1, y0 + clip.h - 1, z1))
 }

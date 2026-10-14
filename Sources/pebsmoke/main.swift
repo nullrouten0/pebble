@@ -2545,6 +2545,22 @@ do {
         check("undoing a cut brings back the chest and its items",
               w.getBlock(bx, by, bz) == stone && back?.items?[0]?.id == iid("diamond") && back?.items?[0]?.count == 5)
 
+        // a roof too big for per-block light updates: cut, paste and undo
+        // relight whole chunks, seams included
+        let ry = by + 30, rw = 48
+        for dz in 0..<rw { for dx in 0..<rw { for dy in 0..<2 { w.setBlock(bx + dx, ry + dy, bz + dz, stone) } } }
+        p.selection = Selection(dim: w.dim, a: BlockPos(bx, ry, bz), b: BlockPos(bx + rw - 1, ry + 1, bz + rw - 1))
+        let mid = (bx + rw / 2, ry - 1, bz + rw / 2)
+        _ = try? copySelection(p, cut: true)
+        check("cutting a big roof lets the daylight back under it", w.getSkyLight(mid.0, mid.1, mid.2) == 15)
+        _ = try? pasteClipboard(p, skipAir: false, at: BlockPos(bx, ry, bz))
+        check("pasting a big roof shades the middle under it", w.getSkyLight(mid.0, mid.1, mid.2) == 0,
+              "\(w.getSkyLight(mid.0, mid.1, mid.2))")
+        check("light still spills in under its edges", w.getSkyLight(bx + 1, ry - 1, mid.2) >= 12 && w.getSkyLight(mid.0, ry + 2, mid.2) == 15,
+              "\(w.getSkyLight(bx + 1, ry - 1, mid.2))")
+        _ = undoLastEdit()
+        check("undoing the big paste brings the daylight back", w.getSkyLight(mid.0, mid.1, mid.2) == 15)
+
         p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 200, by + 30, bz + 200))
         var tooBig = false
         do { try copySelection(p, cut: false) } catch ClipboardError.tooBig { tooBig = true } catch {}

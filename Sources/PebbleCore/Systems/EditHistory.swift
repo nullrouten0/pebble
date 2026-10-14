@@ -17,6 +17,10 @@ public final class EditBatch {
     var seen = Set<Int64>()
     /// carve/quarry jobs still writing into this batch (stopped on undo)
     var jobs: [DestroyJob] = []
+    /// for big edits: blocks go in without a light update each, and
+    /// finishLight() relights every chunk they touched once
+    public var bulkLight = false
+    var touched: [Int64: Chunk] = [:]
 
     init(_ world: World, _ label: String, owner: Int = editOwner) {
         self.world = world
@@ -38,10 +42,23 @@ public final class EditBatch {
     @discardableResult
     public func set(_ x: Int, _ y: Int, _ z: Int, _ c: Int, _ flags: Int = SET_NO_NEIGHBORS) -> Bool {
         let be = world.getBlockEntity(x, y, z)
-        let old = world.setBlock(x, y, z, c, flags)
+        let old = world.setBlock(x, y, z, c, bulkLight ? flags & ~2 : flags)
         if old == c { return false }
         remember(x, y, z, old, be)
+        if bulkLight { touch(x, z) }
         return true
+    }
+
+    func touch(_ x: Int, _ z: Int) {
+        let k = chunkKey(floorDiv(x, CHUNK_W), floorDiv(z, CHUNK_W))
+        if touched[k] == nil, let c = world.getChunk(floorDiv(x, CHUNK_W), floorDiv(z, CHUNK_W)) { touched[k] = c }
+    }
+
+    /// relight what a bulkLight edit touched
+    public func finishLight() {
+        if touched.isEmpty { return }
+        world.relightChunks(Array(touched.values))
+        touched.removeAll()
     }
 
     /// remember a cell as it is now without changing it — for an edit that
@@ -66,6 +83,8 @@ public private(set) var redoStack: [EditBatch] = []
 public var editOwner = 0
 private let UNDO_MAX_BATCHES = 64
 private let UNDO_MAX_CELLS = 6_000_000
+/// edits bigger than this relight whole chunks at the end (EditBatch.bulkLight)
+public let BULK_LIGHT_CELLS = 4096
 
 /// open a new undoable edit; clears the redo stack
 public func beginEdit(_ w: World, _ label: String) -> EditBatch {
@@ -84,6 +103,7 @@ private func revert(_ b: EditBatch) -> EditBatch {
     stopJobs(of: b)
     let w = b.world
     let inv = EditBatch(w, b.label, owner: b.owner)
+    inv.bulkLight = b.keys.count > BULK_LIGHT_CELLS
     for i in stride(from: b.keys.count - 1, through: 0, by: -1) {
         let k = b.keys[i]
         let (x, y, z) = EditBatch.unpack(k)
@@ -91,12 +111,14 @@ private func revert(_ b: EditBatch) -> EditBatch {
         let old = Int(b.olds[i]), want = b.bes[k]
         if w.getBlock(x, y, z) == old && w.getBlockEntity(x, y, z) === want { continue }
         inv.record(x, y, z)
-        w.setBlock(x, y, z, old, SET_NO_NEIGHBORS)
+        w.setBlock(x, y, z, old, inv.bulkLight ? 4 : SET_NO_NEIGHBORS)
+        if inv.bulkLight { inv.touch(x, z) }
         // exactly the block entity that was there, or none: setBlock keeps a
         // block entity when the shape doesn't change (chest over chest)
         if let now = w.getBlockEntity(x, y, z), now !== want { w.removeBlockEntity(x, y, z) }
         if let want, w.getBlockEntity(x, y, z) !== want { w.setBlockEntity(want) }
     }
+    inv.finishLight()
     return inv
 }
 

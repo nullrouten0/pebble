@@ -3,6 +3,15 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.4 — 2026-10-13 — big pastes without the freeze
+
+- **Big copy-and-paste edits no longer freeze the game.** Pasting, cutting,
+  undoing or redoing a large box (up to the 100×100×100 limit) updated the
+  lighting one block at a time, which could hang the game for up to half a
+  minute. Edits of more than 4,096 blocks now relight each chunk they touch
+  once, plus the chunks around them, when they finish. The largest paste
+  measured went from 26.6 s to 0.5 s, and undoing it from 5.6 s to 0.3 s.
+
 ## 1.6.3 — 2026-10-13 — pasted lurker boxes keep their own contents
 
 - **Pasted lurker boxes have their own contents.** Copying a chest that held
