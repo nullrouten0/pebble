@@ -99,7 +99,7 @@ Pebble is a ~46k-line Swift + Metal voxel survival game (Minecraft-like) that cu
 | Audio | Add `AVAudioSession`, interruption and route-change handling | Small |
 | Hardware input | The engine already exposes `keyDown/keyUp/mouseDown/mouseUp/mouseDelta/wheelHotbar` (`GameCore.swift:2003-2099`), and `Bot.swift` already drives the player through them | Small–medium |
 | Touch input | New overlay, container gestures, soft keyboard | **Large** |
-| Distribution | Personal devices via Xcode signing; TestFlight for internal testers. An App Store release is unlikely (guideline 4.1, Minecraft trade dress, Faithful's no-monetization license) | n/a |
+| Distribution | Personal devices via Xcode signing; TestFlight for internal testers. An App Store release is unlikely (guideline 4.1, Minecraft trade dress, the Faithful License, which forbids putting its work behind a paywall) | n/a |
 
 ---
 

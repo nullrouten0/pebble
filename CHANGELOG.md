@@ -3,6 +3,19 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## Unreleased — Faithful September 2026
+
+- **Textures:** the built-in Faithful 32x pack for 1.20.1 is now Faithful's
+  September 2026 release (was December 2025): 539 textures updated, the same
+  coverage as before. An existing install replaces its old copy on the next
+  launch.
+- **License:** the bundled Faithful License is now version 4 (Jul 31, 2026),
+  an unmodified copy of the file inside the pack.
+- **Credits:** they now say "by Faithful", the name Faithful uses for itself,
+  instead of "the Faithful Team". The README describes the license's
+  current terms (no paywall, no monetized download links) instead of the
+  old blanket no-monetization rule.
+
 ## 1.5.5 — 2026-10-13 — paste where you look
 
 - **`//paste` goes where you're looking**, up to 96 blocks away, the way a

@@ -24,9 +24,10 @@ SOFTWARE.
 
 Scope note: this license covers the source code and original assets in this
 repository. It does NOT cover third-party content distributed alongside it —
-in particular "packaging/Faithful 32x - 1.20.1.zip", which belongs to the
-Faithful team and its contributors under their own terms
-(https://faithfulpack.net), and the in-game screenshots in packaging/
+in particular "packaging/Faithful 32x - 1.20.1.zip", which belongs to
+Faithful and its contributors under the Faithful License
+(packaging/FAITHFUL-LICENSE.txt; https://faithfulpack.net/license), and the
+in-game screenshots in packaging/
 (homepage.png, title-bg.png) to the extent they depict Faithful 32x artwork.
 The fdlibm-derived trigonometry in Sources/PebbleCore/Core/DetMath.swift
 carries Sun Microsystems' permissive notice at the top of that file.
