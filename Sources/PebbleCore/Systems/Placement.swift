@@ -8,6 +8,46 @@ import Foundation
 /// virtual ground level structures are captured against
 public let PREFAB_GROUND = 64
 
+/// where to centre a structure `width`×`length` blocks across so it lands
+/// ahead of `p`, along their view, with its whole footprint at least `margin`
+/// blocks clear of them: the nearest such point, whichever way they face
+/// (half the longest side isn't enough looking diagonally, where the corner
+/// of the footprint reaches back over them)
+public func placementAhead(_ p: Entity, width: Int, length: Int, margin: Double = 3) -> (Int, Int) {
+    let fx = -detSin(p.yaw), fz = detCos(p.yaw)
+    let hx = Double(width) / 2 + margin, hz = Double(length) / 2 + margin
+    let rx = abs(fx) > 1e-9 ? hx / abs(fx) : .infinity
+    let rz = abs(fz) > 1e-9 ? hz / abs(fz) : .infinity
+    let reach = min(rx, rz)
+    return (ifloor(p.x + fx * reach), ifloor(p.z + fz * reach))
+}
+
+/// an entity left inside solid blocks (a structure placed over it) moves up
+/// to the first spot where it fits, instead of staying stuck in the walls
+public func liftOutOfBlocks(_ e: Entity) {
+    let w = e.world
+    let hw = e.width / 2 - 0.001
+    func fits(_ y: Double) -> Bool {
+        for cx in [e.x - hw, e.x + hw] {
+            for cz in [e.z - hw, e.z + hw] {
+                var by = ifloor(y)
+                while Double(by) < y + e.height {
+                    if blockDefs[w.getBlockId(ifloor(cx), by, ifloor(cz))].solid { return false }
+                    by += 1
+                }
+            }
+        }
+        return true
+    }
+    if fits(e.y) { return }
+    let top = Double(w.info.minY + w.info.height)
+    var y = Double(ifloor(e.y)) + 1
+    while y < top && !fits(y) { y += 1 }
+    e.setPos(e.x, y, e.z)
+    e.vy = 0
+    e.fallDistance = 0
+}
+
 /// ChunkSink over an unbounded sparse volume: stone below `ground`, air above,
 /// with every write recorded in insertion order.
 public final class CaptureSink: ChunkSink {

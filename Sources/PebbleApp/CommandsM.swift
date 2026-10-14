@@ -366,9 +366,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
             ty = args[2] == "ground" || args[2] == "_" ? nil : Int(parseCoord(args[2], p.y).rounded(.down))
         } else {
             // in front of the player, far enough that the footprint clears them
-            let reach = Double(max(pf.x1 - pf.x0, pf.z1 - pf.z0)) / 2 + 3
-            tx = Int((p.x - sin(p.yaw) * reach).rounded(.down))
-            tz = Int((p.z + cos(p.yaw) * reach).rounded(.down))
+            (tx, tz) = placementAhead(p, width: pf.x1 - pf.x0 + 1, length: pf.z1 - pf.z0 + 1)
             ty = nil
         }
         let r = game.placePrefab(pf, tx, ty, tz)
