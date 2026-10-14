@@ -344,14 +344,22 @@ func resourcePacksDir() -> URL {
 // =============================================================================
 let DEFAULT_PACK_FILE = "Faithful 32x - 1.20.1.zip"
 
-/// restore the default pack into the packs folder if it went missing
+/// restore the default pack into the packs folder if it went missing, and
+/// replace the copy when this build bundles a different release of it (a new
+/// release keeps the file name, so the size tells them apart)
 func ensureDefaultPack() {
     let dest = resourcePacksDir().appendingPathComponent(DEFAULT_PACK_FILE)
-    if !FileManager.default.fileExists(atPath: dest.path),
-       let bundled = gRuntime?.platform.resourcePath(DEFAULT_PACK_FILE) {
-        try? FileManager.default.copyItem(atPath: bundled, toPath: dest.path)
+    guard let bundled = gRuntime?.platform.resourcePath(DEFAULT_PACK_FILE) else { return }
+    let fm = FileManager.default
+    func size(_ path: String) -> Int64? { (try? fm.attributesOfItem(atPath: path)[.size] as? NSNumber)?.int64Value }
+    if fm.fileExists(atPath: dest.path) {
+        if size(dest.path) == size(bundled) { return }
+        try? fm.removeItem(at: dest)
+        print("[packs] default pack updated from app bundle")
+    } else {
         print("[packs] default pack restored from app bundle")
     }
+    try? fm.copyItem(atPath: bundled, toPath: dest.path)
 }
 
 /// user pack list → applied list: default pack force-appended at the END

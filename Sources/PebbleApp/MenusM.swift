@@ -122,7 +122,7 @@ final class TitleScreen: Screen {
         let L = ui.safeLeft + pad, R = ui.width - ui.safeRight - pad, B = ui.height - ui.safeBottom - (pad - 2)
         cv.drawText("Pebble \(PEBBLE_BUILD)", L, B - 10, 1, "#c8c8c8")
         // the Faithful license asks for clear credit and a link to their site
-        let creditText = "Textures: Faithful 32x by the Faithful Team - faithfulpack.net"
+        let creditText = "Textures: Faithful 32x by Faithful - faithfulpack.net"
         creditRect = (L, B - 21, Double(textWidth(creditText)), 10)
         let hover = ui.mouseX >= creditRect.x && ui.mouseX < creditRect.x + creditRect.w
             && ui.mouseY >= creditRect.y && ui.mouseY < creditRect.y + creditRect.h
@@ -850,11 +850,11 @@ final class CreditsScreen: Screen {
         "§7Not affiliated with Mojang or Microsoft.",
         "§7No Mojang code or asset files included.",
         "",
-        "§fTextures: Faithful 32x by the Faithful Team,",
+        "§fTextures: Faithful 32x by Faithful,",
         "§fused under the Faithful License.",
         "§efaithfulpack.net",
         "§7Pebble is not affiliated with or endorsed",
-        "§7by the Faithful Team.",
+        "§7by Faithful.",
     ]
     override func draw(_ ui: UIManager, _ game: GameCore) {
         ui.cv.setFill("#000000")

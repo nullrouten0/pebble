@@ -147,7 +147,8 @@ bundle() {
     cp "$REPO/packaging/logo.png"       "$stage/Contents/Resources/"
     cp "$REPO/packaging/title-bg.png"   "$stage/Contents/Resources/"
     cp "$REPO/packaging/"*.zip          "$stage/Contents/Resources/" 2>/dev/null || true
-    # the Faithful license must travel with the pack (their requirement #6):
+    # the Faithful License must travel with the pack (its requirement #5 asks for
+    # an unmodified copy or a link with every distribution; we ship the copy):
     # no pack ships without it
     if ls "$stage/Contents/Resources/"*.zip >/dev/null 2>&1; then
         cp "$REPO/packaging/FAITHFUL-LICENSE.txt" "$stage/Contents/Resources/" \
