@@ -2668,6 +2668,16 @@ do {
     }
 }
 
+section("item copies")
+do {
+    let box = ItemStack(iid("lurker_box"), 1)
+    box.data.contents = [ItemStack(iid("diamond"), 5), nil]
+    let dup = box.copy()
+    dup.data.contents?[0]?.count = 1
+    check("a copied lurker box has its own contents (a pasted chest can't share them)",
+          box.data.contents?[0]?.count == 5 && dup.data.contents?.count == 2)
+}
+
 section("baby animals grow up")
 do {
     let w = World(dim: .overworld, seed: 1)

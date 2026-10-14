@@ -3,6 +3,13 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.3 — 2026-10-13 — pasted lurker boxes keep their own contents
+
+- **Pasted lurker boxes have their own contents.** Copying a chest that held
+  a filled lurker box and pasting it gave both chests the same box contents:
+  taking items out of one box took them out of the other too. Every copy of
+  an item now copies what's inside it.
+
 ## 1.6.2 — 2026-10-13 — bred animals grow up
 
 - **Bred animals grow up.** A baby stayed drawn at half size forever, for

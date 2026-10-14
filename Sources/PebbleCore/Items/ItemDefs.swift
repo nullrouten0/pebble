@@ -120,8 +120,8 @@ public struct StackData: Equatable, Codable {
 
 /// Reference type on purpose: the golden baselines passes stacks around as shared
 /// mutable objects (give() mutates the caller's stack, mending repairs items
-/// in place, containers move the same object between slots). All stored
-/// fields are value types, so copy() is a deep copy (baseline copyStack).
+/// in place, containers move the same object between slots). copy() is a
+/// deep copy, including the stacks inside a lurker box.
 public final class ItemStack: Equatable, Codable {
     public var id: Int
     public var count: Int
@@ -140,7 +140,9 @@ public final class ItemStack: Equatable, Codable {
     }
 
     public func copy() -> ItemStack {
-        ItemStack(id, count, damage: damage, ench: ench, label: label, data: data)
+        var d = data
+        d.contents = data.contents?.map(copyStack)
+        return ItemStack(id, count, damage: damage, ench: ench, label: label, data: d)
     }
 
     public static func == (a: ItemStack, b: ItemStack) -> Bool {
