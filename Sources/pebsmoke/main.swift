@@ -2584,11 +2584,13 @@ do {
     // anime-style animals: placed by egg or /summon, never spawned naturally
     if let g = settled() {
         let p = g.player!, w = g.world
-        var spawned = 0, eggs = 0, uvOK = true
+        var spawned = 0, eggs = 0, reloaded = 0, uvOK = true
         for s in ANIME_ANIMALS {
             if itemDefs.contains(where: { $0.name == "\(s.id)_spawn_egg" }) { eggs += 1 }
             if let m = spawnMob(w, s.id, p.x + 3, p.y, p.z, SpawnOpts()) as? AnimeAnimal, m.type == s.id, hasModel(s.id) {
                 spawned += 1
+                m.health = 5
+                if let back = loadEntity(w, m.save()) as? AnimeAnimal, back.type == s.id, back.health == 5 { reloaded += 1 }
             }
             let model = getModel(s.id)
             for part in model.parts {
@@ -2598,15 +2600,35 @@ do {
                 }
             }
         }
-        check("all 10 anime animals spawn as themselves, with their own model", spawned == 10 && ANIME_ANIMALS.count == 10, "\(spawned)")
-        check("each anime animal has a spawn egg", eggs == 10, "\(eggs)")
+        let roster = ANIME_ANIMALS.count
+        check("the anime animals are all there", roster == 10, "\(roster)")
+        check("every anime animal spawns as itself, with its own model", spawned == roster, "\(spawned)")
+        check("every anime animal saves and loads as itself", reloaded == roster, "\(reloaded)")
+        check("each anime animal has a spawn egg", eggs == roster, "\(eggs)")
         check("anime animal skins fit their texture sheets", uvOK)
         let natural = Set(BIOMES.compactMap { $0 }.flatMap { $0.creatures.map { $0.0 } })
         check("anime animals never spawn naturally", ANIME_ANIMALS.allSatisfy { !natural.contains($0.id) })
-        if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob {
+        if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob,
+           let mate = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z + 1, SpawnOpts()) as? Animal {
             check("an anime animal is tempted by its favourite food", bunny.isFood(ItemStack(iid("carrot"), 1))
                   && !bunny.isFood(ItemStack(iid("wheat"), 1)))
+            let before = Set(w.entities.map { ObjectIdentifier($0) })
+            mate.spawnBaby(mate, bunny)
+            let kit = w.entities.first { !before.contains(ObjectIdentifier($0)) && ($0 as? Entity)?.type == "mochi_bunny" } as? Mob
+            kit?.ageUp(24_000)
+            check("two anime animals breed a baby of their kind that grows up", kit != nil && kit?.baby == false && kit?.data.baby == nil)
+        } else {
+            check("mochi_bunny spawns", false)
         }
+        // an egg used on the ground, through the normal right-click
+        let bx = Int(floor(p.x)), by = Int(floor(p.y)) - 1, bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(cell(B.stone)))
+        p.pitch = .pi / 2 - 0.01
+        p.inventory[p.selectedSlot] = ItemStack(iid("piyo_chick_spawn_egg"), 1)
+        let chicks = { w.entities.filter { ($0 as? Entity)?.type == "piyo_chick" }.count }
+        let hadChicks = chicks()
+        g.mouseDown(2); _ = g.frame(dtMs: 50); g.mouseUp(2)
+        check("using an anime spawn egg places that animal", chicks() == hadChicks + 1, "\(chicks() - hadChicks)")
         // hitboxes: up to the top of the head, and most of a long face clickable
         // (entity picking reaches 0.1 past the box)
         var short: [String] = []

@@ -3,6 +3,14 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.10 — 2026-10-13 — anime animal touch-ups
+
+- **Kitsune Kit's three tails wag out of step**, as they were meant to; the
+  two side tails moved together.
+- **Ears twitch from their base.** An anime animal's ear twitch turned
+  around the middle of its head, so the ears slid across it; they now pivot
+  where they meet the head.
+
 ## 1.6.9 — 2026-10-13 — editing tool fixes
 
 - **Undo works anywhere.** More than about 16.7 million blocks from the

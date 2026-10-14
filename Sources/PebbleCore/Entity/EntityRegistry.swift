@@ -81,6 +81,9 @@ public func createEntity(_ type: String, _ world: World) -> Entity? {
     FACTORY_BY_NAME[type].map { $0(world) }
 }
 public func entityTypes() -> [String] { FACTORIES.map { $0.0 } }
+/// every mob /summon and the photo booth offer: the natural roster, then the
+/// anime animals (placed only)
+public func summonableMobs() -> [String] { spawnableMobs() + ANIME_ANIMALS.map { $0.id } }
 
 @discardableResult
 public func spawnMob(_ world: World, _ type: String, _ x: Double, _ y: Double, _ z: Double, _ data: SpawnOpts? = nil) -> Entity? {

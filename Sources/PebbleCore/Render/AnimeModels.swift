@@ -174,10 +174,10 @@ func buildAnimeModel(_ s: AnimeAnimalSpec) -> MobModel {
     // ---- head and face ---------------------------------------------------
     part("head", headPivot)
     add("head", .head, -hw / 2, 0, headZ, hw, hh, hd)
-    if s.snout {
+    if s.muzzle == .snout {
         add("head", .snout, -1.5, 0.5, headZ - 2, 3, 2, 2)
     }
-    if s.beak {
+    if s.muzzle == .beak {
         add("head", .beak, -1, hh / 2 - 1.5, headZ - 1.5, 2, 1.5, 1.5)
     }
     switch s.extra {
@@ -225,33 +225,31 @@ func buildAnimeModel(_ s: AnimeAnimalSpec) -> MobModel {
 
     // ---- tails (sized and angled by the body shape above) ----------------------
     let half = tailThick / 2
+    /// a tail from tailBase, with a tip `tip` long, inset `inset` on each side
+    func tail(_ n: String, rot: (Double, Double, Double), tip: Double = 0, inset: Double = 0) {
+        part(n, tailBase, rot: rot)
+        add(n, .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+        if tip > 0 {
+            add(n, .tailTip, -half + inset, -half + inset, tailLen, tailThick - 2 * inset, tailThick - 2 * inset, tip)
+        }
+    }
     switch s.tail {
     case .none:
         break
     case .puff:
         part("tail", tailBase)
         add("tail", .tailTip, -1.5, -1.5, -0.5, 3, 3, 2)
-    case .stub:
-        part("tail", tailBase, rot: (tailPitch, 0, 0))
-        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+    case .stub, .ringed:   // the ringed one is painted with rings
+        tail("tail", rot: (tailPitch, 0, 0))
     case .thin:
-        part("tail", tailBase, rot: (tailPitch, 0, 0))
-        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
-        add("tail", .tailTip, -half, -half, tailLen, tailThick, tailThick, tailTip)
+        tail("tail", rot: (tailPitch, 0, 0), tip: tailTip)
     case .triple:
         for (n, yaw) in [("tail", 0.0), ("tail2", -0.6), ("tail3", 0.6)] {
-            part(n, tailBase, rot: (-0.95, yaw, 0))   // fanned up and out
-            add(n, .tail, -half, -half, 0, tailThick, tailThick, tailLen)
-            add(n, .tailTip, -half, -half, tailLen, tailThick, tailThick, tailTip)
+            tail(n, rot: (-0.95, yaw, 0), tip: tailTip)   // fanned up and out
         }
     case .curl:
         // up over the back, the way a shiba carries it
-        part("tail", tailBase, rot: (tailPitch, 0, 0))
-        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
-        add("tail", .tailTip, -half + 0.5, -half + 0.5, tailLen, tailThick - 1, tailThick - 1, 2)
-    case .ringed:
-        part("tail", tailBase, rot: (tailPitch, 0, 0))
-        add("tail", .tail, -half, -half, 0, tailThick, tailThick, tailLen)
+        tail("tail", rot: (tailPitch, 0, 0), tip: 2, inset: 0.5)
     }
 
     let texH = max(32, ((packer.usedHeight + 15) / 16) * 16)
@@ -393,11 +391,11 @@ private func paintFace(_ k: EntitySkin, _ s: AnimeAnimalSpec, _ fu: Int, _ fv: I
         k.rect(fu, eyeY + eyeH, 2, 2, s.light)
         k.rect(fu + w - 2, eyeY + eyeH, 2, 2, s.light)
     }
-    if s.snout {
+    if s.muzzle == .snout {
         // a light muzzle patch around the snout
         k.rect(fu + w / 2 - 2, fv + h - 3, 4, 3, s.light)
     }
-    if s.id == "leaf_tanuki" {
+    if s.raccoonMask {
         k.rect(fu + 1, eyeY - 1, w - 2, eyeH + 1, s.accent) // raccoon-dog mask, a shade off the eyes
     }
     for x in [leftX, rightX] {
@@ -409,7 +407,7 @@ private func paintFace(_ k: EntitySkin, _ s: AnimeAnimalSpec, _ fu: Int, _ fv: I
     let blush = 0xf58aa8
     k.rect(leftX - 1, eyeY + eyeH, 2, 1, blush)
     k.rect(rightX + eyeW - 1, eyeY + eyeH, 2, 1, blush)
-    if !s.snout && !s.beak {
+    if s.muzzle == .none {
         // a small cat-like mouth
         let my = min(fv + h - 1, eyeY + eyeH + 1)
         k.px(fu + w / 2 - 1, my, 0x7a2a3a)

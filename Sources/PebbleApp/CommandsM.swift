@@ -136,8 +136,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         }
     case "summon":
         guard let mob = arg(0) else { return fail("Usage: /summon <mob> [x y z]") }
-        // (spawnableMobs is the original roster; the anime animals came later)
-        let mobs = spawnableMobs() + ANIME_ANIMALS.map { $0.id }
+        let mobs = summonableMobs()
         if !mobs.contains(mob) {
             return fail("Unknown mob: \(mob). Try: \(mobs.prefix(8).joined(separator: ", "))...")
         }
