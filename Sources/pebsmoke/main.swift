@@ -2454,6 +2454,13 @@ do {
         p.selection = Selection(dim: .nether, a: BlockPos(0, 64, 0), b: BlockPos(5, 64, 5))
         setSelectionCorner(p, 1, BlockPos(bx, by, bz))
         check("a corner in another dimension starts a fresh selection", p.selection?.dim == w.dim && p.selection?.b == nil)
+        // dig with an empty hand, then switch to the wand with the button still down
+        p.inventory[p.selectedSlot] = nil
+        g.mouseDown(0)
+        p.inventory[p.selectedSlot] = ItemStack(iid("selection_wand"), 1)
+        for _ in 0..<20 { _ = g.frame(dtMs: 50) }
+        g.mouseUp(0)
+        check("switching to the wand with the button held stops digging", w.getBlock(bx, by, bz) == under)
         g.exitToTitle()
     } else {
         check("selection wand world loads", false)
@@ -2568,6 +2575,8 @@ do {
         p.selection = nil
         check("//copy without a selection is refused", (try? copySelection(p, cut: false)) == nil)
         g.exitToTitle()
+        check("leaving a world forgets its undo history", editCounts().undo == 0 && editCounts().redo == 0,
+              "\(editCounts())")
     } else {
         check("clipboard world loads", false)
     }

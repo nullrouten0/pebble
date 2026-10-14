@@ -139,6 +139,13 @@ public func redoLastEdit(owner: Int = 0) -> EditBatch? {
     return b
 }
 
+/// forget every edit (leaving a world: they point at it and would keep it in memory)
+public func clearEditHistory() {
+    for b in undoStack { stopJobs(of: b) }
+    undoStack.removeAll()
+    redoStack.removeAll()
+}
+
 /// how many undo / redo steps `owner` has
 public func editCounts(owner: Int = 0) -> (undo: Int, redo: Int) {
     (undoStack.filter { $0.owner == owner }.count, redoStack.filter { $0.owner == owner }.count)

@@ -488,6 +488,7 @@ public final class GameCore {
 
     public func exitToTitle() {
         if inWorld { saveAndFlush(synchronous: true) }
+        clearEditHistory()   // its edits belong to the world being closed
         if let nc = netClient {
             nc.disconnect()
             netClient = nil
@@ -2203,9 +2204,14 @@ public final class GameCore {
     }
 
     // ---- mining ----
+    private func holdsWand(_ p: Player) -> Bool {
+        p.mainHand.map { itemDef($0.id).name } == "selection_wand"
+    }
+
     private func tickMining() {
         let p = player!
-        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) {
+        // the wand never digs, even if the button went down with a pickaxe in hand
+        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) || holdsWand(p) {
             p.breakingProgress = -1
             return
         }
@@ -2484,7 +2490,7 @@ public final class GameCore {
     @discardableResult
     func performUse(_ p: Player, _ ctx: InteractCtx, target: Entity?, hit: RaycastHit?) -> Bool {
         p.useItemHand = .main
-        if p.mainHand.map({ itemDef($0.id).name }) == "selection_wand" {
+        if holdsWand(p) {
             guard let hit else { return false }
             markCorner(p, 2, hit)
             p.attackAnim = 0.6
@@ -2567,7 +2573,7 @@ public final class GameCore {
         guard inWorld, !(host?.hasScreen() ?? false) else { return }
         if button == 0 {
             // the selection wand marks corner 1 instead of digging
-            if let p = player, p.mainHand.map({ itemDef($0.id).name }) == "selection_wand" {
+            if let p = player, holdsWand(p) {
                 if !p.dead, p.deathTime == 0, let hit = crosshairBlock() { markCorner(p, 1, hit) }
                 return
             }

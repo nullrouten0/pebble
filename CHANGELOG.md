@@ -3,6 +3,15 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.5 — 2026-10-13 — undo stays with its world; the wand never digs
+
+- **Undo stays with its world.** Leaving a world kept its undo history, so
+  Cmd-Z in the next world you opened "undid" an edit in the world you'd left.
+  Nothing visible happened, an undo step was used up, and the old world was
+  kept in memory. Leaving a world now clears it.
+- **The selection wand never digs.** Holding the button down with another
+  item and then scrolling to the wand kept breaking blocks.
+
 ## 1.6.4 — 2026-10-13 — big pastes without the freeze
 
 - **Big copy-and-paste edits no longer freeze the game.** Pasting, cutting,
