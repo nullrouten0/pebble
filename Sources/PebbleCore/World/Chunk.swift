@@ -62,6 +62,10 @@ public final class Chunk {
     /// its record on disk lists entities, so an unload must rewrite it even
     /// when none stand here now (or they'd come back on the next load)
     public var savedEntities = false
+    /// saved entities of a type this build doesn't know (a newer build's
+    /// mob): written back out untouched so opening the world here can't
+    /// delete them
+    public var unknownEntities: [[String: Any]] = []
     /// keyed by cell index
     public var blockEntities: [Int: BlockEntityData] = [:]
     public var portalBlocks = Set<Int>()

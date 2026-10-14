@@ -2721,6 +2721,29 @@ do {
     } else {
         check("reopen world loads", false)
     }
+
+    // saves: a mob this build doesn't know (from a newer build) is kept, not deleted
+    if let g = settled() {
+        let p = g.player!, id = g.worldRec!.id
+        let cx = floorDiv(Int(floor(p.x)), 16), cz = floorDiv(Int(floor(p.z)), 16)
+        let dim = g.world.dim.rawValue
+        g.exitToTitle()
+        g.waitForSaves()
+        if var rec = g.db.getChunk(id, dim, cx, cz) {
+            rec.entities.append(["type": "mob_from_the_future", "x": p.x, "y": p.y, "z": p.z, "health": 4.0])
+            _ = g.db.putChunks([rec])
+        }
+        g.loadWorld(id)
+        var n = 0
+        while n < 100 && g.world.getChunk(cx, cz) == nil { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1 }
+        let loaded = g.world.getChunk(cx, cz) != nil
+        g.exitToTitle()
+        g.waitForSaves()
+        let kept = g.db.getChunk(id, dim, cx, cz)?.entities.contains { $0["type"] as? String == "mob_from_the_future" } ?? false
+        check("a mob this build doesn't know survives opening and saving the world", loaded && kept, "loaded \(loaded)")
+    } else {
+        check("future-mob world loads", false)
+    }
 }
 
 section("item copies")

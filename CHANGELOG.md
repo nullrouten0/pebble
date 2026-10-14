@@ -3,6 +3,16 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.7 — 2026-10-13 — unknown creatures are kept
+
+- **Opening a world in an older version keeps the newer mobs.** A version
+  that didn't know a creature (opening a 1.6 world in 1.5, say) left it out
+  when it loaded the world and then saved over it, so it was gone for good.
+  From this version on, creatures Pebble doesn't recognise are kept in the
+  save as they were and come back in the version that knows them. Versions
+  before 1.6.7 can't do this, so open worlds with anime animals in 1.6 or
+  later.
+
 ## 1.6.6 — 2026-10-13 — anime animal hitboxes, fluttering chick
 
 - **Anime animals can be clicked where they look like they are.** Their

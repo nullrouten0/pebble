@@ -785,6 +785,7 @@ public final class GameCore {
             if (ent.type == "item" || ent.type == "xp_orb") && ent.age > 4000 { continue }
             ents.append(ent.save())
         }
+        ents += c.unknownEntities
         let key = db.chunkKey(worldId, d.rawValue, c.cx, c.cz)
         c.savedEntities = !ents.isEmpty
         // always a full record, blocks included: a chunk's blocks come from
@@ -923,6 +924,8 @@ public final class GameCore {
                 if let e = loadEntity(w, ed) {
                     w.addEntity(e)
                     if let dragon = e as? RiftDragon { armDragon(dragon) }
+                } else {
+                    c.unknownEntities.append(ed)
                 }
             }
         } else if let entitySpecs {
