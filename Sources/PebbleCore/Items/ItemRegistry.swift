@@ -341,6 +341,11 @@ private let registerAllItemsOnce: Void = {
     // marks a box for the clipboard commands (Systems/Selection.swift)
     registerItem("selection_wand", display: "Selection Wand", maxStack: 1, category: "tools", rarity: 3)
 
+    // anime-style animals (Entity/AnimeAnimals.swift): eggs are their only way in
+    for s in ANIME_ANIMALS {
+        registerItem("\(s.id)_spawn_egg", display: "\(s.display) Spawn Egg", category: "spawn_eggs", icon: "spawn_egg")
+    }
+
     // worn in the helmet slot: a beam of light where you look (WorldRenderer
     // headlamps). Durability 0 = never wears out.
     registerItem("headlamp", display: "Headlamp",

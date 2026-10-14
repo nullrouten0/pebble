@@ -30,15 +30,15 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 | | |
 |---|---|
-| Lines of Swift | ~55,900 across 109 files |
+| Lines of Swift | ~56,600 across 109 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
-| Items | 1,196 |
+| Items | 1,207 |
 | Biomes | 63 (overworld, nether, end, cave biomes) |
-| Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
+| Entity types | 110 (65+ mobs with full AI, including 10 anime-style animals; vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 790, all green (`pebble test`) |
+| Regression checks | 817, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by Faithful (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -56,6 +56,18 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 - **LAN multiplayer** and a **creative toolkit** — see [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
 - **Ultra graphics** — SSAO, volumetric god rays, Poisson soft shadows and ACES tonemapping, behind one toggle in Options → Video.
 - **Synthesized audio** — no audio files: music, jukebox discs and every sound effect are built from oscillator and noise recipes, with positional stereo, underwater lowpass and cave reverb.
+
+## What's new
+
+The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full.
+
+- **1.6.0** (Oct 13, 2026): ten [anime-style animals](#creative-tools) you place with spawn eggs or `/summon`, each with its own body, voice and favourite food; the built-in Faithful 32x pack is updated to Faithful's September 2026 release, under the Faithful License v4.
+- **1.5.3–1.5.5** (Oct 13, 2026): world-editing tools: a selection wand, then `//copy`, `//cut` and `//paste` (pasting where you look), each one undo step and keeping chest contents.
+- **1.5.0–1.5.2** (Oct 13, 2026): worlds that survive updates (every visited chunk is saved, and each world remembers what its block and item ids mean); Pebble's own names for its creatures, blocks and items; texture credits linking to faithfulpack.net.
+- **1.4.x** (Oct 12–13, 2026): iPad and iPhone (beta), game controllers on the Mac, the headlamp, four world wonders for `/place`, a battery saver, faster world generation, and a round of crash and exploit fixes.
+- **1.2.0** (Oct 10, 2026): LAN multiplayer, the Infinity Wipe, and `/place` for mountains, cities and schools.
+- **1.1.0** (Oct 10, 2026): building and demolition tools (bazooka, mining laser, void bomb, quarry charge, wall and box builders), `/place` for structures, and undo/redo.
+- **1.0.0–1.0.6** (Jun–Jul 2026): the first public beta, then gameplay, rendering, water and keybind fixes.
 
 ## Install
 
@@ -162,6 +174,8 @@ For `city`, `mountain` and worldgen structures, a different `variant` number giv
 
 **Undo** covers every tool above except the Infinity Wipe, plus `/fill`, and restores chest contents. It keeps your last 64 edits until you quit. Blocks you mine or place by hand aren't tracked, and killed mobs and dropped items don't come back.
 
+**Anime-style animals.** Ten chibi critters with big heads, sparkly eyes and blush: `mochi_bunny`, `kitsune_kit`, `bell_neko`, `leaf_tanuki`, `bao_panda`, `puff_shiba`, `scarf_penguin`, `hamu_hamster`, `momiji_red_panda` and `piyo_chick`. They never spawn on their own: place one with its spawn egg (`/give mochi_bunny_spawn_egg`, or the Spawn Eggs tab in creative) or `/summon mochi_bunny`. Each has a favourite food that it follows you for and breeds with (carrots for the bunny, berries for the kitsune, fish for the neko and penguin, bamboo for the pandas, seeds for the hamster and chick, apples for the tanuki, bones for the shiba).
+
 ## Where things live
 
 On the Mac, everything is in `~/Library/Application Support/Pebble/`:
@@ -223,7 +237,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `812 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `817 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

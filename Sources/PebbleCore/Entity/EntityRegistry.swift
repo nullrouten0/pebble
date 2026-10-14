@@ -70,6 +70,8 @@ private let registerAllEntitiesOnce: Void = {
     reg("boat") { Boat(world: $0) }; reg("minecart") { Minecart(world: $0) }
     reg("player") { Player(world: $0) }
     regLate("rocket") { Rocket(world: $0) }; regLate("void_bomb") { VoidBomb(world: $0) }
+    // placed only (eggs, /summon), never spawned naturally
+    for s in ANIME_ANIMALS { regLate(s.id) { AnimeAnimal(world: $0, s) } }
 
     bindSpawnMob(spawnMob)
 }()

@@ -3,7 +3,29 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
-## Unreleased — Faithful September 2026
+## 1.6.0 — 2026-10-13 — anime animals, Faithful September 2026
+
+### Anime-style animals
+
+- **Ten anime-style animals**: Mochi Bunny, Kitsune Kit, Bell Neko, Leaf
+  Tanuki, Bao Panda, Puff Shiba, Scarf Penguin, Hamu Hamster, Momiji Red
+  Panda and Piyo Chick. Chibi proportions, big sparkly eyes and blush, and a
+  body built for each: a round bunny with big flat hind feet, a leggy
+  kitsune with three brush tails, a sleek neko with its tail held up and a
+  bell collar, a pot-bellied tanuki with a leaf on its head, a chunky panda,
+  a shiba with a chest ruff, white socks and a curled tail, an egg-shaped
+  penguin in a scarf, a hamster that's nearly a ball, a long red panda with
+  a huge ringed tail, and a puffball chick.
+- **Placed only:** each has a spawn egg (in the Spawn Eggs tab, coloured like
+  the animal) and works with `/summon`. They never spawn naturally, so
+  worlds and their wildlife are unchanged.
+- They're gentle passive animals: they wander, look at you, panic when hit,
+  follow you for their favourite food and breed with it. They bounce as they
+  walk (the bunny hops, the penguin and chick waddle), tilt their heads,
+  twitch their ears and wag their tails.
+- Each has its own synthesized voice: a soft chirp, a squeak when hurt.
+
+### Faithful September 2026
 
 - **Textures:** the built-in Faithful 32x pack for 1.20.1 is now Faithful's
   September 2026 release (was December 2025): 539 textures updated, the same

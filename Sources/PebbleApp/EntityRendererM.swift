@@ -120,6 +120,15 @@ final class EntityRendererM {
         let walkA = Foundation.cos(swing * 0.6662) * 1.2 * amp
         let walkB = Foundation.cos(swing * 0.6662 + .pi) * 1.2 * amp
         let idle = Foundation.sin(time * 2 + p.x) * 0.02
+        // chibi animals bounce as they walk (a hop for "chibi_hop") and waddle
+        // side to side ("chibi_waddle"); applied to every part about the feet
+        var chibiLift = 0.0, chibiRoll = 0.0
+        if model.anim.hasPrefix("chibi") {
+            let step = abs(Foundation.sin(swing * 0.6662))
+            chibiLift = (model.anim == "chibi_hop" ? 0.22 : 0.06) * step * min(1, amp * 2)
+            if model.anim == "chibi_waddle" { chibiRoll = Foundation.sin(swing * 0.6662) * 0.18 * min(1, amp * 2) }
+            chibiLift += (Foundation.sin(time * 2.2 + p.x) + 1) * 0.006   // breathing
+        }
         for i in 0..<24 {
             guard i < model.parts.count else {
                 partMats[i] = matrix_identity_float4x4
@@ -127,6 +136,10 @@ final class EntityRendererM {
             }
             let part = model.parts[i]
             var m = matrix_identity_float4x4
+            if chibiLift != 0 || chibiRoll != 0 {
+                m = mTranslate(m, 0, Float(chibiLift), 0)
+                m = mRotateZ(m, Float(chibiRoll))
+            }
             let (px, py, pz) = part.pivot
             m = mTranslate(m, Float(px / 16), Float(py / 16), Float(pz / 16))
             // baked part rotation (vanilla rotated boxes: quadruped bodies etc.)
@@ -160,6 +173,29 @@ final class EntityRendererM {
                     m = mRotateY(m, Float(Foundation.sin(time * 18) * 0.8 + 0.3))
                 } else if n == "wingL" {
                     m = mRotateY(m, Float(-Foundation.sin(time * 18) * 0.8 - 0.3))
+                }
+            case "chibi", "chibi_hop", "chibi_waddle":
+                if n == "head" || n.hasPrefix("ear") {
+                    // big heads look about and tilt, the way they do in anime
+                    m = mRotateY(m, Float(p.headYaw * 0.8))
+                    m = mRotateX(m, Float(-p.pitch * 0.8))
+                    m = mRotateZ(m, Float(Foundation.sin(time * 1.3 + p.x) * 0.07))
+                    if n.hasPrefix("ear") {
+                        // a quick twitch now and then (sin^8 makes short bursts)
+                        let t = Foundation.pow(max(0, Foundation.sin(time * 1.7 + p.z * 3)), 8)
+                        m = mRotateZ(m, Float((n == "earR" ? -1.0 : 1.0) * (0.04 + t * 0.18)))
+                    }
+                } else if n == "legFR" || n == "legBL" || n == "legR" {
+                    m = mRotateX(m, Float(walkA))
+                } else if n == "legFL" || n == "legBR" || n == "legL" {
+                    m = mRotateX(m, Float(walkB))
+                } else if n.hasPrefix("tail") {
+                    let k = Double(n.count)   // tails wag slightly out of step
+                    m = mRotateY(m, Float(Foundation.sin(time * 7 + k) * 0.3 * (1 + amp)))
+                } else if n == "wingR" {
+                    m = mRotateZ(m, Float(-0.1 - abs(Foundation.sin(time * 14)) * 0.5 * min(1, amp * 2 + (p.airborne ? 1 : 0))))
+                } else if n == "wingL" {
+                    m = mRotateZ(m, Float(0.1 + abs(Foundation.sin(time * 14)) * 0.5 * min(1, amp * 2 + (p.airborne ? 1 : 0))))
                 }
             case "quad", "quadTail", "horse":
                 if n == "head" {

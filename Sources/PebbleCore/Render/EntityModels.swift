@@ -321,6 +321,8 @@ private let ensureModelsOnce: Void = {
 
     // everything else EntityModels2.swift
     registerAllModels()
+    // anime-style animals (AnimeModels.swift)
+    for s in ANIME_ANIMALS { MODELS[s.id] = buildAnimeModel(s) }
 }()
 public func ensureModels() { _ = ensureModelsOnce }
 
