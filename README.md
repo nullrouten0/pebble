@@ -38,7 +38,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 100 (55+ mobs with full AI, vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 790, all green (`pebble test`) |
+| Regression checks | 795, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by the Faithful team (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -160,6 +160,8 @@ For `city`, `mountain` and worldgen structures, a different `variant` number giv
 
 **Undo** covers every tool above except the Infinity Wipe, plus `/fill`, and restores chest contents. It keeps your last 64 edits until you quit. Blocks you mine or place by hand aren't tracked, and killed mobs and dropped items don't come back.
 
+**Anime-style animals.** Ten chibi critters with big heads, sparkly eyes and blush: `mochi_bunny`, `kitsune_kit`, `bell_neko`, `leaf_tanuki`, `bao_panda`, `puff_shiba`, `scarf_penguin`, `hamu_hamster`, `momiji_red_panda` and `piyo_chick`. They never spawn on their own: place one with its spawn egg (`/give mochi_bunny_spawn_egg`, or the Spawn Eggs tab in creative) or `/summon mochi_bunny`. Each has a favourite food that it follows you for and breeds with (carrots for the bunny, berries for the kitsune, fish for the neko and penguin, bamboo for the pandas, seeds for the hamster and chick, apples for the tanuki, bones for the shiba).
+
 ## Where things live
 
 On the Mac, everything is in `~/Library/Application Support/Pebble/`:
@@ -221,7 +223,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `790 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `795 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

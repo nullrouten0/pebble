@@ -2428,6 +2428,37 @@ do {
         check("creative dig world loads", false)
     }
 
+    // anime-style animals: placed by egg or /summon, never spawned naturally
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        var spawned = 0, eggs = 0, uvOK = true
+        for s in ANIME_ANIMALS {
+            if itemDefs.contains(where: { $0.name == "\(s.id)_spawn_egg" }) { eggs += 1 }
+            if let m = spawnMob(w, s.id, p.x + 3, p.y, p.z, SpawnOpts()) as? AnimeAnimal, m.type == s.id, hasModel(s.id) {
+                spawned += 1
+            }
+            let model = getModel(s.id)
+            for part in model.parts {
+                for b in part.boxes {
+                    let uw = 2 * (b.w.rounded(.up) + b.d.rounded(.up)), uh = b.d.rounded(.up) + b.h.rounded(.up)
+                    if b.u + uw > Double(model.texW) || b.v + uh > Double(model.texH) { uvOK = false }
+                }
+            }
+        }
+        check("all 10 anime animals spawn as themselves, with their own model", spawned == 10 && ANIME_ANIMALS.count == 10, "\(spawned)")
+        check("each anime animal has a spawn egg", eggs == 10, "\(eggs)")
+        check("anime animal skins fit their texture sheets", uvOK)
+        let natural = Set(BIOMES.compactMap { $0 }.flatMap { $0.creatures.map { $0.0 } })
+        check("anime animals never spawn naturally", ANIME_ANIMALS.allSatisfy { !natural.contains($0.id) })
+        if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob {
+            check("an anime animal is tempted by its favourite food", bunny.isFood(ItemStack(iid("carrot"), 1))
+                  && !bunny.isFood(ItemStack(iid("wheat"), 1)))
+        }
+        g.exitToTitle()
+    } else {
+        check("anime animals world loads", false)
+    }
+
     // saves: a chest edited in place (no block change) in an already-saved
     // chunk must survive an unload + reload, and the untouched chunks around
     // it must not be rewritten when they're revisited

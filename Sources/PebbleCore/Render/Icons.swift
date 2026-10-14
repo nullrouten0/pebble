@@ -566,8 +566,13 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
     }
     if name.hasSuffix("_spawn_egg") {
         let h = hashString(name)
-        let c1 = hsl(Double(h % 360), 0.50, 0.55)
-        let c2 = hsl(Double((h >> 8) % 360), 0.55, 0.40)
+        var c1 = hsl(Double(h % 360), 0.50, 0.55)
+        var c2 = hsl(Double((h >> 8) % 360), 0.55, 0.40)
+        if let a = ANIME_ANIMAL_BY_ID[String(name.dropLast("_spawn_egg".count))] {
+            // the animal's own colours, spotted with its accent
+            c1 = a.fur
+            c2 = a.accent == a.fur ? a.dark : a.accent
+        }
         for y in 3..<13 {
             for x in 4..<12 {
                 let dx = (Double(x) - 7.5) / 3.6, dy = (Double(y) - 8) / 4.6

@@ -6,6 +6,7 @@
 import AVFoundation
 import Foundation
 import os
+import PebbleCore
 
 // ---------------------------------------------------------------------------
 // voices
@@ -937,6 +938,12 @@ private func buildRecipes() {
     mobVoice("entity.bat.ambient", "ambient", "Bat squeaks", 2400, .square, 0.08, 1.3)
     mobVoice("entity.bee.ambient", "friendly", "Bee buzzes", 220, .sawtooth, 0.4, 1.05, 25)
     mobVoice("entity.fox.ambient", "friendly", "Fox squeaks", 800, .square, 0.2, 1.4)
+    // anime-style animals: soft, rising chirps with a little vibrato
+    for a in ANIME_ANIMALS {
+        mobVoice("entity.\(a.id).ambient", "friendly", "\(a.display) chirps", a.voice, .triangle, 0.22, a.bend, 9)
+        mobVoice("entity.\(a.id).hurt", "friendly", "\(a.display) squeaks", a.voice * 1.25, .triangle, 0.14, 1.5)
+        mobVoice("entity.\(a.id).death", "friendly", "\(a.display) faints", a.voice, .triangle, 0.45, 0.5, 6)
+    }
     mobVoice("entity.frog.ambient", "friendly", "Frog croaks", 180, .square, 0.2, 0.8, 14)
     R("entity.frog.eat", "friendly", "Frog eats") { s, _, _ in
         s.tone(freq: 500, endFreq: 200, dur: 0.15, vol: 0.3)

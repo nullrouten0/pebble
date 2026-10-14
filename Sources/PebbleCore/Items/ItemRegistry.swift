@@ -339,6 +339,11 @@ private let registerAllItemsOnce: Void = {
     registerItem("box_builder", display: "Box Builder", maxStack: 1, category: "tools", icon: "lurker_shell", rarity: 3)
     registerItem("infinity_wipe", display: "Infinity Wipe", maxStack: 1, category: "tools", icon: "nether_star", rarity: 3)
 
+    // anime-style animals (Entity/AnimeAnimals.swift): eggs are their only way in
+    for s in ANIME_ANIMALS {
+        registerItem("\(s.id)_spawn_egg", display: "\(s.display) Spawn Egg", category: "spawn_eggs", icon: "spawn_egg")
+    }
+
     // worn in the helmet slot: a beam of light where you look (WorldRenderer
     // headlamps). Durability 0 = never wears out.
     registerItem("headlamp", display: "Headlamp",

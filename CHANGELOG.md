@@ -3,7 +3,23 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
-## 1.5.2 — 2026-10-13 — texture credits
+## Unreleased — anime-style animals
+
+- **Ten anime-style animals**: Mochi Bunny, Kitsune Kit, Bell Neko, Leaf
+  Tanuki, Bao Panda, Puff Shiba, Scarf Penguin, Hamu Hamster, Momiji Red
+  Panda and Piyo Chick. Chibi proportions, big sparkly eyes and blush, each
+  with its own touch: the bunny's tall ears, the kitsune's three tails, the
+  neko's bell collar, the tanuki's leaf, the penguin's scarf, the hamster's
+  cheeks.
+- **Placed only:** each has a spawn egg (in the Spawn Eggs tab, coloured like
+  the animal) and works with `/summon`. They never spawn naturally, so
+  worlds and their wildlife are unchanged.
+- They're gentle passive animals: they wander, look at you, panic when hit,
+  follow you for their favourite food and breed with it. They bounce as they
+  walk (the bunny hops, the penguin and chick waddle), tilt their heads,
+  twitch their ears and wag their tails.
+- Each has its own synthesized voice: a soft chirp, a squeak when hurt.
+
 
 - The title screen's texture credit reads "Textures: Faithful 32x by the
   Faithful Team - faithfulpack.net", and clicking it opens
