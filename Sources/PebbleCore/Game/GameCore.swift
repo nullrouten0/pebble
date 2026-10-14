@@ -712,13 +712,18 @@ public final class GameCore {
         db.putWorld(rec)
         db.putPlayer(rec.id, ["dim": dim.rawValue, "data": player.save()])
         db.putAdvancements(rec.id, advancements.save())
-        // modified chunks, and every chunk never saved yet, across all dims.
-        // Saving each generated chunk once means later changes to world
-        // generation only reach land nobody has visited (CONTRIBUTING).
+        // every chunk whose record could be out of date, across all dims (the
+        // same rule as unloading). Saving each generated chunk once means later
+        // changes to world generation only reach land nobody has visited
+        // (CONTRIBUTING).
         var records: [ChunkRecord] = []
         for (d, w) in worlds where !w.isRemote {
-            for c in w.chunks.values where c.modified || !savedFullKeys.contains(db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)) {
-                records.append(chunkRecord(rec.id, d, w, c))
+            let occupied = chunksWithLiveEntities(w)
+            for c in w.chunks.values {
+                let key = db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)
+                if chunkNeedsSave(c, key, hasEntities: occupied.contains(chunkKey(c.cx, c.cz))) {
+                    records.append(chunkRecord(rec.id, d, w, c))
+                }
             }
         }
         // include any unload records still waiting in the batch buffer
@@ -1395,12 +1400,26 @@ public final class GameCore {
         }
     }
 
+    /// persist a chunk if it was never saved (every generated chunk is kept, so
+    /// generation changes can't reshape visited land), if edited, if live
+    /// entities stand in it, or if its record may be stale: entities have
+    /// left it, or block entities (chest contents, furnaces, signs) changed
+    /// in place, neither of which marks the chunk
+    private func chunkNeedsSave(_ c: Chunk, _ dbKey: String, hasEntities: Bool) -> Bool {
+        !savedFullKeys.contains(dbKey) || c.modified || hasEntities || c.savedEntities || !c.blockEntities.isEmpty
+    }
+
+    /// chunk keys (chunkKey) that saved entities stand in
+    private func chunksWithLiveEntities(_ w: World) -> Set<Int64> {
+        var keys = Set<Int64>()
+        for e in w.entities {
+            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
+            keys.insert(chunkKey(floorDiv(ifloor(ent.x), 16), floorDiv(ifloor(ent.z), 16)))
+        }
+        return keys
+    }
+
     private func unloadChunk(_ w: World, _ c: Chunk) {
-        // persist if it was never saved (every generated chunk is kept, so
-        // generation changes can't reshape visited land), if edited, if live
-        // entities stand in it, or if its record may be stale: entities have
-        // left it, or block entities (chest contents, furnaces, signs) changed
-        // in place, which doesn't mark the chunk
         var hasEntities = false
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
@@ -1411,8 +1430,7 @@ public final class GameCore {
         }
         if let rec = worldRec, !w.isRemote {   // a LAN guest's chunks are the host's to keep
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
-            let stale = c.savedEntities || !c.blockEntities.isEmpty
-            if !savedFullKeys.contains(dbKey) || c.modified || hasEntities || stale {
+            if chunkNeedsSave(c, dbKey, hasEntities: hasEntities) {
                 let record = chunkRecord(rec.id, w.dim, w, c)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record

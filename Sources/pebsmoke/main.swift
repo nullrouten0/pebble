@@ -2634,6 +2634,38 @@ do {
     } else {
         check("save world loads", false)
     }
+
+    // saves: what changes in an already-saved chunk without changing a block
+    // (a summoned mob, a chest filled in place) survives save, quit and reopen
+    if let g = settled() {
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)), bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(B.chest) << 4)
+        let be = BlockEntityData(type: "chest", x: bx, y: by, z: bz)
+        be.items = [ItemStack?](repeating: nil, count: 27)
+        w.setBlockEntity(be)
+        g.saveAndFlush(); g.waitForSaves()             // as an autosave would
+        be.items![0] = ItemStack(iid("diamond"), 5)
+        _ = spawnMob(w, "pig", p.x - 2, p.y, p.z)
+        _ = spawnMob(w, "mochi_bunny", p.x, p.y, p.z - 2)
+        let id = g.worldRec!.id
+        g.exitToTitle()
+        g.loadWorld(id)
+        var n = 0
+        while n < 200 && (w === g.world || g.world.getBlockEntity(bx, by, bz) == nil) {
+            _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1
+        }
+        let near = Set(g.world.entities.compactMap { $0 as? Entity }
+            .filter { !$0.isPlayer && abs($0.x - p.x) < 8 && abs($0.z - p.z) < 8 }.map { $0.type })
+        let kept: ItemStack? = g.world.getBlockEntity(bx, by, bz)?.items?[0] ?? nil
+        check("mobs summoned into a saved chunk survive save and reopen",
+              near.contains("pig") && near.contains("mochi_bunny"), "\(near.sorted())")
+        check("a chest filled in a saved chunk survives save and reopen",
+              kept?.id == iid("diamond") && kept?.count == 5, String(describing: kept))
+        g.exitToTitle()
+    } else {
+        check("reopen world loads", false)
+    }
 }
 
 section("world spawn on dry land")

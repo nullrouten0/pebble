@@ -3,6 +3,16 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.1 — 2026-10-13 — saving keeps your animals and chests
+
+- **Saving keeps everything again.** Saving (the pause menu, quitting, or the
+  minute-by-minute autosave) wrote only chunks whose blocks had changed. A
+  mob you summoned, bred or led into a part of the world that was already
+  saved, or a chest you filled there, was missing when you came back, unless
+  you had wandered far enough away for that land to unload first. Saving now
+  uses the same rule as unloading: any chunk with mobs, chests, furnaces or
+  other block entities in it, or that mobs have just left, is written.
+
 ## 1.6.0 — 2026-10-13 — anime animals, Faithful September 2026
 
 ### Anime-style animals
