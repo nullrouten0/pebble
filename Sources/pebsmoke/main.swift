@@ -2581,6 +2581,33 @@ do {
         check("clipboard world loads", false)
     }
 
+    if let g = settled() {
+        // a structure placed right where you stand lifts you out of its walls
+        let p = g.player!, w = g.world
+        func stuck() -> Bool {
+            let x = ifloor(p.x), z = ifloor(p.z), y = ifloor(p.y)
+            return blockDefs[w.getBlockId(x, y, z)].solid || blockDefs[w.getBlockId(x, y + 1, z)].solid
+        }
+        let px = ifloor(p.x), pz = ifloor(p.z)
+        for y in ifloor(p.y)...(ifloor(p.y) + 2) { w.setBlock(px, y, pz, Int(cell(B.stone))) }
+        liftOutOfBlocks(p)
+        check("someone inside blocks is lifted to where they fit", !stuck(), "\(p.y)")
+        if let pf = capturePrefab("small_school", dim: w.dim.rawValue, minY: w.info.minY,
+                                  maxY: w.info.minY + w.info.height, biome: 1, variant: 0) {
+            // line a solid block of the building up with your feet
+            let wasY = p.y
+            let (sx, sy, sz, _) = pf.cells.first { blockDefs[Int($0.3 >> 4)].solid && $0.1 >= PREFAB_GROUND }!
+            let tx = ifloor(p.x) - sx + floorDiv(pf.x0 + pf.x1, 2), tz = ifloor(p.z) - sz + floorDiv(pf.z0 + pf.z1, 2)
+            _ = g.placePrefab(pf, tx, ifloor(p.y) - sy + PREFAB_GROUND, tz)
+            check("a structure placed on top of you leaves you free", !stuck(), "y \(wasY) → \(p.y)")
+        } else {
+            check("small_school captures", false)
+        }
+        g.exitToTitle()
+    } else {
+        check("placement world loads", false)
+    }
+
     // anime-style animals: placed by egg or /summon, never spawned naturally
     if let g = settled() {
         let p = g.player!, w = g.world
@@ -2766,6 +2793,28 @@ do {
     } else {
         check("future-mob world loads", false)
     }
+}
+
+section("/place lands clear of you")
+do {
+    // whichever way you face, the footprint of what /place puts ahead of you
+    // stays at least 3 blocks away (it used to cover you looking diagonally)
+    let w = World(dim: .overworld, seed: 1)
+    let p = Player(world: w)
+    p.setPos(0.5, 80, 0.5)
+    var covered: [String] = []
+    for (wid, len) in [(107, 107), (31, 80), (9, 9)] {
+        for deg in stride(from: 0, to: 360, by: 5) {
+            p.yaw = Double(deg) * .pi / 180
+            let (tx, tz) = placementAhead(p, width: wid, length: len)
+            // the footprint placePrefab makes around (tx, tz)
+            let x0 = tx - (wid - 1) / 2, z0 = tz - (len - 1) / 2
+            let gapX = max(Double(x0) - p.x, p.x - Double(x0 + wid))
+            let gapZ = max(Double(z0) - p.z, p.z - Double(z0 + len))
+            if max(gapX, gapZ) < 2 { covered.append("\(wid)x\(len)@\(deg)") }
+        }
+    }
+    check("/place puts its footprint clear of you at every heading", covered.isEmpty, "\(covered.prefix(6))")
 }
 
 section("copy, paste and undo edge cases")

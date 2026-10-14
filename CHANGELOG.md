@@ -3,6 +3,19 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.12 — 2026-10-14 — /place lands clear of you
+
+- **`/place` no longer drops a structure on top of you.** It aimed the
+  middle of the structure half its width ahead of you, which only cleared
+  you when you faced straight along an axis. Turned even 20°, a city's
+  corner reached back over where you stood, burying you in its walls: the
+  view broke through the terrain and you (and any pets) were stuck. It now
+  picks the nearest spot along your view that keeps the whole footprint at
+  least 3 blocks away, whichever way you face.
+- **Anyone a structure lands on is lifted out.** If something placed with
+  `/place` (say at coordinates you typed) ends up around you or a mob, you
+  move up to the first spot where you fit instead of staying stuck inside it.
+
 ## 1.6.11 — 2026-10-13 — tidying
 
 - The selection wand's outline no longer builds new lists of points every
