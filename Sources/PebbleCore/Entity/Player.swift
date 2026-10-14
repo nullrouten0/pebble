@@ -148,7 +148,7 @@ public final class Player: LivingEntity {
     public var noJumpDelay = 0
 
     /// speed attribute chain: base 0.1, sprint ×1.3, speed/slowness effects
-    private func vanillaSpeed() -> Double {
+    private func walkSpeedTarget() -> Double {
         var s = 0.1
         if sprinting { s *= 1.3 }
         s *= 1 + 0.2 * Double(effectLevel("speed"))
@@ -231,14 +231,14 @@ public final class Player: LivingEntity {
         if inWater {
             // ---- swimming ----
             let yBefore = y
-            var waterSlow = sprinting ? 0.9 : 0.8   // vanilla sprint-swim inertia
+            var waterSlow = sprinting ? 0.9 : 0.8   // sprint-swim inertia
             var speed = 0.02
             var ds = Double(armor[3].map { enchLevel($0, "depth_strider") } ?? 0)
             ds = min(3, ds)
             if !onGround { ds *= 0.5 }
             if ds > 0 {
                 waterSlow += (0.54600006 - waterSlow) * ds / 3
-                speed += (vanillaSpeed() - speed) * ds / 3
+                speed += (walkSpeedTarget() - speed) * ds / 3
             }
             if hasEffect("dolphins_grace") { waterSlow = 0.96 }
             moveRelativeP(f, s, speed)
@@ -246,7 +246,7 @@ public final class Player: LivingEntity {
             vx *= waterSlow
             vy *= 0.8
             vz *= waterSlow
-            // fluid-falling gravity: 0.08/16 with the vanilla epsilon snap
+            // fluid-falling gravity: 0.08/16 with an epsilon snap
             if !noGravity && !sprinting {
                 let falling = vy <= 0
                 if falling && abs(vy - 0.005) >= 0.003 && abs(vy - 0.08 / 16) < 0.003 {
@@ -283,10 +283,10 @@ public final class Player: LivingEntity {
             let below = world.getBlockId(ifloor(x), ifloor(y - 0.5000001), ifloor(z))
             let slip = slipperiness(below)
             let friction = onGround ? slip * 0.91 : 0.91
-            // 0.216/slip³ with the ×0.98 input gives the exact vanilla speeds:
+            // 0.216/slip³ with the ×0.98 input gives the exact reference speeds:
             // walk 4.3172, sprint 5.6114, sneak 1.295 blocks/s at equilibrium
             let accel = onGround
-                ? vanillaSpeed() * 0.21600002 / (slip * slip * slip)
+                ? walkSpeedTarget() * 0.21600002 / (slip * slip * slip)
                 : 0.02 + (sprinting ? 0.006 : 0)
             moveRelativeP(f, s, accel)
             // climbing clamps (before move)
@@ -335,7 +335,7 @@ public final class Player: LivingEntity {
         limbSwing += limbAmp * 1.2
     }
 
-    /// vanilla maybeBackOffFromEdge — sneaking on the ground never walks off
+    /// edge back-off — sneaking on the ground never walks off
     public override func move(_ dxIn: Double, _ dyIn: Double, _ dzIn: Double) {
         var dx = dxIn, dz = dzIn
         if sneaking && onGround && dyIn <= 0 && !flying {
@@ -380,7 +380,7 @@ public final class Player: LivingEntity {
         return false
     }
     private func tickWingsuit() {
-        // vanilla wingsuit physics
+        // wingsuit physics
         let pitch = self.pitch
         let lookX = -detSin(yaw) * detCos(pitch)
         let lookZ = detCos(yaw) * detCos(pitch)
@@ -397,7 +397,7 @@ public final class Player: LivingEntity {
             vz += lookZ / hLook * lift
         }
         if pitch < 0 && hLook > 0 {
-            // vanilla scales only the VERTICAL component by 3.2
+            // only the VERTICAL component scales by 3.2
             let pull = hVel * -detSin(pitch) * 0.04
             vx += -lookX / hLook * pull
             vy += pull * 3.2
@@ -441,7 +441,7 @@ public final class Player: LivingEntity {
         if hunger >= 18 && health < maxHealth && world.rule("naturalRegeneration") {
             let fast = hunger >= 20 && saturation > 0
             if foodTickTimer >= (fast ? 10 : 80) {
-                // vanilla: saturation-fed regen heals up to 1 per half second,
+                // saturation-fed regen heals up to 1 per half second,
                 // scaled down (with its cost) once saturation drops below 6
                 let spend = fast ? min(saturation, 6) : 6
                 heal(spend / 6)
@@ -675,7 +675,7 @@ public final class Player: LivingEntity {
         }
         health = 0
         deathTime = 1
-        // falls over 5 blocks get vanilla's "fell from a high place" wording
+        // falls over 5 blocks get the "fell from a high place" wording
         data.deathCause = source == .fall && fallDistance > 5 ? "fall_high" : source.rawValue
         data.deathAttacker = lastAttacker.map { prettify($0.type) }
         world.hooks.playSound("entity.player.death", x, y, z, 1, 1)

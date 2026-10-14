@@ -7,7 +7,7 @@ import Foundation
 // ---------------------------------------------------------------------------
 // Furnace family
 // ---------------------------------------------------------------------------
-/// vanilla: a furnace smelts everything; a blast furnace only ores, a
+/// a furnace smelts everything; a blast furnace only ores, a
 /// smoker (and a campfire) only food. (The blast furnace used to take every
 /// general recipe too — sand, cobblestone, logs.)
 public func smeltResultFor(_ input: ItemStack?, _ kind: FurnaceKind) -> (output: String, xp: Double)? {

@@ -2,7 +2,7 @@
 // (with burnout), repeaters (delay + locking), comparators (compare/subtract +
 // container reading), pistons (incl. sticky + slime/honey push sets +
 // quasi-connectivity), observers, dispensers/droppers, note blocks, lamps,
-// rails, doors, sensors, TNT — with vanilla-style scheduled tick timing.
+// rails, doors, sensors, TNT — with scheduled tick timing.
 //
 // Uses its own seeded module RNG (0x4ED0) exactly like the frozen baseline.
 

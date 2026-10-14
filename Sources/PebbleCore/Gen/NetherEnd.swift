@@ -171,7 +171,7 @@ public final class NetherGen {
                 if px < 0 || px > 15 || pz < 0 || pz > 15 || py < 2 || py > NETHER_H - 3 { continue }
                 let idx = (py * 16 + pz) * 16 + px
                 if blocks[idx] != ASHROCK { continue }
-                // require no air neighbors (vanilla "in air: 0")
+                // require no air neighbors ("in air: 0")
                 var buried = true
                 for (dx, dy, dz) in [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)] {
                     let nx = px + dx, ny = py + dy, nz = pz + dz

@@ -1,4 +1,4 @@
-// UI core — screen stack, cursor item, GUI scaling, MC-style
+// UI core — screen stack, cursor item, GUI scaling,
 // panel/slot/button/slider/textfield drawing, and the slot interaction
 // framework shared by every container screen. Draws through UICanvas.
 
@@ -6,7 +6,7 @@ import Foundation
 import QuartzCore
 import PebbleCore
 
-/// enchantment / effect level as vanilla shows it: I…X, then plain digits
+/// enchantment / effect level as Roman numerals I…X, then plain digits
 /// (also anything below 1, which only /enchant or a bad save can produce)
 func romanNumeral(_ n: Int) -> String {
     n >= 1 && n <= 10 ? ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][n - 1] : String(n)
@@ -365,7 +365,7 @@ final class UIManager {
         }
     }
     func drawButton(_ b: Button, _ hover: Bool) {
-        // vanilla widgets.png strips: 46 disabled / 66 normal / 86 hover, 200×20,
+        // widgets.png strips: 46 disabled / 66 normal / 86 hover, 200×20,
         // blitted as left+right halves so any width keeps both end caps
         if b.w <= 200, hasSheet("widgets") {
             let sy = b.enabled ? (hover ? 86.0 : 66.0) : 46.0
@@ -391,7 +391,7 @@ final class UIManager {
         }
         for s in screen.sliders {
             if s.w <= 200, hasSheet("widgets") {
-                // vanilla slider: disabled-strip track + 8px handle
+                // slider: disabled-strip track + 8px handle
                 let half = (s.w / 2).rounded(.down)
                 blitSheet("widgets", 0, 46, half, 20, s.x, s.y, half, s.h)
                 blitSheet("widgets", 200 - (s.w - half), 46, s.w - half, 20, s.x + half, s.y, s.w - half, s.h)
@@ -437,7 +437,7 @@ final class UIManager {
     }
     func drawDirtBg() {
         if hasSheet("bg") {
-            // vanilla options background: 16px texture tiled every 32 GUI px, ×0.25 tint
+            // options background: 16px texture tiled every 32 GUI px, ×0.25 tint
             let tint = SIMD4<Float>(0.25, 0.25, 0.25, 1)
             var y = 0.0
             while y < height {

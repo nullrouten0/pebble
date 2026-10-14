@@ -96,7 +96,7 @@ public final class World {
     /// "nearest player" checks that used to scan every entity
     public private(set) var players: [Player] = []
     /// leaves woken by a neighbor change: only these re-check their reach to a
-    /// log on random ticks. Like vanilla, untouched generated trees keep every
+    /// log on random ticks. Untouched generated trees keep every
     /// leaf (2-3% of generated canopy sits past the 6-block reach and shed
     /// saplings around every forest); chopping a trunk wakes its leaves, and
     /// each one that decays wakes its neighbors.
@@ -449,7 +449,7 @@ public final class World {
         thunderLevel = max(0, min(1, thunderLevel))
     }
 
-    /// celestial angle 0..1 (0.0 = noon-ish vanilla curve)
+    /// celestial angle 0..1 (0.0 = noon-ish)
     public func sunAngle() -> Double {
         let f = (Double(dayTime) / Double(DAY_LENGTH)) - 0.25
         let frac = f < 0 ? f + 1 : f

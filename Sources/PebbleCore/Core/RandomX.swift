@@ -89,7 +89,7 @@ public struct RandomX {
     @inline(__always)
     public mutating func chance(_ p: Double) -> Bool { nextFloat() < p }
 
-    /// triangular distribution used by vanilla ore placement
+    /// triangular distribution used by ore placement
     public mutating func nextTriangular(_ mode: Double, _ deviation: Double) -> Double {
         mode + deviation * (nextFloat() - nextFloat())
     }

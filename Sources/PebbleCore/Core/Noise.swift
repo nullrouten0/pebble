@@ -196,7 +196,7 @@ public final class FBM {
     }
 }
 
-/// piecewise smoothstep-interpolated spline (vanilla-style terrain shaping)
+/// piecewise smoothstep-interpolated spline (terrain shaping)
 public struct Spline {
     private let xs: [Double]
     private let ys: [Double]

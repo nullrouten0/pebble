@@ -1,5 +1,5 @@
 // Block destroyers — the bazooka (rocket → carving blast) and the mining laser
-// (hold to bore a round tunnel). Vanilla explosion rays die after 2–4 blocks of
+// (hold to bore a round tunnel). Ordinary explosion rays die after 2–4 blocks of
 // stone, so these use their own rule: everything inside the shape goes except
 // unbreakable blocks (bedrock, barriers, portal frames). No item drops — a big
 // crater would otherwise spawn thousands of item entities.

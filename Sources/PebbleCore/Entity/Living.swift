@@ -184,7 +184,7 @@ open class LivingEntity: Entity {
         if source.isFire && hasEffect("fire_resistance") { return false }
         if source == .fall && (type == "cat" || type == "ocelot" || type == "chicken" || type == "bat" || type == "parrot" || type == "bee" || type == "lurker" || type == "iron_golem") { return false }
 
-        // armor reduction (vanilla formula)
+        // armor reduction
         let bypassesArmor = source.bypassesArmor
         var dmg = amount
         if !bypassesArmor {
@@ -319,7 +319,7 @@ open class LivingEntity: Entity {
         return s
     }
 
-    /// vanilla-style travel physics; call each tick with intent set
+    /// travel physics; call each tick with intent set
     public func travel() {
         let inWater = self.inWater, inLava = self.inLava
         let slipperinessBlock = world.getBlock(ifloor(x), ifloor(y - 0.5), ifloor(z)) >> 4

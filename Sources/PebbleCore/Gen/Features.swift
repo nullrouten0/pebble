@@ -1047,7 +1047,7 @@ final class TreeRecorder: ChunkSink {
     func addEntity(_ spec: EntitySpec) { base.addEntity(spec) }
 
     /// remove the leaves this tree placed more than 6 steps (through its own
-    /// leaves) from its logs: vanilla's decay reach. Left in, the first
+    /// leaves) from its logs: the decay reach. Left in, the first
     /// neighbour change near one (snow settling, a vine) made it decay, and
     /// the rest of the overhang fell after it.
     func pruneOrphanLeaves() {

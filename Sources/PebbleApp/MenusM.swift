@@ -49,7 +49,7 @@ final class TitleScreen: Screen {
     override func initScreen(_ ui: UIManager, _ game: GameCore) {
         if splash.isEmpty { splash = TitleScreen.SPLASHES[Int.random(in: 0..<TitleScreen.SPLASHES.count)] }
         let cx = (ui.width / 2).rounded(.down)
-        // vanilla layout: stacked main buttons at h/4+48, then a half-width row
+        // layout: stacked main buttons at h/4+48, then a half-width row
         var y = (ui.height / 4).rounded(.down) + 48 - TitleScreen.lift(ui)
         buttons.append(Button(cx - 100, y, 200, 20, "Singleplayer", { [weak ui, weak game] in
             guard let ui, let game else { return }

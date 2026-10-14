@@ -23,7 +23,7 @@
 
 ## Context
 
-Pebble is a ~46k-line Swift + Metal voxel survival game (Minecraft-like) that currently ships only as a macOS app built with SwiftPM. You asked how hard it would be to run it on iPad or iPhone, and how well an iPad would perform, before committing to the port. This document has the evidence first, then the plan for the port itself.
+Pebble is a ~46k-line Swift + Metal voxel survival game that currently ships only as a macOS app built with SwiftPM. You asked how hard it would be to run it on iPad or iPhone, and how well an iPad would perform, before committing to the port. This document has the evidence first, then the plan for the port itself.
 
 **Decisions from you:**
 - The first playable milestone includes **both** hardware input (keyboard, mouse, controller) **and** touch controls.
@@ -99,7 +99,7 @@ Pebble is a ~46k-line Swift + Metal voxel survival game (Minecraft-like) that cu
 | Audio | Add `AVAudioSession`, interruption and route-change handling | Small |
 | Hardware input | The engine already exposes `keyDown/keyUp/mouseDown/mouseUp/mouseDelta/wheelHotbar` (`GameCore.swift:2003-2099`), and `Bot.swift` already drives the player through them | Small–medium |
 | Touch input | New overlay, container gestures, soft keyboard | **Large** |
-| Distribution | Personal devices via Xcode signing; TestFlight for internal testers. An App Store release is unlikely (guideline 4.1, Minecraft trade dress, the Faithful License, which forbids putting its work behind a paywall) | n/a |
+| Distribution | Personal devices via Xcode signing; TestFlight for internal testers. An App Store release is unlikely (guideline 4.1 on copycat apps, the Faithful License, which forbids putting its work behind a paywall) | n/a |
 
 ---
 
@@ -214,7 +214,7 @@ pebble/
 - `TouchOverlay` in `PebbleApp`, drawn with `UICanvas` after the HUD, with its own multi-touch tracking by `UITouch` identity:
   - **Left side:** a floating virtual stick feeding analog movement. Pushing past the outer ring sprints.
   - **Right side:** drag to look, using a separate touch-sensitivity setting.
-  - **Tapping the look area** uses/places through the existing `mouseDown(2)/mouseUp(2)` path. **Pressing and holding still** (~250 ms within a few UI units of the press) breaks or attacks through `mouseDown(0)` and its existing per-tick hold logic. As in Minecraft, only a fresh press digs: steering past that slop releases the break until the finger lifts (a held use stays down so bows can aim); creative breaks erode over `creativeBreakDelay` (0.4 s on touch).
+  - **Tapping the look area** uses/places through the existing `mouseDown(2)/mouseUp(2)` path. **Pressing and holding still** (~250 ms within a few UI units of the press) breaks or attacks through `mouseDown(0)` and its existing per-tick hold logic. Only a fresh press digs: steering past that slop releases the break until the finger lifts (a held use stays down so bows can aim); creative breaks erode over `creativeBreakDelay` (0.4 s on touch).
   - **Buttons:** jump (double-tap toggles flight, as today), sneak toggle, inventory, pause, chat, drop, perspective, offhand swap.
   - **Hotbar:** tap a slot to select it; long-press drops it. Slot layout comes from `HudM.swift:95-96`.
 - Engine: add an optional analog override for `moveForward`/`moveStrafe` (`GameCore.swift:1402-1406`). The keyboard path stays untouched, so the goldens are unaffected. A pebsmoke check confirms the override is inert when unset.

@@ -76,7 +76,7 @@ final class HUD {
             return
         }
 
-        // vanilla pack HUD when the GUI sheets are loaded; procedural fallback
+        // the pack's HUD art when the GUI sheets are loaded; procedural fallback
         let packHud = ui.hasSheet("icons") && ui.hasSheet("widgets")
 
         // crosshair (plain white; canvas used difference-blend)
@@ -145,7 +145,7 @@ final class HUD {
         }
 
         if player.gameMode != GameMode.creative {
-            // 9×9 icon blit from icons.png (vanilla offsets), pack path only
+            // 9×9 icon blit from icons.png (the sheet's standard offsets), pack path only
             func icon9(_ sx: Double, _ sy: Double, _ dx: Double, _ dy: Double) {
                 ui.blitSheet("icons", sx, sy, 9, 9, dx, dy)
             }

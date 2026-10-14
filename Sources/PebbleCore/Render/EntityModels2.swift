@@ -32,7 +32,7 @@ func bipedModel(_ paint: @escaping (EntitySkin) -> Void, scale: Double = 1, anim
         ],
         anim: anim, scale: scale, paint: paint, packTex: packTex)
 }
-/// vanilla skeleton rig: biped pivots but THIN 2×12×2 limbs — the player-
+/// pack-layout skeleton rig: biped pivots but THIN 2×12×2 limbs — the player-
 /// sized 4-wide limbs over-read the unwrap into skeleton.png's legacy pink
 /// junk region (the "pink rear" bug)
 func skeletonModel(_ paint: @escaping (EntitySkin) -> Void, scale: Double = 1,
@@ -96,7 +96,7 @@ func registerAllModels() {
         ],
         anim: "wingsuit", scale: 1,
         paint: { s in
-            // The vanilla/Faithful wingsuit unwrap begins at U=22; U=0 is
+            // The pack-format (Faithful) wingsuit unwrap begins at U=22; U=0 is
             // transparent padding, so using the generic box origin left the
             // equipped layer effectively invisible even with valid geometry.
             s.box(22, 0, 10, 20, 2, 0x7a6c74, 0.08)
@@ -283,7 +283,7 @@ func registerAllModels() {
             s.box(30, 15, 2, 4, 5, fur, 0.12)
         },
         packTex: ["entity/rabbit/brown.png"]))
-    // vanilla GoatModel geometry (64×64, modern unrotated two-cube body)
+    // pack-layout goat rig (64×64, modern unrotated two-cube body)
     M2("goat", MobModel(
         texW: 64, texH: 64,
         parts: [
@@ -377,7 +377,7 @@ func registerAllModels() {
         MobModel(
             texW: 64, texH: 64,
             parts: [
-                // vanilla head_parts group: neck + head + mouth + mane + ears,
+                // pack-layout head group: neck + head + mouth + mane + ears,
                 // pitched 30 deg forward as one unit
                 rpart("head", (0, 20, -12), (-0.5236, 0, 0),
                       box(-2.05, -5, -2, 4.1, 14.8, 8, 0, 35),
@@ -411,7 +411,7 @@ func registerAllModels() {
     M2("donkey", horseModel(0x8a7a6a, 0x5a4c40, 0.9, "horse", ["entity/horse/donkey.png"]))
     M2("mule", horseModel(0x6a4a32, 0x3a2a1c, 0.95, "horse", ["entity/horse/mule.png"]))
     M2("skeleton_horse", horseModel(0xc8c8c0, 0xb0b0a8, 1, "horse", ["entity/horse/horse_skeleton.png"]))
-    // vanilla LlamaModel geometry (128×64) — the old 64-wide layout's body
+    // pack-layout llama rig (128×64) — the old 64-wide layout's body
     // unwrap overflowed the texture and rendered hollow from one side
     M2("llama", MobModel(
         texW: 128, texH: 64,
@@ -437,7 +437,7 @@ func registerAllModels() {
             s.box(29, 29, 4, 14, 4, shadeColor(wool, 0.92), 0.1)          // legs
         },
         packTex: ["entity/llama/creamy.png"]))
-    // vanilla CamelModel geometry (128×128) — modern unrotated rig
+    // pack-layout camel rig (128×128) — modern unrotated rig
     M2("camel", MobModel(
         texW: 128, texH: 128,
         parts: [
@@ -586,7 +586,7 @@ private func registerModels2() {
             s.box(0, 52, 6, 6, 6, 0xb8a0b8, 0.1)
             s.px(16 + 1, 52 + 6 + 2, 0x1c1c1c); s.px(16 + 4, 52 + 6 + 2, 0x1c1c1c)
         }, packTex: ["entity/shulker/shulker.png"]))
-    // vanilla vex/allay rigs (32×32) — two-cube body, thin arms, wing planes
+    // pack-layout vex/allay rigs (32×32) — two-cube body, thin arms, wing planes
     func flyBiped(_ name: String, _ armW: Double, _ wingBox: ModelBox, _ armRUV: Double, _ armLUV: Double,
                   _ scale: Double, _ packTex: [String], _ paint: @escaping (EntitySkin) -> Void) {
         M2(name, MobModel(
@@ -645,7 +645,7 @@ private func registerModels2() {
     M2("pillager", marauderModel(0x4c4438, 0x9a9a8a, ["entity/illager/pillager.png"]))
     M2("vindicator", marauderModel(0x3c4448, 0x9a9a8a, ["entity/illager/vindicator.png"]))
     M2("conjurer", marauderModel(0x3a3a44, 0xb8b8a8, ["entity/illager/evoker.png"]))
-    // vanilla ravager rig (128×128) — rotated two-cube body, mouth, neck, horns
+    // pack-layout ravager rig (128×128) — rotated two-cube body, mouth, neck, horns
     M2("ravager", MobModel(
         texW: 128, texH: 128,
         parts: [
@@ -743,7 +743,7 @@ private func registerModels2() {
         }, packTex: ["entity/snow_golem.png"]))
 
     // NETHER MOBS
-    // vanilla snouter rig (64×64): 10-wide head + snout + tilted ears + a
+    // pack-layout snouter rig (64×64): 10-wide head + snout + tilted ears + a
     // grow-0.25 clothing layer; 1.20 rotting snouters use the same rig
     func snouterModel(_ packTex: [String], _ skin: Int, _ cloth: Int) -> MobModel {
         MobModel(
@@ -779,7 +779,7 @@ private func registerModels2() {
     M2("snouter", snouterModel(["entity/piglin/piglin.png"], 0xe8a4a4, 0x5a4a3a))
     M2("snouter_brute", snouterModel(["entity/piglin/piglin_brute.png"], 0xe8a4a4, 0x3a3026))
     M2("rotting_snouter", snouterModel(["entity/piglin/zombified_piglin.png"], 0xd89494, 0x8a5c4c))
-    // vanilla tusker rig (128×64) — tusked head pitched 50°, maned body
+    // pack-layout tusker rig (128×64) — tusked head pitched 50°, maned body
     let tuskerModel = MobModel(
         texW: 128, texH: 64,
         parts: [
@@ -833,7 +833,7 @@ private func registerModels2() {
             s.rect(16 + 3, 16 + 5, 2, 2, 0x3c3c3c); s.rect(16 + 11, 16 + 5, 2, 2, 0x3c3c3c)
             s.rect(16 + 6, 16 + 9, 4, 2, 0x3c3c3c)
         }, packTex: ["entity/ghast/ghast.png"]))
-    // vanilla magma cube rig (64×32) — eight 1-tall slices + molten core
+    // pack-layout magma cube rig (64×32) — eight 1-tall slices + molten core
     M2("magma_cube", MobModel(
         texW: 64, texH: 32,
         parts: [
@@ -869,7 +869,7 @@ private func registerModels2() {
             s.box(32, 8, 1, 1, 1, 0x1c1c1c)
             s.boxA(0, 0, 8, 8, 8, 0x6fc05c, 140, 0.08)
         }, packTex: ["entity/slime/slime.png"]))
-    // vanilla strider rig (64×128) — body + six side bristle planes
+    // pack-layout strider rig (64×128) — body + six side bristle planes
     M2("strider", MobModel(
         texW: 64, texH: 128,
         parts: [
@@ -945,7 +945,7 @@ private func registerModels2() {
             s.fill(2, 1, 4, 2, shadeColor(c, 0.85), 0.1)
         },
         packTex: ["entity/fish/salmon.png"]))
-    // vanilla tropical fish shape A; base art is grayscale by design and
+    // pack-layout tropical fish shape A; base art is grayscale by design and
     // tinted per variant — we bake the clownfish colors (kob/orange-white)
     M2("tropical_fish", MobModel(
         texW: 32, texH: 32,
@@ -987,7 +987,7 @@ private func registerModels2() {
             }
         },
         packTex: ["entity/fish/pufferfish.png"]))
-    // vanilla dolphin rig (64×64)
+    // pack-layout dolphin rig (64×64)
     M2("dolphin", MobModel(
         texW: 64, texH: 64,
         parts: [
@@ -1012,7 +1012,7 @@ private func registerModels2() {
             s.box(40, 6, 8, 1, 4, shadeColor(c, 0.9), 0.08)
         },
         packTex: ["entity/dolphin.png"]))
-    // vanilla guardian rig: 16-deep body with side/top/bottom plates; eye and
+    // pack-layout guardian rig: 16-deep body with side/top/bottom plates; eye and
     // spike art live in the unwrap's unused top-left corner ((8,0) and (0,0))
     let guardianModel = MobModel(
         texW: 64, texH: 64,
@@ -1035,7 +1035,7 @@ private func registerModels2() {
         anim: "guardian", scale: 1,
         paint: guardianPaint, packTex: ["entity/guardian.png"])
     M2("guardian", guardianModel)
-    // vanilla axolotl rig (64×64) — gill planes, top fin, flat paddle legs
+    // pack-layout axolotl rig (64×64) — gill planes, top fin, flat paddle legs
     M2("axolotl", MobModel(
         texW: 64, texH: 64,
         parts: [
@@ -1063,7 +1063,7 @@ private func registerModels2() {
             s.fill(2, 13, 3, 5, c, 0.08)
         },
         packTex: ["entity/axolotl/axolotl_lucy.png"]))
-    // vanilla turtle rig (128×64) — rotated shell + flat flippers
+    // pack-layout turtle rig (128×64) — rotated shell + flat flippers
     M2("turtle", MobModel(
         texW: 128, texH: 64,
         parts: [
@@ -1087,7 +1087,7 @@ private func registerModels2() {
             s.box(0, 23, 4, 1, 10, 0x6a9a4c, 0.1); s.box(0, 12, 4, 1, 10, 0x6a9a4c, 0.1)
         },
         packTex: ["entity/turtle/big_sea_turtle.png"]))
-    // vanilla frog rig (48×48) — body/head planes, eyes, webbed foot planes
+    // pack-layout frog rig (48×48) — body/head planes, eyes, webbed foot planes
     M2("frog", MobModel(
         texW: 48, texH: 48,
         parts: [
@@ -1117,7 +1117,7 @@ private func registerModels2() {
             s.box(0, 25, 3, 3, 4, c, 0.1); s.box(14, 25, 3, 3, 4, c, 0.1)
         },
         packTex: ["entity/frog/temperate_frog.png"]))
-    // vanilla tadpole rig (16×16)
+    // pack-layout tadpole rig (16×16)
     M2("tadpole", MobModel(
         texW: 16, texH: 16,
         parts: [
@@ -1166,7 +1166,7 @@ private func registerModels2() {
             s.box(0, 18, 9, 1, 6, 0xd8e8f0, 0.05)
             s.box(26, 7, 1, 1, 2, 0x2c2418)
         }, packTex: ["entity/bee/bee.png"]))
-    // vanilla parrot rig (32×32)
+    // pack-layout parrot rig (32×32)
     M2("parrot", MobModel(
         texW: 32, texH: 32,
         parts: [
@@ -1195,7 +1195,7 @@ private func registerModels2() {
             s.box(14, 18, 1, 2, 1, 0x8a8a8a)
         },
         packTex: ["entity/parrot/parrot_red_blue.png"]))
-    // vanilla PandaModel geometry (64×64) — the old quadModel2 body unwrap
+    // pack-layout panda rig (64×64) — the old quadModel2 body unwrap
     // overflowed the 64-wide texture and rendered hollow from one side
     M2("panda", MobModel(
         texW: 64, texH: 64,
@@ -1219,7 +1219,7 @@ private func registerModels2() {
             s.box(40, 0, 6, 9, 6, 0x1c1c1c, 0.08)                         // legs
         },
         packTex: ["entity/panda/panda.png"]))
-    // vanilla PolarBearModel geometry (128×64)
+    // pack-layout polar bear rig (128×64)
     M2("polar_bear", MobModel(
         texW: 128, texH: 64,
         parts: [
@@ -1245,7 +1245,7 @@ private func registerModels2() {
             s.box(50, 40, 4, 10, 6, 0xe0e0d8, 0.06)                       // front legs
         },
         packTex: ["entity/bear/polarbear.png"]))
-    // vanilla sniffer rig (192×192) — six legs, beaked head with tall ears
+    // pack-layout sniffer rig (192×192) — six legs, beaked head with tall ears
     M2("sniffer", MobModel(
         texW: 192, texH: 192,
         parts: [
@@ -1281,7 +1281,7 @@ private func registerModels2() {
         packTex: ["entity/sniffer/sniffer.png"]))
 
     // WARDEN
-    // vanilla warden rig (128×128) — ribcage + tendril planes included
+    // pack-layout warden rig (128×128) — ribcage + tendril planes included
     M2("warden", MobModel(
         texW: 128, texH: 128,
         parts: [
@@ -1309,7 +1309,7 @@ private func registerModels2() {
         packTex: ["entity/warden/warden.png"]))
 
     // DRAGON & BLIGHT
-    // vanilla rift dragon rig (256×256) — wing membranes are 56×56 planes
+    // pack-layout rift dragon rig (256×256) — wing membranes are 56×56 planes
     // whose unwrap starts at negative u (cancelled by +d); tips are folded
     // into the wing parts so the whole 112-unit span flaps as one
     M2("rift_dragon", MobModel(
@@ -1418,7 +1418,7 @@ private func registerModels2() {
         parts: [part("body", (0, 0, 0), box(-4, 0, -4, 8, 8, 8, 0, 0))],
         anim: "none", scale: 1,
         paint: { s in s.fill(0, 0, 16, 16, 0xffffff, 0) }))
-    // vanilla boat rig (128×64) — model space is x-long, so every plank gets
+    // pack-layout boat rig (128×64) — model space is x-long, so every plank gets
     // a baked extra 90° yaw to run along z like our boat entity does
     M2("boat_model", MobModel(
         texW: 128, texH: 64,
@@ -1446,9 +1446,9 @@ private func registerModels2() {
             s.box(62, 20, 3, 3, 1, 0x7a5228, 0.1)
         },
         packTex: ["entity/boat/oak.png"]))
-    // vanilla end crystal art (32×32): glass shell (0,0), core (0,16); the
-    // base samples the core region too (vanilla draws a real bedrock block
-    // there, which entity art can't express)
+    // pack-layout end crystal art (32×32): glass shell (0,0), core (0,16); the
+    // base samples the core region too (the pack art has no texture for the
+    // block it stands on)
     M2("rift_crystal_model", MobModel(
         texW: 64, texH: 32,
         parts: [
@@ -1461,7 +1461,7 @@ private func registerModels2() {
             s.box(0, 16, 4, 4, 4, 0xf0e8ff, 0.06)          // core
         },
         packTex: ["entity/end_crystal/end_crystal.png"]))
-    // vanilla minecart rig (64×32) — rotated floor plate + four 16×8×2 walls
+    // pack-layout minecart rig (64×32) — rotated floor plate + four 16×8×2 walls
     M2("minecart_model", MobModel(
         texW: 64, texH: 32,
         parts: [

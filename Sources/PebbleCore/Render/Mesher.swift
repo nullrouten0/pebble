@@ -46,7 +46,7 @@ public struct MeshOutput {
 private let P = 18
 
 // Biome tint is blended over a (2*BIOME_H+1)² neighborhood to smooth the color
-// seam where two biomes meet (vanilla does the same). The mesh biome array
+// seam where two biomes meet. The mesh biome array
 // therefore carries a BIOME_H-cell halo — wider than the 1-cell block halo.
 public let BIOME_H = 3
 public let BIOME_P = 16 + 2 * BIOME_H   // 22
@@ -118,7 +118,7 @@ private let GRASS_FALLBACK = 0x91bd59
 
 /// per-tile biome-tint gate installed by the app when a resource pack is
 /// active (1 = tile keeps its tint, 0 = render untinted because the imported
-/// art is pre-colored). nil — the always-tint vanilla-parity path pebsmoke
+/// art is pre-colored). nil — the always-tint path pebsmoke
 /// goldens exercise — costs nothing in the hot loop.
 public var PACK_TINT_GATE: [UInt8]? = nil
 
@@ -197,7 +197,7 @@ final class SectionMesher {
 
     /// corner light = avg of the 4 cells adjacent to the corner on the face's outside plane.
     /// A face is lit by the air cell it faces (`a`); an OPAQUE side/diagonal neighbor
-    /// carries no light of its own, so it contributes the FACE light, not 0 (vanilla
+    /// carries no light of its own, so it contributes the FACE light, not 0 (standard
     /// smooth lighting). Averaging in an opaque neighbor's 0 was over-darkening every
     /// pit wall, floor and underside — a 1-wide pit floor came out 8/15 instead of 15.
     func cornerLight(

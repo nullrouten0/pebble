@@ -682,7 +682,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
     let def = itemDef(held.id)
     let name = def.name
 
-    // stick-steering boost while riding (vanilla: 140–980 ticks)
+    // stick-steering boost while riding (140–980 ticks)
     if name == "carrot_on_a_stick", let pig = player.vehicle as? Pig {
         pig.boostTime = 140 + Int(world.rng.nextFloat() * 840)
         return true
@@ -1240,7 +1240,7 @@ private func placementMeta(_ world: World, _ player: Player, _ hit: RaycastHit, 
             return netherSoil.contains(where: { belowName.contains($0) }) ? 0 : -1
         }
         if name == "sugar_cane" {
-            // vanilla: on another cane, or on dirt/sand family with water (or
+            // on another cane, or on dirt/sand family with water (or
             // frosted ice) horizontally adjacent to the SUPPORT block.
             // (the "special check below" this pointed at never existed — cane
             // was unplaceable everywhere)

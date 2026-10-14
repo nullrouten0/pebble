@@ -289,8 +289,8 @@ final class UICanvas {
                 let next = text.index(after: i)
                 if next < text.endIndex {
                     let code = String(text[next]).lowercased()
-                    if let mc = MC_COLORS[code] {
-                        curColor = UICanvas.parse(mc)
+                    if let fc = FORMAT_COLORS[code] {
+                        curColor = UICanvas.parse(fc)
                         curShadow = shadowOf(curColor)
                     } else if code == "r" {
                         curColor = UICanvas.parse(color)
@@ -391,9 +391,9 @@ final class UICanvas {
 }
 
 // ---------------------------------------------------------------------------
-// 5×7 bitmap glyphs + MC color codes
+// 5×7 bitmap glyphs + § color codes
 // ---------------------------------------------------------------------------
-let MC_COLORS: [String: String] = [
+let FORMAT_COLORS: [String: String] = [
     "0": "#000000", "1": "#0000AA", "2": "#00AA00", "3": "#00AAAA",
     "4": "#AA0000", "5": "#AA00AA", "6": "#FFAA00", "7": "#AAAAAA",
     "8": "#555555", "9": "#5555FF", "a": "#55FF55", "b": "#55FFFF",

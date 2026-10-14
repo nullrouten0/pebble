@@ -15,13 +15,13 @@ class ContainerScreen: Screen {
     var panelW = 176.0
     var panelH = 166.0
     var title = ""
-    var titleX = 8.0              // panel-local title position (vanilla titleLabelX/Y)
+    var titleX = 8.0              // panel-local title position
     var titleY = 6.0
-    var showInvLabel = true       // vanilla hides "Inventory" on the survival inventory
+    var showInvLabel = true       // "Inventory" is hidden on the survival inventory
     var sheet: String?            // pack GUI container texture key (nil = procedural panel)
     var playerSlots: [SlotDef] = []
     var containerSlots: [SlotDef] = []
-    /// y of the player inventory slot grid, panel-local (vanilla: imageHeight−83/−84)
+    /// y of the player inventory slot grid, panel-local (panel height −83/−84)
     var playerInvY: Double { panelH - 83 }
     /// true when this frame's panel came from the pack texture (slot bgs baked in)
     private(set) var textured = false
@@ -151,7 +151,7 @@ final class InventoryScreen: ContainerScreen {
     }
     override func drawExtra(_ ui: UIManager, _ game: GameCore) {
         let cv = ui.cv
-        // vanilla inventory.png bakes the preview window, slot art and arrow in;
+        // inventory.png bakes the preview window, slot art and arrow in;
         // procedurally we draw the window frame + arrow ourselves
         if !textured {
             cv.drawText("▶", panelX + 138, panelY + 31, 1, "#3f3f3f", shadow: false)
@@ -287,7 +287,7 @@ final class FurnaceScreen: ContainerScreen {
         let burnF = (be.burnTotal ?? 0) > 0 ? Double(burnTime) / Double(be.burnTotal!) : 0
         let prog = (be.cookTotal ?? 0) > 0 ? Double(be.cookTime ?? 0) / Double(be.cookTotal!) : 0
         if textured {
-            // vanilla overlays from furnace.png: flame (176,0) fills bottom-up,
+            // overlays from furnace.png: flame (176,0) fills bottom-up,
             // arrow (176,14) fills left-to-right
             if burnTime > 0 {
                 let i = (burnF * 13).rounded()
@@ -362,10 +362,10 @@ final class ChestScreen: ContainerScreen {
         panelH = 114 + Double((count + 8) / 9) * 18
     }
 
-    /// vanilla generic_54 player grid sits at imageHeight−84 (one px above the 166-panel layouts)
+    /// the generic_54 player grid sits at panel height −84 (one px above the 166-panel layouts)
     override var playerInvY: Double { panelH - 84 }
 
-    /// generic_54.png is sliced vanilla-style: header+rows piece, then the
+    /// generic_54.png is sliced in two: header+rows piece, then the
     /// player-inventory piece from y=126 — works for any 1–6 row container
     override func drawSheetPanel(_ ui: UIManager) -> Bool {
         let rows = (panelH - 114) / 18
@@ -441,7 +441,7 @@ final class BrewingScreen: ContainerScreen {
         let brewing = (be.brewTime ?? 0) > 0
         let f = brewing ? Double(be.brewTime!) / 400 : 0
         if textured {
-            // vanilla overlays from brewing_stand.png: fuel flame strip, brew
+            // overlays from brewing_stand.png: fuel flame strip, brew
             // arrow filling downward, bubbles cycling while active
             if fuelW > 0 { ui.blitSheet("brewing_stand", 176, 29, fuelW, 4, px + 60, py + 44) }
             if brewing {
@@ -682,7 +682,7 @@ final class AnvilScreen: ContainerScreen {
     }
     override func drawExtra(_ ui: UIManager, _ game: GameCore) {
         if textured {
-            // vanilla text-field art strip below the GUI in anvil.png
+            // text-field art strip below the GUI in anvil.png
             ui.blitSheet("anvil", 0, 166, 110, 16, panelX + 59, panelY + 20)
         }
     }
@@ -1110,7 +1110,7 @@ final class TradingScreen: ContainerScreen {
 // =============================================================================
 /// creative tabs: (item category, name, icon item). The last one isn't a
 /// category: it's the survival inventory (character, armor, offhand,
-/// crafting), as in vanilla
+/// crafting)
 private let CREATIVE_TABS: [(String, String, String)] = [
     ("building", "Building", "bricks"), ("colored", "Colored", "cyan_wool"), ("natural", "Natural", "grass_block"),
     ("functional", "Functional", "crafting_table"), ("sparkstone", "Sparkstone", "sparkstone"), ("tools", "Tools", "iron_pickaxe"),
@@ -1175,7 +1175,7 @@ struct CreativeTabs {
 }
 
 final class CreativeScreen: ContainerScreen {
-    /// the tab the inventory key opens next (vanilla remembers it)
+    /// the tab the inventory key opens next (it's remembered)
     static var lastTab = 0
     var tab = CreativeScreen.lastTab == CREATIVE_INVENTORY_TAB ? 0 : CreativeScreen.lastTab
     var scroll = 0

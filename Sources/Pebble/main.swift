@@ -275,7 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// Cmd-Tab away: release every held key (keyUps go to the other app),
     /// give the system its cursor back (capture sets GLOBAL state that froze
-    /// the cursor system-wide), and auto-pause like vanilla
+    /// the cursor system-wide), and auto-pause
     /// (scripted windowed test runs keep playing in the background).
     func applicationDidResignActive(_ notification: Notification) {
         runtime?.didResignActive(autoPause: ProcessInfo.processInfo.environment["PEBBLE_WINDOWED"] == nil)

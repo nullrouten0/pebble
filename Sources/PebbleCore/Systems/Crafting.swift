@@ -274,7 +274,7 @@ public func anvilCombine(_ left: ItemStack?, _ right: ItemStack?, _ rename: Stri
     }
     if cost <= 0 { return nil }
     out.data.priorWork = prior + 1
-    // vanilla: 40 levels or more is "Too Expensive!" in survival, except that
+    // 40 levels or more is "Too Expensive!" in survival, except that
     // a rename alone is held at 39 so an item can always be renamed
     let levels = Int(cost.rounded(.up))
     return AnvilResult(out: out, cost: right == nil ? min(39, levels) : levels)

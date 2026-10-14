@@ -1,5 +1,5 @@
 // Name translation for two external formats Pebble reads:
-//  - resource packs, which follow the Java Edition layout, so their texture
+//  - resource packs, which follow the common pack layout, so their texture
 //    files carry that format's names (textures/block/<name>.png);
 //  - worlds saved before Pebble renamed some blocks, items and mobs.
 // Pebble's own names are on the right; the format's on the left. Only whole
@@ -31,7 +31,7 @@ private func translate(_ name: String, from: KeyPath<(String, String), String>, 
     return parts.map { words[$0] ?? $0 }.joined(separator: "_")
 }
 
-/// a block, item or texture name as a Java-format resource pack spells it
+/// a block, item or texture name as a resource pack spells it
 public func packName(_ name: String) -> String { translate(name, from: \.1, to: \.0) }
 
 /// a name from a resource pack or an older save, in Pebble's terms

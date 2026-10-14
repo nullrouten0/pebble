@@ -1,4 +1,4 @@
-// Java-format resource pack imports — reads .zip or folder packs from
+// Resource pack imports (the common pack layout) — reads .zip or folder packs from
 // ~/Library/Application Support/Pebble/resourcepacks/, maps
 // the standard pack texture tree onto the procedural
 // tile registry, scales 16×/32× art to one atlas resolution, plays .mcmeta
@@ -196,7 +196,7 @@ func scaleTo(_ img: RGBAImage, _ res: Int) -> [UInt8] {
     img.width > res ? scaleBox(img, to: res) : scaleNearest(img, to: res)
 }
 
-/// multiply RGB by a fixed color (bake a vanilla tint into the pixels)
+/// multiply RGB by a fixed color (bake a standard tint into the pixels)
 func bakeTint(_ px: inout [UInt8], _ rgb: Int) {
     let tr = (rgb >> 16) & 255, tg = (rgb >> 8) & 255, tb = rgb & 255
     var i = 0
@@ -221,7 +221,7 @@ final class ResourcePack {
     /// lowercased path → exact path (zips from Windows tools vary in case)
     private var pathIndex: [String: String] = [:]
     /// the pack's texture root, detected from its own folder layout
-    /// ("assets/<namespace>/textures/") — Java packs declare the namespace
+    /// ("assets/<namespace>/textures/") — packs declare the namespace
     private(set) var texRoot = ""
 
     init?(url: URL) {
@@ -247,7 +247,7 @@ final class ResourcePack {
             return nil
         }
         guard pathIndex.keys.contains(where: { $0.hasSuffix("pack.mcmeta") }) else { return nil }
-        // texture root: assets/minecraft/textures/ if the pack has it, else the
+        // texture root: the default namespace's textures/ if the pack has it, else the
         // alphabetically first namespace with textures (dictionary order is
         // random per launch, so "first found" could change between runs)
         var namespaces = Set<String>()
@@ -256,6 +256,7 @@ final class ResourcePack {
                 namespaces.insert(String(k[r.upperBound...].split(separator: "/")[0]))
             }
         }
+        // (the default namespace's folder name is fixed by the pack format)
         if let ns = namespaces.contains("minecraft") ? "minecraft" : namespaces.min() {
             texRoot = "assets/\(ns)/textures/"
         }
@@ -363,7 +364,7 @@ func ensureDefaultPack() {
 }
 
 /// user pack list → applied list: default pack force-appended at the END
-/// (lowest priority — user packs override it, like vanilla's layering)
+/// (lowest priority — user packs override it)
 func withDefaultPack(_ userPacks: [String]) -> [String] {
     var list = userPacks.filter { $0 != DEFAULT_PACK_FILE }
     let dest = resourcePacksDir().appendingPathComponent(DEFAULT_PACK_FILE)
@@ -459,7 +460,7 @@ private let NAME_MAP: [String: [String]] = [
     "decorated_pot_side": [], "bell_body": [],
 ]
 
-/// fixed vanilla tints to bake (engine renders these tiles untinted, MC art is grayscale)
+/// fixed tints to bake (engine renders these tiles untinted, the pack art is grayscale)
 private let BAKE_TINT: [String: Int] = [
     "birch_leaves": 0x80A755,
     "spruce_leaves": 0x619961,
@@ -467,7 +468,7 @@ private let BAKE_TINT: [String: Int] = [
     "sparkstone_dust_line": 0xFF3030,
 ]
 
-/// tiles whose MC art is grayscale-by-design and must KEEP the engine's biome
+/// tiles whose pack art is grayscale-by-design and must KEEP the engine's biome
 /// tint when a pack overrides them; every other overridden tile renders untinted
 private let TINT_EXPECTED: Set<String> = [
     "grass_top", "water", "short_grass", "fern", "tall_grass", "large_fern",
@@ -486,7 +487,7 @@ private func candidates(_ tile: String) -> [String] {
     return ["block/\(packName(tile))"]
 }
 
-/// tiles built by stacking MC top/bottom halves into one square (door + 2-tall plants)
+/// tiles built by stacking the pack's top/bottom halves into one square (door + 2-tall plants)
 private func compositeHalves(_ tile: String) -> (top: String, bottom: String)? {
     if tile.hasSuffix("_door") || tile == "tall_grass" || tile == "large_fern" {
         return ("block/\(packName(tile))_top", "block/\(packName(tile))_bottom")
@@ -494,7 +495,7 @@ private func compositeHalves(_ tile: String) -> (top: String, bottom: String)? {
     return nil
 }
 
-// vanilla stem age tint: r = age*32, g = 255-age*8, b = age*4
+// stem age tint: r = age*32, g = 255-age*8, b = age*4
 private func stemTint(_ age: Int) -> Int {
     (min(255, age * 32) << 16) | ((255 - age * 8) << 8) | (age * 4)
 }
@@ -530,11 +531,10 @@ private struct LoadedTexture {
 /// load a texture + its optional .mcmeta animation from the pack stack (first hit wins)
 // =============================================================================
 // entity-texture crops — beds, chests, the bell and the decorated pot are
-// rendered by vanilla as block ENTITIES, so no Java pack has flat block/
+// drawn as block ENTITIES in the pack format, so no pack has flat block/
 // textures for them; the art lives in entity/ unwraps. These crops lift the
 // pack's own art from there so every visible surface comes from the pack.
-// (the end portal stays an engine effect — vanilla renders it as a shader,
-// and packs have no texture for it either)
+// (the end portal stays an engine effect — packs have no texture for it)
 // =============================================================================
 private struct EntityTileCrop {
     let path: String                                           // relative to texRoot, no .png
@@ -737,7 +737,7 @@ func buildPackAtlas(_ packs: [ResourcePack]) -> PackAtlasResult? {
                 px = scaleTo(img, res)
                 if let bake = BAKE_TINT[name] { bakeTint(&px, bake) }
                 if name.hasPrefix("stem_stage"), let age = Int(name.dropFirst("stem_stage".count)) {
-                    // vanilla stem models crop from the bottom: keep 2*(age+1)/16 rows
+                    // stem models crop from the bottom: keep 2*(age+1)/16 rows
                     let keep = res * 2 * (age + 1) / 16
                     for y in 0..<(res - keep) {
                         for x in 0..<res { px[(y * res + x) * 4 + 3] = 0 }
@@ -804,14 +804,14 @@ func buildPackAtlas(_ packs: [ResourcePack]) -> PackAtlasResult? {
 /// the enabled pack stack, highest priority first — entity skins resolve here
 var ACTIVE_PACKS: [ResourcePack] = []
 
-/// load + composite a vanilla entity texture from the active packs
+/// load + composite an entity texture from the active packs
 /// (base + overlays alpha-blended in order, or stacked vertically); nil when absent
 func packEntityImage(_ rels: [String], stack: Bool = false, tints: [Int] = []) -> RGBAImage? {
     guard !rels.isEmpty, !ACTIVE_PACKS.isEmpty else { return nil }
     func load(_ rel: String) -> RGBAImage? {
         for p in ACTIVE_PACKS {
             if let d = p.file(p.texRoot + rel), var img = decodePNG(d) {
-                // vanilla ships some entity art grayscale for render-time
+                // packs ship some entity art grayscale for render-time
                 // tinting (tropical fish, sheep wool) — bake the tint here
                 if let i = rels.firstIndex(of: rel), i < tints.count, tints[i] != 0xFFFFFF {
                     bakeTint(&img.pixels, tints[i])

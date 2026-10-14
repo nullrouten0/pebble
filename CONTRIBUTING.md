@@ -51,7 +51,7 @@ cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # then add your
 
 ## What Pebble is aiming for
 
-**Vanilla Minecraft: Java Edition's gameplay is the reference.** When something plays differently from vanilla, vanilla wins: fix it, and say what you observed and where ("regen with a full food bar spends up to 6 saturation per half heart — Minecraft Wiki, *Hunger*; confirmed in-game"). Work only from observable behaviour and public documentation such as the Minecraft Wiki. **Never read, copy or port Minecraft's code (decompiled or otherwise), and don't use its internal class or method names in Pebble**; contributions that do can't be accepted. Pebble's names, text and art are its own too: don't copy Minecraft's in-game text or invent look-alike branding. Pebble began as a port of a JavaScript original, and comments that mention "the baseline" refer to it. Matching that original is no longer a goal, so a quirk that exists only because the original had it is a bug like any other.
+**The original game's observable gameplay is the reference** (see the README's [Disclaimer](README.md#disclaimer)). When something plays differently, the reference wins: fix it, and say what you observed and where ("regen with a full food bar spends up to 6 saturation per half heart — public wiki, *Hunger*; confirmed in-game"). Work only from observable behaviour and public documentation. **Never read, copy or port Minecraft's code (decompiled or otherwise), and don't use its internal class or method names in Pebble**; contributions that do can't be accepted. Pebble's names, text and art are its own too: don't copy Minecraft's in-game text or invent look-alike branding. Pebble began as a port of a JavaScript original, and comments that mention "the baseline" refer to it. Matching that original is no longer a goal, so a quirk that exists only because the original had it is a bug like any other.
 
 **Clean code beats preserved accidents.** Dead code goes, copies get merged, and strings that stand for a fixed set of things become enums. If keeping something odd is genuinely necessary, a comment says why.
 
@@ -66,7 +66,7 @@ cp ios/Config/Local.xcconfig.example ios/Config/Local.xcconfig   # then add your
 
 If a change breaks one of these, the change is wrong. The only exception is a deliberate format change that ships with a migration, agreed in an issue first.
 
-**Behaviour checks** state a rule in plain words: "a chicken takes no damage from a 12-block fall", "a 40-level anvil job is Too Expensive", the independently derived vanilla physics constants. Every bug fix should add one. They don't care how the code is shaped, which is what makes them the most valuable tests here.
+**Behaviour checks** state a rule in plain words: "a chicken takes no damage from a 12-block fall", "a 40-level anvil job is Too Expensive", the independently derived physics constants. Every bug fix should add one. They don't care how the code is shaped, which is what makes them the most valuable tests here.
 
 **Snapshots** (`goldens/*.json`) hash whole runs: biomes, terrain, features, meshes, the 55-mob zoo, combat, world simulation, items/recipes/loot and the fallback atlas. They are change detectors, not a spec. When one fails:
 

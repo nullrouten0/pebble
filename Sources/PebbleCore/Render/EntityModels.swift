@@ -40,13 +40,13 @@ public struct MobModel {
     public let anim: String
     public let scale: Double
     public let paint: (EntitySkin) -> Void
-    /// vanilla entity texture path(s) this model's UV layout matches —
+    /// pack entity texture path(s) this model's UV layout matches —
     /// base texture + optional overlays composited in order (eyes etc.)
     public let packTex: [String]
     /// true = packTex entries stack VERTICALLY into one sheet (sheep + fur)
     /// instead of compositing over each other
     public let packTexStack: Bool
-    /// per-layer RGB multipliers for packTex — vanilla ships some entity art
+    /// per-layer RGB multipliers for packTex — packs ship some entity art
     /// grayscale and tints it at render time (tropical fish, sheep wool);
     /// empty = no tinting
     public let packTexTints: [Int]
@@ -309,8 +309,7 @@ private let ensureModelsOnce: Void = {
         let base = cowModel(0xa42c2c, packTex: ["entity/cow/red_mooshroom.png"])
         var parts = base.parts
         // back mushrooms — small caps sampling the red hide region of the
-        // mushcow sheet (vanilla renders real mushroom blocks; this is a
-        // textured approximation)
+        // mushcow sheet (a textured approximation of mushroom blocks)
         parts.append(ModelPart(name: "shrooms", pivot: (0, 24, 2), boxes: [
             box(-1.5, 0, -7, 3, 3, 3, 20, 6), box(-1.5, 0, -1, 3, 3, 3, 20, 6),
             box(-1.5, 0, 5, 3, 3, 3, 20, 6),

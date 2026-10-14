@@ -283,7 +283,7 @@ if let g = loadJSON("biome-goldens.json") {
     check("10 BiomeDef spot checks (fields, features, spawns)", defOK || regolding("biome"))
 
     let temps = g["tempSamples"] as! [[String: Any]]
-    // native baseline since the vanilla snow-lapse fix (PEBBLE_REGOLD regenerates)
+    // native baseline since the snow-lapse fix (PEBBLE_REGOLD regenerates)
     if regolding("biome") {
         let captured = temps.map { s -> [String: Any] in
             let b = (s["b"] as! NSNumber).intValue
@@ -1377,7 +1377,7 @@ if let g = loadJSON("entity-goldens.json") {
         determinize(e, 100 + i)
         combatants.append(e)
     }
-    // contains the player → native baseline since the vanilla-physics change
+    // contains the player → native baseline since the player-physics change
     // (regenerate with PEBBLE_REGOLD=1 after deliberate physics changes)
     let combatGold = g["combatStages"] as! [[String: Any]]
     let combatRegold = regolding("entity")
@@ -1410,7 +1410,7 @@ if let g = loadJSON("entity-goldens.json") {
             }
             break
         }
-        check("combat: golden regenerated (vanilla baseline)", true)
+        check("combat: golden regenerated (native baseline)", true)
     } else {
         check("combat: player + 5 mobs, damage/knockback in lockstep", combatOK)
     }
@@ -1424,7 +1424,7 @@ if let g = loadJSON("entity-goldens.json") {
     pPlayer.setPos(4.5, Double(ppy), 4.5)
     pPlayer.rng = RandomX(hashString("physplayer"))
     physWorld.addEntity(pPlayer)
-    // player physics is vanilla-exact since task #21 — this golden is a NATIVE
+    // player physics is exact since task #21 — this golden is a NATIVE
     // regression baseline now (regenerate with PEBBLE_REGOLD=1 after deliberate
     // physics changes) — these are native baselines, regenerated deliberately
     let physGold = g["physStages"] as! [[String: Any]]
@@ -1468,7 +1468,7 @@ if let g = loadJSON("entity-goldens.json") {
             }
             break
         }
-        check("player physics: golden regenerated (vanilla baseline)", true)
+        check("player physics: golden regenerated (native baseline)", true)
     } else {
         check("player physics: 200 scripted-input ticks vs native baseline", physOK)
     }
@@ -1554,7 +1554,7 @@ if let g = loadJSON("entity-goldens.json") {
         .filter { $0 !== sPlayer }
         .map { "\($0.type)@\(hex($0.x)),\(hex($0.y)),\(hex($0.z))" }
         .joined(separator: "|")
-    // native baseline since the vanilla-1.20 spawn-light rework (regenerate
+    // native baseline since the spawn-light rework (regenerate
     // with PEBBLE_REGOLD=1 after deliberate spawning changes)
     if regolding("entity") {
         for path in goldenPaths("entity-goldens.json") {
@@ -1973,7 +1973,7 @@ if let g = loadJSON("systems-goldens.json") {
 
 
 // ---------------------------------------------------------------------------
-section("vanilla player physics constants (independent derivations)")
+section("player physics constants (independent derivations)")
 do {
     // flat stone slab world — equilibrium measurements need perfectly flat ground
     func flatWorld(_ topBlock: UInt16 = 0) -> (World, Int) {
@@ -2029,7 +2029,7 @@ do {
         let perTick = p.z - z0
         let a = 0.98 * 0.1 * (0.21600002 / (0.6 * 0.6 * 0.6))
         let expect = a / (1 - 0.6 * 0.91)
-        check("walk speed = \(String(format: "%.4f", perTick * 20)) b/s (vanilla 4.317)",
+        check("walk speed = \(String(format: "%.4f", perTick * 20)) b/s (expected 4.317)",
               abs(perTick - expect) < 1e-9 && abs(perTick * 20 - 4.317) < 0.001,
               "got \(perTick) want \(expect)")
     }
@@ -2043,7 +2043,7 @@ do {
         let perTick = p.z - z0
         let a = 0.98 * 0.13 * (0.21600002 / 0.216)
         let expect = a / (1 - 0.546)
-        check("sprint speed = \(String(format: "%.4f", perTick * 20)) b/s (vanilla 5.612)",
+        check("sprint speed = \(String(format: "%.4f", perTick * 20)) b/s (expected 5.612)",
               abs(perTick - expect) < 1e-9 && abs(perTick * 20 - 5.612) < 0.001)
     }
     // 3) SNEAK (input ×0.3) → 1.295 b/s
@@ -2056,7 +2056,7 @@ do {
         let perTick = p.z - z0
         let a = 0.3 * 0.98 * 0.1 * (0.21600002 / 0.216)
         let expect = a / (1 - 0.546)
-        check("sneak speed = \(String(format: "%.4f", perTick * 20)) b/s (vanilla 1.295)",
+        check("sneak speed = \(String(format: "%.4f", perTick * 20)) b/s (expected 1.295)",
               abs(perTick - expect) < 1e-9 && abs(perTick * 20 - 1.295) < 0.001)
     }
     // 4) JUMP apex — independent recurrence: y += v; v = (v−0.08)·0.98 from 0.42
@@ -2075,11 +2075,11 @@ do {
             eApex = max(eApex, ey)
             ev = (ev - 0.08) * 0.98
         }
-        check("jump apex = \(String(format: "%.4f", apex)) (vanilla 1.2522)",
+        check("jump apex = \(String(format: "%.4f", apex)) (expected 1.2522)",
               abs(apex - eApex) < 1e-9 && abs(apex - 1.2522) < 0.001,
               "got \(apex) want \(eApex)")
     }
-    // 5) SPRINT-JUMP: boosted arc lands ~12 ticks, covers vanilla-ish ~3.8-4.4 blocks
+    // 5) SPRINT-JUMP: boosted arc lands ~12 ticks, covers ~3.8-4.4 blocks
     do {
         let (w, gy) = flatWorld()
         let p = mkPlayer(w, gy)
@@ -2107,7 +2107,7 @@ do {
             runTicks(p, 1)
             t += 1
         }
-        check("20-block fall: damage \(String(format: "%.1f", 20 - p.health)) (vanilla 17)",
+        check("20-block fall: damage \(String(format: "%.1f", 20 - p.health)) (expected 17)",
               abs((20 - p.health) - 17) < 1.01)
     }
     // 7) WATER terminal sink velocity = −0.005/(1−0.8) = −0.025
@@ -2122,7 +2122,7 @@ do {
         p.rng = RandomX(7)
         w.addEntity(p)
         for _ in 0..<60 { p.tick(); p.travel() }
-        check("water sink terminal vy = \(String(format: "%.4f", p.vy)) (vanilla −0.025)",
+        check("water sink terminal vy = \(String(format: "%.4f", p.vy)) (expected −0.025)",
               abs(p.vy - (-0.025)) < 0.002)
         // swim up: vy += 0.04 then ×0.8 −0.005 → +0.135 terminal
         p.setPos(0.5, Double(gy + 8), 0.5)
@@ -2132,7 +2132,7 @@ do {
             p.tick()
             p.travel()
         }
-        check("swim-up terminal vy = \(String(format: "%.4f", p.vy)) (vanilla +0.135)",
+        check("swim-up terminal vy = \(String(format: "%.4f", p.vy)) (expected +0.135)",
               abs(p.vy - 0.135) < 0.002)
     }
     // 8) ICE equilibrium: slip 0.98
@@ -2825,12 +2825,12 @@ do {
     }
     check("leaves within 6 steps of the log stay", treeSink.get(8, 70, 2) >> 4 == Int(B.oak_leaves))
     check("leaves 7 or more steps out are pruned", treeSink.get(9, 70, 2) == 0 && treeSink.get(10, 70, 2) == 0)
-    // furnaces: a blast furnace only takes ores, a smoker only food (vanilla)
+    // furnaces: a blast furnace only takes ores, a smoker only food
     func smelts(_ item: String, _ k: FurnaceKind) -> String? { smeltResultFor(ItemStack(iid(item), 1), k)?.output }
     check("a furnace smelts sand, ore and food", smelts("sand", .furnace) == "glass" && smelts("raw_iron", .furnace) == "iron_ingot" && smelts("beef", .furnace) == "cooked_beef")
     check("a blast furnace smelts ore, not sand or food", smelts("raw_iron", .blast) == "iron_ingot" && smelts("sand", .blast) == nil && smelts("beef", .blast) == nil)
     check("a smoker cooks food only", smelts("beef", .smoker) == "cooked_beef" && smelts("raw_iron", .smoker) == nil)
-    // anvil: vanilla's 40-level limit, with renames held at 39
+    // anvil: the 40-level limit, with renames held at 39
     let worn = ItemStack(iid("iron_sword"), 1, damage: 100)
     worn.data.priorWork = 5
     let worn2 = worn.copy()
@@ -2962,7 +2962,7 @@ do {
     let guestInv = (db.getPlayer("old#guest:Bob")?["data"] as? [String: Any])?["inventory"] as? [Any]
     check("LAN guests' saved players are migrated too", ((guestInv?[0] as? [String: Any])?["id"] as? NSNumber)?.intValue == diamondI)
     check("a second open changes nothing", db.migratePalette("old") == nil)
-    // names in Java-format resource packs and in worlds saved before the renames
+    // names in resource packs and in worlds saved before the renames
     check("pack names: Pebble names map to the format's texture names",
           packName("sparkstone_torch") == "red" + "stone_torch" && packName("stone") == "stone")
     check("older saves' names map to Pebble's", pebbleName("nether" + "ite_sword") == "darksteel_sword"

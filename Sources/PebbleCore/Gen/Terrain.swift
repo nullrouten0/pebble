@@ -50,7 +50,7 @@ let SPLINE_ERO_FLAT = Spline([
     (-1.0, 1.45), (-0.45, 1.0), (0.1, 0.72), (0.55, 0.45), (1.0, 0.32),
 ])
 // amp 110 produced 170-block sheer terrace walls ("cliffs way too large");
-// 82 keeps dramatic peaks at vanilla-like ±80 without the mega-cliffs
+// 82 keeps dramatic peaks at about ±80 without the mega-cliffs
 let SPLINE_PV_AMP = Spline([
     (-1.0, 82), (-0.55, 48), (-0.25, 22), (0.1, 13), (0.55, 6), (1.0, 3.5),
 ])
@@ -445,8 +445,8 @@ public final class OverworldGen {
                         let cur = blocks[idx]
                         if cur == WATER || cur == LAVA { continue } // don't breach water
                         if cur != AIR {
-                            // below sea level a carver fills with fluid (vanilla
-                            // 1.18 semantics) — air ravines through the seafloor
+                            // below sea level a carver fills with fluid —
+                            // air ravines through the seafloor
                             // left dry trenches walled by static water faces
                             blocks[idx] = yy <= -55 ? LAVA : (yy <= SEA && columnHasWaterAbove(blocks, idx, xx - baseX, yy, zz - baseZ) ? WATER : AIR)
                         }
@@ -581,8 +581,8 @@ public final class OverworldGen {
                 oreBlob(&blocks, &rng, x, y - GEN_MIN_Y, z, size, oreStone, oreDeep, discardOnAir)
             }
         }
-        // vanilla 1.20 attempts/sizes/bands (the old numbers left mountains
-        // nearly iron-free — 8 attempts vs vanilla's 90 — and misplaced coal)
+        // per-band attempts/sizes (the old numbers left mountains
+        // nearly iron-free — 8 attempts vs the intended 90 — and misplaced coal)
         place(cell(B.coal_ore), cell(B.deepslate_coal_ore), 30, 136, 320, 17, false)
         place(cell(B.coal_ore), cell(B.deepslate_coal_ore), 20, 0, 192, 17, true, 0.5)
         place(cell(B.iron_ore), cell(B.deepslate_iron_ore), 10, -24, 56, 9, true)
@@ -596,7 +596,7 @@ public final class OverworldGen {
         place(cell(B.lapis_ore), cell(B.deepslate_lapis_ore), 2, -32, 32, 7, true)
         place(cell(B.lapis_ore), cell(B.deepslate_lapis_ore), 4, -64, 64, 7, false, 1.0)
         place(cell(B.diamond_ore), cell(B.deepslate_diamond_ore), 7, -144, 16, 8, true, 0.5)
-        if rng.nextInt(9) == 0 {   // vanilla "large diamond" — 1 in 9 chunks
+        if rng.nextInt(9) == 0 {   // "large diamond" vein — 1 in 9 chunks
             place(cell(B.diamond_ore), cell(B.deepslate_diamond_ore), 1, -144, 16, 12, true, 0.7)
         }
         place(cell(B.diamond_ore), cell(B.deepslate_diamond_ore), 4, -64, -48, 8, false, 1.0)
@@ -631,7 +631,7 @@ public final class OverworldGen {
     }
 
     private func oreBlob(_ blocks: inout [UInt16], _ rng: inout RandomX, _ x: Int, _ ry: Int, _ z: Int, _ size: Int, _ oreStone: UInt16, _ oreDeep: UInt16, _ discardOnAir: Double) {
-        // vanilla spheroid vein: ellipsoids strung along a random diagonal —
+        // spheroid vein: ellipsoids strung along a random diagonal —
         // the old ±1 random walk left 1-2 block scatter instead of real veins
         let TUFF = cell(B.tuff), GRANITE = cell(B.granite), DIORITE = cell(B.diorite), ANDESITE = cell(B.andesite)
         let ang = rng.nextFloat() * .pi
@@ -648,7 +648,7 @@ public final class OverworldGen {
             let cxp = sx + (ex - sx) * t
             let cyp = sy + (ey - sy) * t
             let czp = sz2 + (ez - sz2) * t
-            // bulging radius along the strand, vanilla-style
+            // bulging radius along the strand
             let d = Double(rng.nextFloat()) * Double(size) / 16.0
             let r = (detSin(t * .pi) + 1) * d * 0.6 + 0.5
             let x0 = Int((cxp - r).rounded(.down)), x1 = Int((cxp + r).rounded(.up))

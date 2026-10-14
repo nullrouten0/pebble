@@ -406,7 +406,7 @@ public func biomeDef(_ b: Int) -> BiomeDef {
 
 public func temperatureAt(_ b: Int, _ y: Int) -> Double {
     let base = biomeDef(b).temperature
-    // vanilla altitude lapse is 0.00125/block above y80 — the stray ×8 put
+    // the altitude lapse is 0.00125/block above y80 — the stray ×8 put
     // snow lines at y85-90 and froze biomes that should never see snow
     if y > 80 { return base - Double(y - 80) * 0.00125 }
     return base

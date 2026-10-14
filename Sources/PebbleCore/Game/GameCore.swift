@@ -292,7 +292,7 @@ public final class GameCore {
     private var accumulator = 0.0
     private var ticksSinceSave = 0
 
-    // bookkeeping for vanilla feel — bob advances per TICK (frame-rate
+    // bookkeeping for the walk feel — bob advances per TICK (frame-rate
     // independent) and camState interpolates; mutating it per frame made the
     // camera shake violently once the fps cap was lifted
     private var bobPhase = 0.0
@@ -625,7 +625,7 @@ public final class GameCore {
             }
         } else {
             player.setPos(Double(rec.spawnX) + 0.5, Double(rec.spawnY + 1), Double(rec.spawnZ) + 0.5)
-            // starter nothing — vanilla survival starts empty-handed
+            // starter nothing — survival starts empty-handed
         }
         w.addEntity(player)
 
@@ -1805,7 +1805,7 @@ public final class GameCore {
                 p.moveForward = clampD(p.moveForward + a.forward, -1, 1)
                 p.moveStrafe = clampD(p.moveStrafe - a.right, -1, 1)
             }
-            // vanilla: eating / drawing a bow slows movement to 20%
+            // eating / drawing a bow slows movement to 20%
             if p.usingItem {
                 p.moveForward *= 0.2
                 p.moveStrafe *= 0.2
@@ -2074,7 +2074,7 @@ public final class GameCore {
         }
     }
 
-    /// per-tick walk-bob state, vanilla-style smoothed amplitude
+    /// per-tick walk-bob state, smoothed amplitude
     private func tickViewBob() {
         let p = player!
         prevBobPhase = bobPhase
@@ -2084,7 +2084,7 @@ public final class GameCore {
         if p.onGround && p.vehicle == nil {
             bobPhase += bobAmp * 1.4
         }
-        // smoothed FOV kick (vanilla eases toward the speed-scaled FOV)
+        // smoothed FOV kick (eases toward the speed-scaled FOV)
         prevFovScale = fovScale
         let target = p.wingsuitFlying ? 1.12 : (p.sprinting ? 1.15 : (p.usingItem && itemUseSlows() ? 0.9 : 1.0))
         fovScale += (target - fovScale) * 0.5

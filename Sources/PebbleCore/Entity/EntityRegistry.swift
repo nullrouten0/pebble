@@ -201,7 +201,7 @@ func canSpawnAt(_ world: World, _ mobType: String, _ cat: MobCategory, _ x: Int,
     if head != 0 && blockDefs[head].solid { return false }
     if below == 0 || !blockDefs[below].solid { return false }
     if cat == .monster {
-        // vanilla 1.20 isDarkEnoughToSpawn: block light must be 0, then two
+        // spawn-light rule: block light must be 0, then two
         // probabilistic gates — raw skylight vs rand(32), then skyDarken-adjusted
         // light vs rand(8). The old "≤7" rule let every midday shadow spawn mobs.
         let blockLight = world.getBlockLight(x, y, z)

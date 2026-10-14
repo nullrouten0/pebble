@@ -676,7 +676,7 @@ private let registerFarmingHandlersOnce: Void = {
 public func registerFarmingHandlers() { _ = registerFarmingHandlersOnce }
 
 // =============================================================================
-// SUPPORT POPS — vanilla neighbor-update behavior: plants/layers break (with
+// SUPPORT POPS — neighbor-update behavior: plants/layers break (with
 // drops) when the block they stand on vanishes. Cascades up columns
 // (sugarcane/bamboo/cactus/kelp) because each pop re-notifies its neighbors.
 // =============================================================================

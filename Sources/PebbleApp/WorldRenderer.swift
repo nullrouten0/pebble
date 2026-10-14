@@ -614,7 +614,7 @@ final class WorldRenderer {
             }
             animState[k] = (pos, t)
             if anim.interpolate {
-                // vanilla-style blend toward the next frame, every tick
+                // blend toward the next frame, every tick
                 let cur = anim.frames[anim.order[pos].0]
                 let nxt = anim.frames[anim.order[(pos + 1) % anim.order.count].0]
                 let f = Double(t) / Double(anim.order[pos].1)
@@ -1077,7 +1077,7 @@ final class WorldRenderer {
                         enc.setFragmentBytes(&cu, length: MemoryLayout<CelestialUniforms>.stride, index: 1)
                         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
                     }
-                    // vanilla quads are ±30/±20 at distance 100 — the art carries
+                    // the standard sky quads are ±30/±20 at distance 100 — the art carries
                     // its own padding+glow, so textured quads are much larger
                     drawCelestial(sunDir, sunTex != nil ? 150 : 55, -1, sunTex, 1)
                     let dayPhase = world.time / 24000 % 8
@@ -1402,7 +1402,7 @@ final class WorldRenderer {
             pose.limbAmp = liv?.limbAmp ?? 0
             pose.attackSwing = liv?.attackAnim ?? 0
             pose.hurtFlash = (liv?.hurtTime ?? 0) > 0 ? Double(liv!.hurtTime) / 10 : deathFlip * 0.6
-            // a lit fizzler swells toward its blast (vanilla grows it ~10-40%)
+            // a lit fizzler swells toward its blast (it grows ~10-40%)
             pose.scale = 1 + (ent.data.swelling ?? 0) * 0.2
             pose.baby = ent.data.baby ?? false
             pose.sky = w.getSkyLight(bx, by, bz)

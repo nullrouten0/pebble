@@ -5,7 +5,7 @@
 //   left side    floating move stick; past the outer ring sprints
 //   right side   drag to look; tap = use/place (attack if a mob is under the
 //                crosshair); press and hold still ~¼ s = break/attack (or
-//                use, for food, bows, shields…). Like Minecraft, only a fresh
+//                use, for food, bows, shields…). Only a fresh
 //                press digs: steering away stops the dig, and the finger must
 //                lift and press again (a held use keeps going, so bows aim)
 //   buttons      jump (double-tap flies), sneak toggle, drop, offhand swap,

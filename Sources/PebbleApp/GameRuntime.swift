@@ -340,7 +340,7 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     }
 
     /// app lost focus: release every held key (keyUps go elsewhere), give the
-    /// pointer back, and auto-pause like vanilla
+    /// pointer back, and auto-pause
     public func didResignActive(autoPause: Bool = true) {
         game?.clearInput()
         input?.releaseMouse()

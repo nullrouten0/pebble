@@ -50,7 +50,7 @@ func registerUndergroundStructures() {
                     for i in 0...len {
                         let px = x + dx * i, pz = z + dz * i
                         // carve 3×3 tunnel — preserve water below sea level so
-                        // shafts crossing aquifers/ocean floors flood like vanilla
+                        // shafts crossing aquifers/ocean floors flood
                         for w in -1...1 {
                             for h in 0...2 {
                                 let wx = px + (dz != 0 ? w : 0), wz = pz + (dx != 0 ? w : 0)
@@ -301,7 +301,7 @@ func registerUndergroundStructures() {
                 b.fill(fx - 4, y + 1, fz - 1, fx + 4, y + 10, fz + 1, AIR)
                 b.fill(fx - 4, y + 1, fz, fx + 4, y + 10, fz, Int(cell(B.reinforced_deepslate)))
                 b.fill(fx - 3, y + 1, fz, fx + 3, y + 9, fz, AIR)
-                // stepped arch corners like the vanilla frame
+                // stepped arch corners on the frame
                 for (sx, sy) in [(-3, 9), (3, 9), (-3, 8), (3, 8), (-2, 9), (2, 9)] {
                     b.set(fx + sx, y + sy, fz, Int(cell(B.reinforced_deepslate)))
                 }

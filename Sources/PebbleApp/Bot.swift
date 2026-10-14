@@ -1,6 +1,6 @@
 // Scripted-input physics bot (PEBBLE_BOT=1) — exercises the REAL input path
-// (GameCore.keyDown/keyUp → tick → vanilla travel) on a command-built flat
-// platform and asserts the same vanilla constants the pebsmoke harness proves
+// (GameCore.keyDown/keyUp → tick → travel) on a command-built flat
+// platform and asserts the same physics constants the pebsmoke harness proves
 // in isolation. Per-tick positions land in /tmp/vc-bot.log, verdicts in
 // /tmp/vc-bot-report.txt.
 
@@ -76,7 +76,7 @@ final class PhysicsBot {
                 let perTick = d.last!.3 - d.first!.3
                 let expect = 0.98 * 0.1 * (0.21600002 / 0.216) / (1 - 0.546)
                 pass("in-app walk speed", abs(perTick - expect) < 1e-6,
-                     String(format: "%.4f b/s (vanilla 4.317)", perTick * 20))
+                     String(format: "%.4f b/s (expected 4.317)", perTick * 20))
                 key("forward", false)
                 advance()
             }
@@ -92,7 +92,7 @@ final class PhysicsBot {
                 let perTick = d.last!.3 - d.first!.3
                 let expect = 0.98 * 0.13 * (0.21600002 / 0.216) / (1 - 0.546)
                 pass("in-app sprint speed", abs(perTick - expect) < 1e-6,
-                     String(format: "%.4f b/s (vanilla 5.612)", perTick * 20))
+                     String(format: "%.4f b/s (expected 5.612)", perTick * 20))
                 key("forward", false)
                 key("sprint", false)
                 advance()
@@ -111,7 +111,7 @@ final class PhysicsBot {
             if phaseTick == 30 {
                 let apex = samples.filter { $0.0 == 5 }.map { $0.2 }.max()! - jumpBaseY
                 pass("in-app jump apex", abs(apex - 1.2522) < 0.001,
-                     String(format: "%.4f (vanilla 1.2522)", apex))
+                     String(format: "%.4f (expected 1.2522)", apex))
                 advance()
             }
         case 6:
@@ -140,7 +140,7 @@ final class PhysicsBot {
             if fallStarted && p.onGround {
                 let dmg = 20 - p.health
                 pass("in-app 20-block fall damage", dmg > 14 && dmg <= 17.5,
-                     String(format: "%.1f (vanilla 17)", dmg))
+                     String(format: "%.1f (expected 17)", dmg))
                 cmd("/heal")
                 advance()
             } else if phaseTick == 120 {

@@ -80,7 +80,7 @@ final class EntityRendererM {
         let resolved = hasModel(name) ? name : "pig"
         let built = buildEntityGeometry(resolved)
         let vb = built.verts.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: max(1, $0.count))! }
-        // pack entity texture when the model's UV layout matches vanilla and the
+        // pack entity texture when the model's UV layout matches the pack format and the
         // image proportions agree; otherwise the procedural skin
         var skinW = built.skin.w, skinH = built.skin.h
         var pixels = built.skin.data
@@ -142,7 +142,7 @@ final class EntityRendererM {
             }
             let (px, py, pz) = part.pivot
             m = mTranslate(m, Float(px / 16), Float(py / 16), Float(pz / 16))
-            // baked part rotation (vanilla rotated boxes: quadruped bodies etc.)
+            // baked part rotation (pre-rotated boxes: quadruped bodies etc.)
             let (brx, bry, brz) = part.rot
             if brz != 0 { m = mRotateZ(m, Float(brz)) }
             if bry != 0 { m = mRotateY(m, Float(bry)) }
@@ -423,7 +423,7 @@ final class EntityRendererM {
         pose(g, p, time)
         var m = matrix_identity_float4x4
         m = mTranslate(m, Float(p.x - camPos.x), Float(p.y - camPos.y), Float(p.z - camPos.z))
-        // models are built MC-style facing -Z; vanilla renders them rotated by
+        // models are built facing -Z and rendered rotated by
         // (180° - yaw) so the -Z front ends up pointing along the entity's yaw.
         // Without the 180° the whole bestiary (and 3rd-person player) moonwalks.
         m = mRotateY(m, Float(.pi - p.yaw))
