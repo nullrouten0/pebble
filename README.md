@@ -2,29 +2,28 @@
   <img src="packaging/logo.png" alt="Pebble" width="420">
 </p>
 
-<h3 align="center">A native voxel sandbox for Mac, iPad, and iPhone, with powerful creative building tools.</h3>
-
-<p align="center">
-  <em>Free and open source, built from scratch in Swift + Metal.<br>
-  Survive alone, or build together over LAN with a creative toolkit.<br>
-  Every sound synthesized in real time. Every chunk carved from noise.</em>
-</p>
+<h3 align="center">Small blocks. Big possibilities.</h3>
 
 <p align="center">
   <img src="packaging/homepage.png" alt="In-game render — dawn over a lake in a cherry grove, mountains behind, ultra graphics" width="49%">
   <img src="packaging/homepage-eiffel.png" alt="In-game render — the Eiffel Tower on a forested bay at midday, placed with /place eiffel_tower, ultra graphics" width="49%">
 </p>
 
+**Pebble** is a free, open-source voxel sandbox built natively for Mac, iPad and iPhone (iOS beta). Explore 63 biomes across three dimensions, with survival, crafting, villages and boss fights.
+
+**Build something enormous.** Place castles, cities, mountains and world wonders with a single command. Copy and paste entire builds, raise walls instantly, or reshape the landscape with mining lasers, bazookas and void bombs. Undo and redo give you room to experiment.
+
+**Bring your friends.** Build and explore together over LAN across Mac, iPad and iPhone, with touch, keyboard and mouse, or gamepad controls.
+
+**Add a little personality.** Spawn ten expressive anime-style animals, strap on a headlamp for your next cave expedition, and keep building in worlds designed to survive game updates.
+
+**Swift + Metal.** A custom renderer. Real-time synthesized sound and music. No third-party game engine or external code dependencies. A sandbox for playing, creating and tinkering.
+
 ---
 
-> ### New in Pebble 1.4: iPad and iPhone (beta)
-> The same game and worlds on iPad and iPhone (landscape), and they play LAN games with the Mac. Touch controls, hardware keyboard and mouse, and game controllers all work. Also new everywhere: a **headlamp**, and four **world wonders** for `/place` (Eiffel Tower, Stonehenge, Colosseum, Devils Tower). See [Install](#install) and the [1.4.0 notes](CHANGELOG.md#140--2026-10-12--ipad--iphone-headlamp-world-wonders).
+Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-**Pebble** is a native voxel sandbox with the full overworld/nether/end progression: worldgen, mobs, sparkstone, crafting, enchanting, brewing, villages, raids and boss fights, plus a creative building toolkit and LAN multiplayer. It is **~55,000 lines of Swift** with **no external dependencies** and no game engine: a hand-written Metal renderer, an audio engine that synthesizes every sound at runtime, and multiplayer on Apple's Network framework. Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack.
-
-Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer).
-
-> **Pebble 1.5 is a beta.** The engine is covered by 790 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.6 is a beta.** The engine is covered by 817 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
