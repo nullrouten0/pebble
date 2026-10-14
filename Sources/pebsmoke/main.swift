@@ -2607,6 +2607,36 @@ do {
             check("an anime animal is tempted by its favourite food", bunny.isFood(ItemStack(iid("carrot"), 1))
                   && !bunny.isFood(ItemStack(iid("wheat"), 1)))
         }
+        // hitboxes: up to the top of the head, and most of a long face clickable
+        // (entity picking reaches 0.1 past the box)
+        var short: [String] = []
+        for s in ANIME_ANIMALS {
+            let model = getModel(s.id)
+            var headTop = 0.0, headFront = 0.0
+            for part in model.parts where part.name == "head" {
+                for b in part.boxes {
+                    headTop = max(headTop, (part.pivot.1 + b.y + b.h) * model.scale / 16)
+                    headFront = max(headFront, -(part.pivot.2 + b.z) * model.scale / 16)
+                }
+            }
+            if s.height < headTop - 0.001 || s.width / 2 + 0.1 < headFront * 0.7 || s.width >= 1 { short.append(s.id) }
+        }
+        check("anime animal hitboxes cover their heads and fit one-block gaps", short.isEmpty, "\(short)")
+        // falls: the chick flutters down and the neko lands on its feet; the bunny doesn't
+        func fall(_ id: String) -> (hurt: Bool, ticks: Int) {
+            guard let m = spawnMob(w, id, p.x + 6, p.y + 12, p.z + 6, SpawnOpts()) as? Mob else { return (true, 0) }
+            var t = 0
+            while t < 200 && !m.onGround { m.tick(); t += 1 }
+            for _ in 0..<2 { m.tick() }
+            let r = (m.health < m.maxHealth, t)
+            m.remove()
+            return r
+        }
+        let chick = fall("piyo_chick"), neko = fall("bell_neko"), bun = fall("mochi_bunny")
+        check("Piyo Chick flutters down slower and takes no fall damage", !chick.hurt && chick.ticks > bun.ticks,
+              "chick \(chick) bunny \(bun)")
+        check("Bell Neko lands on its feet", !neko.hurt)
+        check("other anime animals still take fall damage", bun.hurt)
         g.exitToTitle()
     } else {
         check("anime animals world loads", false)

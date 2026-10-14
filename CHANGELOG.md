@@ -3,6 +3,17 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.6 — 2026-10-13 — anime animal hitboxes, fluttering chick
+
+- **Anime animals can be clicked where they look like they are.** Their
+  hitboxes stopped below the tops of their big heads and well short of the
+  long faces, so feeding, hitting or name-tagging the head missed, and
+  arrows passed through it. Each is now as tall as its head and wide enough
+  to cover most of a long face, while still fitting through one-block gaps.
+- **Piyo Chick flutters.** It flapped its wings in the air but fell like a
+  stone. It now drifts down like a chicken and takes no fall damage, and
+  Bell Neko lands on its feet like a cat.
+
 ## 1.6.5 — 2026-10-13 — undo stays with its world; the wand never digs
 
 - **Undo stays with its world.** Leaving a world kept its undo history, so
