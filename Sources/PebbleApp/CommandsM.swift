@@ -136,8 +136,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         }
     case "summon":
         guard let mob = arg(0) else { return fail("Usage: /summon <mob> [x y z]") }
-        // (spawnableMobs is the original roster; the anime animals came later)
-        let mobs = spawnableMobs() + ANIME_ANIMALS.map { $0.id }
+        let mobs = summonableMobs()
         if !mobs.contains(mob) {
             return fail("Unknown mob: \(mob). Try: \(mobs.prefix(8).joined(separator: ", "))...")
         }
@@ -227,6 +226,9 @@ func runCommand(_ game: GameCore, _ raw: String) {
         if game.netClient != nil { return fail("In a LAN game only the host can copy and paste for now") }
         do {
             if cmd == "/paste" {
+                if let bad = args.first(where: { $0 != "-a" }) {
+                    return fail("Unknown option \(bad). Usage: //paste [-a] (-a leaves blocks where the copy has air)")
+                }
                 let t0 = Date()
                 let r = try pasteClipboard(p, skipAir: args.contains("-a"))
                 let ms = Int(Date().timeIntervalSince(t0) * 1000)

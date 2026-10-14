@@ -180,17 +180,21 @@ final class EntityRendererM {
                     m = mRotateY(m, Float(p.headYaw * 0.8))
                     m = mRotateX(m, Float(-p.pitch * 0.8))
                     m = mRotateZ(m, Float(Foundation.sin(time * 1.3 + p.x) * 0.07))
-                    if n.hasPrefix("ear") {
-                        // a quick twitch now and then (sin^8 makes short bursts)
+                    if n.hasPrefix("ear"), let b = part.boxes.first {
+                        // a quick twitch now and then (sin^8 makes short bursts),
+                        // about the ear's base on the head
                         let t = Foundation.pow(max(0, Foundation.sin(time * 1.7 + p.z * 3)), 8)
+                        let ex = Float((b.x + b.w / 2) / 16), ey = Float(b.y / 16)
+                        m = mTranslate(m, ex, ey, 0)
                         m = mRotateZ(m, Float((n == "earR" ? -1.0 : 1.0) * (0.04 + t * 0.18)))
+                        m = mTranslate(m, -ex, -ey, 0)
                     }
                 } else if n == "legFR" || n == "legBL" || n == "legR" {
                     m = mRotateX(m, Float(walkA))
                 } else if n == "legFL" || n == "legBR" || n == "legL" {
                     m = mRotateX(m, Float(walkB))
                 } else if n.hasPrefix("tail") {
-                    let k = Double(n.count)   // tails wag slightly out of step
+                    let k = Double(i) * 1.3   // several tails wag out of step
                     m = mRotateY(m, Float(Foundation.sin(time * 7 + k) * 0.3 * (1 + amp)))
                 } else if n == "wingR" {
                     m = mRotateZ(m, Float(-0.1 - abs(Foundation.sin(time * 14)) * 0.5 * min(1, amp * 2 + (p.airborne ? 1 : 0))))

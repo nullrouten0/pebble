@@ -189,6 +189,33 @@ public final class World {
         return true
     }
 
+    /// relight whole chunks after a big edit set its blocks without the light
+    /// flag: far cheaper than a light update per block. The ring around them
+    /// is relit too, so light that used to pass through the edited land can't
+    /// linger beside it.
+    public func relightChunks(_ edited: [Chunk]) {
+        var ring: [Int64: Chunk] = [:]
+        for c in edited {
+            for dz in -1...1 {
+                for dx in -1...1 {
+                    if let n = getChunk(c.cx + dx, c.cz + dz), n.status == .lit { ring[chunkKey(n.cx, n.cz)] = n }
+                }
+            }
+        }
+        // an edited chunk still waiting for its seams gets fresh local light
+        // and is stitched by the light queue as usual
+        let unlit = edited.filter { $0.status == .generated }
+        for c in Array(ring.values) + unlit {
+            let l = computeLocalLight(blocks: c.blocks, height: c.height, hasSky: info.hasSky)
+            c.skyLight = l.sky
+            c.blockLight = l.blk
+        }
+        for c in ring.values { light.stitchChunk(c) }
+        for c in ring.values {
+            for s in 0..<c.sections { hooks.onSectionDirty(c.cx, c.cz, s) }
+        }
+    }
+
     // MARK: - block access
     public func getBlock(_ x: Int, _ y: Int, _ z: Int) -> Int {
         guard let c = chunks[chunkKey(floorDiv(x, CHUNK_W), floorDiv(z, CHUNK_W))] else { return 0 }

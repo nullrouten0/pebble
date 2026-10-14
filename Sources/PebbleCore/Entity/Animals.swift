@@ -238,7 +238,7 @@ final class EatGrassGoal: Goal {
                 m.world.setBlock(bx, by - 1, bz, Int(cell(B.dirt)))
                 m.sheared = false
             }
-            if m.baby { m.growUpAge = max(0, m.growUpAge - 600) }
+            m.ageUp(600)
         }
     }
 }

@@ -3,6 +3,108 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.11 — 2026-10-13 — tidying
+
+- The selection wand's outline no longer builds new lists of points every
+  frame, and code comments that had gone wrong or ended up beside the wrong
+  function are fixed. Nothing changes in play.
+
+## 1.6.10 — 2026-10-13 — anime animal touch-ups
+
+- **Kitsune Kit's three tails wag out of step**, as they were meant to; the
+  two side tails moved together.
+- **Ears twitch from their base.** An anime animal's ear twitch turned
+  around the middle of its head, so the ears slid across it; they now pivot
+  where they meet the head.
+
+## 1.6.9 — 2026-10-13 — editing tool fixes
+
+- **Undo works anywhere.** More than about 16.7 million blocks from the
+  centre of the world, undo said it had worked but left everything as it
+  was. It now reaches as far as you can teleport.
+- **Redo isn't lost to an edit that changes nothing**, such as pasting a copy
+  over itself. Only an edit that actually changes a block clears it.
+- **`//paste` checks its options.** Anything other than `-a` is refused with
+  a usage hint instead of being ignored.
+- **Paste and undo messages are exact.** A paste that runs past the top or
+  bottom of the world reports the part inside it, and undo counts only the
+  blocks it actually put back.
+
+## 1.6.8 — 2026-10-13 — texture pack updates by release
+
+- **The built-in texture pack updates by release.** Pebble replaced its copy
+  of the default pack whenever the file size differed from the one in the
+  app, and deleted the old copy before copying the new one, so a failed copy
+  (a full disk, say) silently left you on the plain fallback textures. It now
+  records which release it installed and copies a newer one once, beside
+  the old file before swapping it in. A failure is logged and leaves the
+  working pack where it is.
+
+## 1.6.7 — 2026-10-13 — unknown creatures are kept
+
+- **Opening a world in an older version keeps the newer mobs.** A version
+  that didn't know a creature (opening a 1.6 world in 1.5, say) left it out
+  when it loaded the world and then saved over it, so it was gone for good.
+  From this version on, creatures Pebble doesn't recognise are kept in the
+  save as they were and come back in the version that knows them. Versions
+  before 1.6.7 can't do this, so open worlds with anime animals in 1.6 or
+  later.
+
+## 1.6.6 — 2026-10-13 — anime animal hitboxes, fluttering chick
+
+- **Anime animals can be clicked where they look like they are.** Their
+  hitboxes stopped below the tops of their big heads and well short of the
+  long faces, so feeding, hitting or name-tagging the head missed, and
+  arrows passed through it. Each is now as tall as its head and wide enough
+  to cover most of a long face, while still fitting through one-block gaps.
+- **Piyo Chick flutters.** It flapped its wings in the air but fell like a
+  stone. It now drifts down like a chicken and takes no fall damage, and
+  Bell Neko lands on its feet like a cat.
+
+## 1.6.5 — 2026-10-13 — undo stays with its world; the wand never digs
+
+- **Undo stays with its world.** Leaving a world kept its undo history, so
+  Cmd-Z in the next world you opened "undid" an edit in the world you'd left.
+  Nothing visible happened, an undo step was used up, and the old world was
+  kept in memory. Leaving a world now clears it.
+- **The selection wand never digs.** Holding the button down with another
+  item and then scrolling to the wand kept breaking blocks.
+
+## 1.6.4 — 2026-10-13 — big pastes without the freeze
+
+- **Big copy-and-paste edits no longer freeze the game.** Pasting, cutting,
+  undoing or redoing a large box (up to the 100×100×100 limit) updated the
+  lighting one block at a time, which could hang the game for up to half a
+  minute. Edits of more than 4,096 blocks now relight each chunk they touch
+  once, plus the chunks around them, when they finish. The largest paste
+  measured went from 26.6 s to 0.5 s, and undoing it from 5.6 s to 0.3 s.
+
+## 1.6.3 — 2026-10-13 — pasted lurker boxes keep their own contents
+
+- **Pasted lurker boxes have their own contents.** Copying a chest that held
+  a filled lurker box and pasting it gave both chests the same box contents:
+  taking items out of one box took them out of the other too. Every copy of
+  an item now copies what's inside it.
+
+## 1.6.2 — 2026-10-13 — bred animals grow up
+
+- **Bred animals grow up.** A baby stayed drawn at half size forever, for
+  you and for LAN guests, even once it had grown up. Feeding a baby that was
+  close to grown, or reloading the world while it was a baby, could also stop
+  it growing for good. Babies now keep their time to grow up in the save, and
+  ones already stuck in a world start growing again.
+- **Baby zombies are drawn small**, as they always should have been.
+
+## 1.6.1 — 2026-10-13 — saving keeps your animals and chests
+
+- **Saving keeps everything again.** Saving (the pause menu, quitting, or the
+  minute-by-minute autosave) wrote only chunks whose blocks had changed. A
+  mob you summoned, bred or led into a part of the world that was already
+  saved, or a chest you filled there, was missing when you came back, unless
+  you had wandered far enough away for that land to unload first. Saving now
+  uses the same rule as unloading: any chunk with mobs, chests, furnaces or
+  other block entities in it, or that mobs have just left, is written.
+
 ## 1.6.0 — 2026-10-13 — anime animals, Faithful September 2026
 
 ### Anime-style animals

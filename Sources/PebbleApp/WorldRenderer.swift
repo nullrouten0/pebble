@@ -7,6 +7,9 @@ import MetalKit
 import simd
 import PebbleCore
 
+/// a box's 12 edges as corner pairs (corners 0-3 on the bottom, 4-7 above them)
+private let BOX_EDGES = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
+
 struct SectionKey: Hashable {
     let cx: Int, sy: Int, cz: Int
 }
@@ -1787,6 +1790,8 @@ final class WorldRenderer {
         }
     }
 
+    private var thickEdgeVerts: [Float] = []
+
     /// a box's 12 edges as camera-facing strips, `width` × about 3 pt wide at
     /// any distance (Metal lines are always 1 px). Camera-relative coordinates.
     private func drawThickBoxEdges(_ enc: MTLRenderCommandEncoder, _ viewProj: simd_float4x4,
@@ -1795,12 +1800,15 @@ final class WorldRenderer {
         let x0 = Float(b.0), y0 = Float(b.1), z0 = Float(b.2), x1 = Float(b.3), y1 = Float(b.4), z1 = Float(b.5)
         let c = [SIMD3(x0, y0, z0), SIMD3(x1, y0, z0), SIMD3(x1, y0, z1), SIMD3(x0, y0, z1),
                  SIMD3(x0, y1, z0), SIMD3(x1, y1, z0), SIMD3(x1, y1, z1), SIMD3(x0, y1, z1)]
-        let edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)]
         /// half-width at a point: ~1.5 pt at a 70° view on a 700 pt tall window
         func half(_ p: SIMD3<Float>) -> Float { max(0.012, simd_length(p) * 0.0026) * width }
+        // reuse one buffer (up to 12 calls a frame): swap it out so clearing it can't copy
         var verts: [Float] = []
-        verts.reserveCapacity(edges.count * 18)
-        for (i, j) in edges {
+        swap(&verts, &thickEdgeVerts)
+        verts.removeAll(keepingCapacity: true)
+        verts.reserveCapacity(BOX_EDGES.count * 18)
+        func put(_ p: SIMD3<Float>) { verts.append(p.x); verts.append(p.y); verts.append(p.z) }
+        for (i, j) in BOX_EDGES {
             let d = simd_normalize(c[j] - c[i])
             // stretch each end by its half-width so corners close up
             let a = c[i] - d * half(c[i]), e = c[j] + d * half(c[j])
@@ -1811,8 +1819,9 @@ final class WorldRenderer {
             side /= len
             let a0 = a - side * half(a), a1 = a + side * half(a)
             let e0 = e - side * half(e), e1 = e + side * half(e)
-            for p in [a0, a1, e1, a0, e1, e0] { verts.append(contentsOf: [p.x, p.y, p.z]) }
+            put(a0); put(a1); put(e1); put(a0); put(e1); put(e0)
         }
+        defer { thickEdgeVerts = verts }
         guard !verts.isEmpty else { return }
         var u = LineUniforms(viewProj: viewProj, color: color)
         enc.setRenderPipelineState(linePipeline)

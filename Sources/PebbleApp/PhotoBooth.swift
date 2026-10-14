@@ -40,7 +40,7 @@ final class PhotoBooth {
         self.renderer = renderer
         try? FileManager.default.createDirectory(atPath: outRoot + "/mobs", withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(atPath: outRoot + "/blocks", withIntermediateDirectories: true)
-        mobList = (spawnableMobs() + ANIME_ANIMALS.map { $0.id }).sorted()
+        mobList = summonableMobs().sorted()
         blockList = (1..<blockDefs.count).filter { id in
             let n = blockDefs[id].name
             return n != "air" && n != "cave_air" && n != "void_air" && n != "moving_piston"

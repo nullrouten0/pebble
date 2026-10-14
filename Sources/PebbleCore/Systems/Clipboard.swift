@@ -66,7 +66,7 @@ extension BlockEntityData {
 /// - with nothing in reach it stands level with your feet, 3 blocks ahead
 public func pasteOrigin(_ p: Player, _ clip: Clipboard) -> (Int, Int, Int) {
     let fx = -detSin(p.yaw), fz = detCos(p.yaw)
-    let dx = fx * detCos(p.pitch), dy = -detSin(p.pitch), dz = fz * detCos(p.pitch)
+    let (dx, dy, dz) = p.lookDir()
     var tx: Int, ty: Int, tz: Int, nx = 0, ny = 1, nz = 0
     if let hit = p.world.raycast(p.x, p.eyeY(), p.z, dx, dy, dz, PASTE_REACH) {
         nx = DIR_X[hit.face]; ny = DIR_Y[hit.face]; nz = DIR_Z[hit.face]
@@ -129,11 +129,13 @@ public func copySelection(_ p: Player, cut: Bool) throws -> Clipboard {
     p.clipboard = clip
     if cut {
         let batch = beginEdit(world, "cut")
+        batch.bulkLight = w * h * l > BULK_LIGHT_CELLS
         for y in lo.y...hi.y {
             for z in lo.z...hi.z {
                 for x in lo.x...hi.x { batch.set(x, y, z, 0) }
             }
         }
+        batch.finishLight()
     }
     return clip
 }
@@ -143,6 +145,7 @@ public struct PasteResult {
     public let changed: Int
     /// cells that fell above or below the world and were left out
     public let outside: Int
+    /// the box it covers, inside the world's height
     public let lo: BlockPos, hi: BlockPos
 }
 
@@ -158,6 +161,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
     guard boxLoaded(world, x0, z0, x1, z1) else { throw ClipboardError.unloaded }
     let minY = world.info.minY, maxY = world.info.minY + world.info.height - 1
     let batch = beginEdit(world, "paste")
+    batch.bulkLight = clip.cells.count > BULK_LIGHT_CELLS
     var changed = 0, outside = 0, i = 0
     for dy in 0..<clip.h {
         let y = y0 + dy
@@ -185,6 +189,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
             }
         }
     }
+    batch.finishLight()
     return PasteResult(changed: changed, outside: outside,
-                       lo: BlockPos(x0, y0, z0), hi: BlockPos(x1, y0 + clip.h - 1, z1))
+                       lo: BlockPos(x0, max(y0, minY), z0), hi: BlockPos(x1, min(y0 + clip.h - 1, maxY), z1))
 }

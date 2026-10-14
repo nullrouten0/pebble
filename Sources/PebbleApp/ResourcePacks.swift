@@ -345,22 +345,44 @@ func resourcePacksDir() -> URL {
 // =============================================================================
 let DEFAULT_PACK_FILE = "Faithful 32x - 1.20.1.zip"
 
+/// the bundled default pack's release: change it whenever the zip is updated
+/// (a new release keeps the file name), so every install copies it once.
+/// `pebble check-pack` then confirms every tile still finds its art
+let DEFAULT_PACK_RELEASE = "2026-09"
+
 /// restore the default pack into the packs folder if it went missing, and
-/// replace the copy when this build bundles a different release of it (a new
-/// release keeps the file name, so the size tells them apart)
+/// replace the copy once when this build bundles a newer release of it
+/// (recorded in a stamp file beside it)
 func ensureDefaultPack() {
     let dest = resourcePacksDir().appendingPathComponent(DEFAULT_PACK_FILE)
+    let stamp = resourcePacksDir().appendingPathComponent(".default-pack-release")
     guard let bundled = gRuntime?.platform.resourcePath(DEFAULT_PACK_FILE) else { return }
     let fm = FileManager.default
+    let have = (try? String(contentsOf: stamp, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
     func size(_ path: String) -> Int64? { (try? fm.attributesOfItem(atPath: path)[.size] as? NSNumber)?.int64Value }
+    func markCurrent() { try? DEFAULT_PACK_RELEASE.write(to: stamp, atomically: true, encoding: .utf8) }
     if fm.fileExists(atPath: dest.path) {
-        if size(dest.path) == size(bundled) { return }
-        try? fm.removeItem(at: dest)
-        print("[packs] default pack updated from app bundle")
-    } else {
-        print("[packs] default pack restored from app bundle")
+        if have == DEFAULT_PACK_RELEASE { return }
+        // installed before the stamp existed: already this release if it's the same size
+        if have == nil && size(dest.path) == size(bundled) { markCurrent(); return }
     }
-    try? fm.copyItem(atPath: bundled, toPath: dest.path)
+    // copy beside it first, then swap in, so a failed copy leaves the old pack in place
+    let tmp = resourcePacksDir().appendingPathComponent(".\(DEFAULT_PACK_FILE).partial")
+    try? fm.removeItem(at: tmp)
+    do {
+        try fm.copyItem(at: URL(fileURLWithPath: bundled), to: tmp)
+        if fm.fileExists(atPath: dest.path) {
+            _ = try fm.replaceItemAt(dest, withItemAt: tmp)
+            print("[packs] default pack updated to the \(DEFAULT_PACK_RELEASE) release")
+        } else {
+            try fm.moveItem(at: tmp, to: dest)
+            print("[packs] default pack restored from app bundle")
+        }
+        markCurrent()
+    } catch {
+        try? fm.removeItem(at: tmp)
+        print("[packs] couldn't install the default pack: \(error.localizedDescription)")
+    }
 }
 
 /// user pack list → applied list: default pack force-appended at the END

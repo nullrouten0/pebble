@@ -209,6 +209,35 @@ cmd_test() {
     need_swift; (cd "$REPO" && PEBBLE_REGOLD="$regold" "$PEBBLE_SWIFT" run -c release pebsmoke)
 }
 
+# load the bundled texture pack in the real app (a scratch profile, so your
+# own packs and worlds are untouched) and list every tile it has no art for;
+# fails if that differs from packaging/pack-missing-tiles.txt. Run it after
+# updating the pack zip.
+cmd_check_pack() {
+    need_swift
+    (cd "$REPO" && "$PEBBLE_SWIFT" build -c release --product Pebble) || die "build failed"
+    local home log
+    home="$(mktemp -d)"; log="$home/log"
+    PEBBLE_HOME="$home" PEBBLE_PACKDEBUG=1 PEBBLE_WINDOWED=1 PEBBLE_WINSIZE=400x300 \
+        "$REPO/.build/release/Pebble" >"$log" 2>&1 &
+    local pid=$! i
+    for i in $(seq 1 60); do grep -q "tiles, " "$log" && break; sleep 1; done
+    kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null || true
+    grep -q "tiles, " "$log" || { rm -rf "$home"; die "the app never reported loading the pack"; }
+    grep "tiles, " "$log" | sed 's/^\[packs\] /  /'
+    local got want
+    got="$(sed -n 's/.*no pack art for tile [0-9]*: //p' "$log" | sort)"
+    want="$(grep -v '^#' "$REPO/packaging/pack-missing-tiles.txt" | sed '/^$/d' | sort)"
+    rm -rf "$home"
+    if [ "$got" = "$want" ]; then
+        say "Every tile has art except the expected $(printf '%s\n' "$want" | wc -l | tr -d ' ')."
+    else
+        echo "Tiles without art that shouldn't be (or expected gaps that now have art):"
+        diff <(printf '%s\n' "$want") <(printf '%s\n' "$got") | sed -n 's/^[<>] /  /p' || true
+        die "pack check failed (expected gaps: packaging/pack-missing-tiles.txt)"
+    fi
+}
+
 # the golden suite inside the iOS Simulator runtime (same seeds, same worlds)
 cmd_test_ios() {
     xcodebuild -version >/dev/null 2>&1 || die "pebble test ios needs full Xcode"
@@ -291,6 +320,7 @@ case "${1:-}" in
     run)     cmd_run ;;
     test)    shift; cmd_test "$@" ;;
     ios)     shift; cmd_ios "$@" ;;
+    check-pack) cmd_check_pack ;;
     *)
         echo "${BOLD}pebble${RESET} — one-command install for the Pebble app"
         echo
@@ -300,5 +330,6 @@ case "${1:-}" in
         echo "  pebble test         run the golden test suite (pebble test ios: in the iOS Simulator;"
         echo "                      pebble test --regold terrain,feature: regenerate those snapshots)"
         echo "  pebble ios          generate + open the iOS Xcode project (ios build | ios run: simulator)"
+        echo "  pebble check-pack   check every texture tile has art in the bundled pack (after updating it)"
         ;;
 esac

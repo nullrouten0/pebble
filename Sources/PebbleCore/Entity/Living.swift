@@ -20,7 +20,11 @@ public struct DropEntry {
     }
 }
 
+private let FALL_IMMUNE: Set<String> = ["cat", "ocelot", "chicken", "bat", "parrot", "bee", "lurker", "iron_golem"]
+
 open class LivingEntity: Entity {
+    /// takes no fall damage
+    open var fallImmune: Bool { FALL_IMMUNE.contains(type) }
     public var health = 20.0
     public var maxHealth = 20.0
     public var absorption = 0.0
@@ -182,7 +186,7 @@ open class LivingEntity: Entity {
         }
         if invulnTicks > 0 { return false }
         if source.isFire && hasEffect("fire_resistance") { return false }
-        if source == .fall && (type == "cat" || type == "ocelot" || type == "chicken" || type == "bat" || type == "parrot" || type == "bee" || type == "lurker" || type == "iron_golem") { return false }
+        if source == .fall && fallImmune { return false }
 
         // armor reduction
         let bypassesArmor = source.bypassesArmor

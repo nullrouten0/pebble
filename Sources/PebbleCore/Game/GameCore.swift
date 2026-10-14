@@ -488,6 +488,7 @@ public final class GameCore {
 
     public func exitToTitle() {
         if inWorld { saveAndFlush(synchronous: true) }
+        clearEditHistory()   // its edits belong to the world being closed
         if let nc = netClient {
             nc.disconnect()
             netClient = nil
@@ -712,13 +713,18 @@ public final class GameCore {
         db.putWorld(rec)
         db.putPlayer(rec.id, ["dim": dim.rawValue, "data": player.save()])
         db.putAdvancements(rec.id, advancements.save())
-        // modified chunks, and every chunk never saved yet, across all dims.
-        // Saving each generated chunk once means later changes to world
-        // generation only reach land nobody has visited (CONTRIBUTING).
+        // every chunk whose record could be out of date, across all dims (the
+        // same rule as unloading). Saving each generated chunk once means later
+        // changes to world generation only reach land nobody has visited
+        // (CONTRIBUTING).
         var records: [ChunkRecord] = []
         for (d, w) in worlds where !w.isRemote {
-            for c in w.chunks.values where c.modified || !savedFullKeys.contains(db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)) {
-                records.append(chunkRecord(rec.id, d, w, c))
+            let occupied = chunksWithLiveEntities(w)
+            for c in w.chunks.values {
+                let key = db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)
+                if chunkNeedsSave(c, key, hasEntities: occupied.contains(chunkKey(c.cx, c.cz))) {
+                    records.append(chunkRecord(rec.id, d, w, c))
+                }
             }
         }
         // include any unload records still waiting in the batch buffer
@@ -779,6 +785,7 @@ public final class GameCore {
             if (ent.type == "item" || ent.type == "xp_orb") && ent.age > 4000 { continue }
             ents.append(ent.save())
         }
+        ents += c.unknownEntities
         let key = db.chunkKey(worldId, d.rawValue, c.cx, c.cz)
         c.savedEntities = !ents.isEmpty
         // always a full record, blocks included: a chunk's blocks come from
@@ -917,6 +924,8 @@ public final class GameCore {
                 if let e = loadEntity(w, ed) {
                     w.addEntity(e)
                     if let dragon = e as? RiftDragon { armDragon(dragon) }
+                } else {
+                    c.unknownEntities.append(ed)
                 }
             }
         } else if let entitySpecs {
@@ -1395,12 +1404,26 @@ public final class GameCore {
         }
     }
 
+    /// persist a chunk if it was never saved (every generated chunk is kept, so
+    /// generation changes can't reshape visited land), if edited, if live
+    /// entities stand in it, or if its record may be stale: entities have
+    /// left it, or block entities (chest contents, furnaces, signs) changed
+    /// in place, neither of which marks the chunk
+    private func chunkNeedsSave(_ c: Chunk, _ dbKey: String, hasEntities: Bool) -> Bool {
+        !savedFullKeys.contains(dbKey) || c.modified || hasEntities || c.savedEntities || !c.blockEntities.isEmpty
+    }
+
+    /// chunk keys (chunkKey) that saved entities stand in
+    private func chunksWithLiveEntities(_ w: World) -> Set<Int64> {
+        var keys = Set<Int64>()
+        for e in w.entities {
+            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
+            keys.insert(chunkKey(floorDiv(ifloor(ent.x), 16), floorDiv(ifloor(ent.z), 16)))
+        }
+        return keys
+    }
+
     private func unloadChunk(_ w: World, _ c: Chunk) {
-        // persist if it was never saved (every generated chunk is kept, so
-        // generation changes can't reshape visited land), if edited, if live
-        // entities stand in it, or if its record may be stale: entities have
-        // left it, or block entities (chest contents, furnaces, signs) changed
-        // in place, which doesn't mark the chunk
         var hasEntities = false
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
@@ -1411,8 +1434,7 @@ public final class GameCore {
         }
         if let rec = worldRec, !w.isRemote {   // a LAN guest's chunks are the host's to keep
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
-            let stale = c.savedEntities || !c.blockEntities.isEmpty
-            if !savedFullKeys.contains(dbKey) || c.modified || hasEntities || stale {
+            if chunkNeedsSave(c, dbKey, hasEntities: hasEntities) {
                 let record = chunkRecord(rec.id, w.dim, w, c)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record
@@ -2185,9 +2207,14 @@ public final class GameCore {
     }
 
     // ---- mining ----
+    private func holdsWand(_ p: Player) -> Bool {
+        p.mainHand.map { itemDef($0.id).name } == "selection_wand"
+    }
+
     private func tickMining() {
         let p = player!
-        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) {
+        // the wand never digs, even if the button went down with a pickaxe in hand
+        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) || holdsWand(p) {
             p.breakingProgress = -1
             return
         }
@@ -2382,18 +2409,14 @@ public final class GameCore {
     public func crosshairBlock() -> RaycastHit? {
         let p = player!
         let reach = p.gameMode == GameMode.creative ? REACH_CREATIVE : REACH_SURVIVAL
-        let dx = -detSin(p.yaw) * detCos(p.pitch)
-        let dy = -detSin(p.pitch)
-        let dz = detCos(p.yaw) * detCos(p.pitch)
+        let (dx, dy, dz) = p.lookDir()
         return world.raycast(p.x, p.eyeY(), p.z, dx, dy, dz, reach)
     }
 
     /// nearest entity under the crosshair within attack reach
     private func crosshairEntity(_ maxDist: Double) -> Entity? {
         let p = player!
-        let dx = -detSin(p.yaw) * detCos(p.pitch)
-        let dy = -detSin(p.pitch)
-        let dz = detCos(p.yaw) * detCos(p.pitch)
+        let (dx, dy, dz) = p.lookDir()
         let ox = p.x, oy = p.eyeY(), oz = p.z
         var best: Entity? = nil
         var bestT = maxDist
@@ -2466,7 +2489,7 @@ public final class GameCore {
     @discardableResult
     func performUse(_ p: Player, _ ctx: InteractCtx, target: Entity?, hit: RaycastHit?) -> Bool {
         p.useItemHand = .main
-        if p.mainHand.map({ itemDef($0.id).name }) == "selection_wand" {
+        if holdsWand(p) {
             guard let hit else { return false }
             markCorner(p, 2, hit)
             p.attackAnim = 0.6
@@ -2549,7 +2572,7 @@ public final class GameCore {
         guard inWorld, !(host?.hasScreen() ?? false) else { return }
         if button == 0 {
             // the selection wand marks corner 1 instead of digging
-            if let p = player, p.mainHand.map({ itemDef($0.id).name }) == "selection_wand" {
+            if let p = player, holdsWand(p) {
                 if !p.dead, p.deathTime == 0, let hit = crosshairBlock() { markCorner(p, 1, hit) }
                 return
             }
@@ -2695,12 +2718,9 @@ public final class GameCore {
         return paused ? 1 : clampD(accumulator / TICK_MS, 0, 1)
     }
 
-    // ===========================================================================
-    // Infinity wipe (the cut itself is in Systems/InfinityWipe.swift)
-    // ===========================================================================
-    /// first use arms it; a second use within 3 s fires it
-    /// selection wand: the clicked block becomes corner 1 or 2 (a LAN guest's
-    /// click replays here on the host too, so its copy of the selection matches)
+    /// selection wand: the clicked block becomes corner 1 or 2. A LAN guest's
+    /// right-click (corner 2) replays here on the host too; its left-click
+    /// (corner 1) stays on the guest, which is fine while only the host can copy
     private func markCorner(_ p: Player, _ corner: Int, _ hit: RaycastHit) {
         let line = setSelectionCorner(p, corner, BlockPos(hit.x, hit.y, hit.z))
         guard p === player else { return }
@@ -2708,6 +2728,10 @@ public final class GameCore {
         host?.playUI("ui.button.click")
     }
 
+    // ===========================================================================
+    // Infinity wipe (the cut itself is in Systems/InfinityWipe.swift)
+    // ===========================================================================
+    /// first use arms it; a second use within 3 s fires it
     private func useInfinityWipe(_ p: Player) {
         let w = p.world
         if w.dim != .overworld { return tell(p, "§cThe Infinity Wipe only works in the Overworld") }

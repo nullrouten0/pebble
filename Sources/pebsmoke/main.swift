@@ -2454,6 +2454,13 @@ do {
         p.selection = Selection(dim: .nether, a: BlockPos(0, 64, 0), b: BlockPos(5, 64, 5))
         setSelectionCorner(p, 1, BlockPos(bx, by, bz))
         check("a corner in another dimension starts a fresh selection", p.selection?.dim == w.dim && p.selection?.b == nil)
+        // dig with an empty hand, then switch to the wand with the button still down
+        p.inventory[p.selectedSlot] = nil
+        g.mouseDown(0)
+        p.inventory[p.selectedSlot] = ItemStack(iid("selection_wand"), 1)
+        for _ in 0..<20 { _ = g.frame(dtMs: 50) }
+        g.mouseUp(0)
+        check("switching to the wand with the button held stops digging", w.getBlock(bx, by, bz) == under)
         g.exitToTitle()
     } else {
         check("selection wand world loads", false)
@@ -2545,6 +2552,22 @@ do {
         check("undoing a cut brings back the chest and its items",
               w.getBlock(bx, by, bz) == stone && back?.items?[0]?.id == iid("diamond") && back?.items?[0]?.count == 5)
 
+        // a roof too big for per-block light updates: cut, paste and undo
+        // relight whole chunks, seams included
+        let ry = by + 30, rw = 48
+        for dz in 0..<rw { for dx in 0..<rw { for dy in 0..<2 { w.setBlock(bx + dx, ry + dy, bz + dz, stone) } } }
+        p.selection = Selection(dim: w.dim, a: BlockPos(bx, ry, bz), b: BlockPos(bx + rw - 1, ry + 1, bz + rw - 1))
+        let mid = (bx + rw / 2, ry - 1, bz + rw / 2)
+        _ = try? copySelection(p, cut: true)
+        check("cutting a big roof lets the daylight back under it", w.getSkyLight(mid.0, mid.1, mid.2) == 15)
+        _ = try? pasteClipboard(p, skipAir: false, at: BlockPos(bx, ry, bz))
+        check("pasting a big roof shades the middle under it", w.getSkyLight(mid.0, mid.1, mid.2) == 0,
+              "\(w.getSkyLight(mid.0, mid.1, mid.2))")
+        check("light still spills in under its edges", w.getSkyLight(bx + 1, ry - 1, mid.2) >= 12 && w.getSkyLight(mid.0, ry + 2, mid.2) == 15,
+              "\(w.getSkyLight(bx + 1, ry - 1, mid.2))")
+        _ = undoLastEdit()
+        check("undoing the big paste brings the daylight back", w.getSkyLight(mid.0, mid.1, mid.2) == 15)
+
         p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 200, by + 30, bz + 200))
         var tooBig = false
         do { try copySelection(p, cut: false) } catch ClipboardError.tooBig { tooBig = true } catch {}
@@ -2552,6 +2575,8 @@ do {
         p.selection = nil
         check("//copy without a selection is refused", (try? copySelection(p, cut: false)) == nil)
         g.exitToTitle()
+        check("leaving a world forgets its undo history", editCounts().undo == 0 && editCounts().redo == 0,
+              "\(editCounts())")
     } else {
         check("clipboard world loads", false)
     }
@@ -2559,11 +2584,13 @@ do {
     // anime-style animals: placed by egg or /summon, never spawned naturally
     if let g = settled() {
         let p = g.player!, w = g.world
-        var spawned = 0, eggs = 0, uvOK = true
+        var spawned = 0, eggs = 0, reloaded = 0, uvOK = true
         for s in ANIME_ANIMALS {
             if itemDefs.contains(where: { $0.name == "\(s.id)_spawn_egg" }) { eggs += 1 }
             if let m = spawnMob(w, s.id, p.x + 3, p.y, p.z, SpawnOpts()) as? AnimeAnimal, m.type == s.id, hasModel(s.id) {
                 spawned += 1
+                m.health = 5
+                if let back = loadEntity(w, m.save()) as? AnimeAnimal, back.type == s.id, back.health == 5 { reloaded += 1 }
             }
             let model = getModel(s.id)
             for part in model.parts {
@@ -2573,15 +2600,65 @@ do {
                 }
             }
         }
-        check("all 10 anime animals spawn as themselves, with their own model", spawned == 10 && ANIME_ANIMALS.count == 10, "\(spawned)")
-        check("each anime animal has a spawn egg", eggs == 10, "\(eggs)")
+        let roster = ANIME_ANIMALS.count
+        check("the anime animals are all there", roster == 10, "\(roster)")
+        check("every anime animal spawns as itself, with its own model", spawned == roster, "\(spawned)")
+        check("every anime animal saves and loads as itself", reloaded == roster, "\(reloaded)")
+        check("each anime animal has a spawn egg", eggs == roster, "\(eggs)")
         check("anime animal skins fit their texture sheets", uvOK)
         let natural = Set(BIOMES.compactMap { $0 }.flatMap { $0.creatures.map { $0.0 } })
         check("anime animals never spawn naturally", ANIME_ANIMALS.allSatisfy { !natural.contains($0.id) })
-        if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob {
+        if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob,
+           let mate = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z + 1, SpawnOpts()) as? Animal {
             check("an anime animal is tempted by its favourite food", bunny.isFood(ItemStack(iid("carrot"), 1))
                   && !bunny.isFood(ItemStack(iid("wheat"), 1)))
+            let before = Set(w.entities.map { ObjectIdentifier($0) })
+            mate.spawnBaby(mate, bunny)
+            let kit = w.entities.first { !before.contains(ObjectIdentifier($0)) && ($0 as? Entity)?.type == "mochi_bunny" } as? Mob
+            kit?.ageUp(24_000)
+            check("two anime animals breed a baby of their kind that grows up", kit != nil && kit?.baby == false && kit?.data.baby == nil)
+        } else {
+            check("mochi_bunny spawns", false)
         }
+        // an egg used on the ground, through the normal right-click
+        let bx = Int(floor(p.x)), by = Int(floor(p.y)) - 1, bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(cell(B.stone)))
+        p.pitch = .pi / 2 - 0.01
+        p.inventory[p.selectedSlot] = ItemStack(iid("piyo_chick_spawn_egg"), 1)
+        let chicks = { w.entities.filter { ($0 as? Entity)?.type == "piyo_chick" }.count }
+        let hadChicks = chicks()
+        g.mouseDown(2); _ = g.frame(dtMs: 50); g.mouseUp(2)
+        check("using an anime spawn egg places that animal", chicks() == hadChicks + 1, "\(chicks() - hadChicks)")
+        // hitboxes: up to the top of the head, and most of a long face clickable
+        // (entity picking reaches 0.1 past the box)
+        var short: [String] = []
+        for s in ANIME_ANIMALS {
+            let model = getModel(s.id)
+            var headTop = 0.0, headFront = 0.0
+            for part in model.parts where part.name == "head" {
+                for b in part.boxes {
+                    headTop = max(headTop, (part.pivot.1 + b.y + b.h) * model.scale / 16)
+                    headFront = max(headFront, -(part.pivot.2 + b.z) * model.scale / 16)
+                }
+            }
+            if s.height < headTop - 0.001 || s.width / 2 + 0.1 < headFront * 0.7 || s.width >= 1 { short.append(s.id) }
+        }
+        check("anime animal hitboxes cover their heads and fit one-block gaps", short.isEmpty, "\(short)")
+        // falls: the chick flutters down and the neko lands on its feet; the bunny doesn't
+        func fall(_ id: String) -> (hurt: Bool, ticks: Int) {
+            guard let m = spawnMob(w, id, p.x + 6, p.y + 12, p.z + 6, SpawnOpts()) as? Mob else { return (true, 0) }
+            var t = 0
+            while t < 200 && !m.onGround { m.tick(); t += 1 }
+            for _ in 0..<2 { m.tick() }
+            let r = (m.health < m.maxHealth, t)
+            m.remove()
+            return r
+        }
+        let chick = fall("piyo_chick"), neko = fall("bell_neko"), bun = fall("mochi_bunny")
+        check("Piyo Chick flutters down slower and takes no fall damage", !chick.hurt && chick.ticks > bun.ticks,
+              "chick \(chick) bunny \(bun)")
+        check("Bell Neko lands on its feet", !neko.hurt)
+        check("other anime animals still take fall damage", bun.hurt)
         g.exitToTitle()
     } else {
         check("anime animals world loads", false)
@@ -2634,6 +2711,178 @@ do {
     } else {
         check("save world loads", false)
     }
+
+    // saves: what changes in an already-saved chunk without changing a block
+    // (a summoned mob, a chest filled in place) survives save, quit and reopen
+    if let g = settled() {
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)), bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(B.chest) << 4)
+        let be = BlockEntityData(type: "chest", x: bx, y: by, z: bz)
+        be.items = [ItemStack?](repeating: nil, count: 27)
+        w.setBlockEntity(be)
+        g.saveAndFlush(); g.waitForSaves()             // as an autosave would
+        be.items![0] = ItemStack(iid("diamond"), 5)
+        _ = spawnMob(w, "pig", p.x - 2, p.y, p.z)
+        _ = spawnMob(w, "mochi_bunny", p.x, p.y, p.z - 2)
+        let id = g.worldRec!.id
+        g.exitToTitle()
+        g.loadWorld(id)
+        var n = 0
+        while n < 200 && (w === g.world || g.world.getBlockEntity(bx, by, bz) == nil) {
+            _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1
+        }
+        let near = Set(g.world.entities.compactMap { $0 as? Entity }
+            .filter { !$0.isPlayer && abs($0.x - p.x) < 8 && abs($0.z - p.z) < 8 }.map { $0.type })
+        let kept: ItemStack? = g.world.getBlockEntity(bx, by, bz)?.items?[0] ?? nil
+        check("mobs summoned into a saved chunk survive save and reopen",
+              near.contains("pig") && near.contains("mochi_bunny"), "\(near.sorted())")
+        check("a chest filled in a saved chunk survives save and reopen",
+              kept?.id == iid("diamond") && kept?.count == 5, String(describing: kept))
+        g.exitToTitle()
+    } else {
+        check("reopen world loads", false)
+    }
+
+    // saves: a mob this build doesn't know (from a newer build) is kept, not deleted
+    if let g = settled() {
+        let p = g.player!, id = g.worldRec!.id
+        let cx = floorDiv(Int(floor(p.x)), 16), cz = floorDiv(Int(floor(p.z)), 16)
+        let dim = g.world.dim.rawValue
+        g.exitToTitle()
+        g.waitForSaves()
+        if var rec = g.db.getChunk(id, dim, cx, cz) {
+            rec.entities.append(["type": "mob_from_the_future", "x": p.x, "y": p.y, "z": p.z, "health": 4.0])
+            _ = g.db.putChunks([rec])
+        }
+        g.loadWorld(id)
+        var n = 0
+        while n < 100 && g.world.getChunk(cx, cz) == nil { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1 }
+        let loaded = g.world.getChunk(cx, cz) != nil
+        g.exitToTitle()
+        g.waitForSaves()
+        let kept = g.db.getChunk(id, dim, cx, cz)?.entities.contains { $0["type"] as? String == "mob_from_the_future" } ?? false
+        check("a mob this build doesn't know survives opening and saving the world", loaded && kept, "loaded \(loaded)")
+    } else {
+        check("future-mob world loads", false)
+    }
+}
+
+section("copy, paste and undo edge cases")
+do {
+    // a small flat world of loaded chunks: 0..1 by 0..1, plus one far out
+    let w = World(dim: .overworld, seed: 1)
+    let farCX = 20_000_000 / 16
+    func flat(_ cx: Int, _ cz: Int) {
+        let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
+        var blocks = [UInt16](repeating: 0, count: 16 * 16 * WORLD_H)
+        for i in 0..<(256 * (64 - GEN_MIN_Y)) { blocks[i] = cell(B.stone) }
+        c.blocks = blocks
+        c.skyLight = [UInt8](repeating: 15, count: blocks.count)
+        c.blockLight = [UInt8](repeating: 0, count: blocks.count)
+        c.buildHeightmap(); c.scanSpecials(); c.status = .lit
+        w.setChunk(c)
+    }
+    for cz in 0...1 { for cx in 0...1 { flat(cx, cz) } }
+    flat(farCX, 0)
+    let glass = Int(cell(B.glass))
+    let p = Player(world: w)
+    p.setPos(8, 64, 8)
+
+    // undo far from spawn
+    let fx = farCX * 16 + 1
+    beginEdit(w, "far").set(fx, 70, 3, glass)
+    _ = undoLastEdit()
+    check("undo works 20 million blocks out", w.getBlock(fx, 70, 3) == 0)
+    clearEditHistory()
+
+    // redo survives an edit that changes nothing, and goes when one does
+    beginEdit(w, "a").set(2, 70, 2, glass)
+    _ = undoLastEdit()
+    beginEdit(w, "nothing").set(2, 70, 2, 0)
+    check("an edit that changes nothing keeps your redo", editCounts().redo == 1)
+    _ = redoLastEdit()
+    check("redo puts the edit back", w.getBlock(2, 70, 2) == glass)
+    _ = undoLastEdit()
+    beginEdit(w, "b").set(3, 70, 3, glass)
+    check("a real edit clears redo", editCounts().redo == 0)
+    clearEditHistory()
+
+    // a furnace pasted then undone leaves nothing ticking
+    w.setBlock(4, 64, 4, Int(cell(B.furnace)))
+    w.setBlockEntity(makeFurnaceBE(4, 64, 4, .furnace))
+    p.selection = Selection(dim: w.dim, a: BlockPos(4, 64, 4), b: BlockPos(4, 64, 4))
+    _ = try? copySelection(p, cut: false)
+    let ticking = w.tickingBEList.count
+    _ = try? pasteClipboard(p, skipAir: false, at: BlockPos(10, 64, 10))
+    let pastedTicks = w.tickingBEList.count == ticking + 1
+    _ = undoLastEdit()
+    check("a pasted furnace ticks, and stops when the paste is undone",
+          pastedTicks && w.tickingBEList.count == ticking && w.getBlockEntity(10, 64, 10) == nil)
+    _ = redoLastEdit()
+    check("redoing the paste brings the furnace back, ticking",
+          w.getBlockEntity(10, 64, 10)?.type == "furnace" && w.tickingBEList.count == ticking + 1)
+
+    // pastes partly outside the world, into unloaded land, across dimensions
+    let top = w.info.minY + w.info.height - 1
+    p.selection = Selection(dim: w.dim, a: BlockPos(1, 64, 1), b: BlockPos(2, 67, 2))
+    _ = try? copySelection(p, cut: false)
+    let r = try? pasteClipboard(p, skipAir: false, at: BlockPos(1, top - 1, 1))
+    check("a paste through the build limit reports what was left out, inside the world",
+          r?.outside == 8 && r?.hi.y == top && w.getBlock(1, top, 1) == 0, "\(String(describing: r))")
+    let before = editCounts().undo
+    var unloaded = false
+    do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(100, 64, 100)) } catch ClipboardError.unloaded { unloaded = true } catch {}
+    check("a paste into unloaded land is refused and adds no undo step", unloaded && editCounts().undo == before)
+    p.selection = Selection(dim: .nether, a: BlockPos(1, 64, 1), b: BlockPos(2, 64, 2))
+    var otherDim = false
+    do { _ = try copySelection(p, cut: false) } catch ClipboardError.otherDimension { otherDim = true } catch {}
+    check("a selection in another dimension can't be copied", otherDim)
+    clearEditHistory()
+}
+
+section("item copies")
+do {
+    let box = ItemStack(iid("lurker_box"), 1)
+    box.data.contents = [ItemStack(iid("diamond"), 5), nil]
+    let dup = box.copy()
+    dup.data.contents?[0]?.count = 1
+    check("a copied lurker box has its own contents (a pasted chest can't share them)",
+          box.data.contents?[0]?.count == 5 && dup.data.contents?.count == 2)
+}
+
+section("baby animals grow up")
+do {
+    let w = World(dim: .overworld, seed: 1)
+    let wheat = ItemStack(iid("wheat"), 1)
+    if let calf = spawnMob(w, "cow", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        check("a bred baby is drawn as a baby", calf.data.baby == true)
+        calf.ageUp(23_999)
+        check("it stays a baby until its time is up", calf.baby && calf.data.baby == true)
+        calf.ageUp(1)
+        check("then it grows up and is drawn full size", !calf.baby && calf.data.baby == nil)
+    } else { check("cow spawns", false) }
+    if let calf = spawnMob(w, "cow", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        calf.growUpAge = 1000
+        _ = calf.tryFeed(nil, wheat)
+        check("feeding a nearly grown baby finishes growing it", !calf.baby && calf.data.baby == nil)
+    } else { check("cow spawns", false) }
+    if let calf = spawnMob(w, "mochi_bunny", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        calf.growUpAge = 5000
+        let back = loadEntity(w, calf.save()) as? Mob
+        check("a baby keeps its time to grow up across a reload",
+              back?.baby == true && back?.growUpAge == 5000 && back?.data.baby == true, "\(String(describing: back?.growUpAge))")
+        var old = calf.save(); old["growUpAge"] = nil   // a save from before 1.6.2
+        let legacy = loadEntity(w, old) as? Mob
+        check("a baby from an older save grows up again", legacy?.baby == true && (legacy?.growUpAge ?? 0) > 0)
+    } else { check("mochi_bunny spawns", false) }
+    if let kid = spawnMob(w, "zombie", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        kid.growUpAge = 0
+        kid.ageUp(100_000)
+        let back = loadEntity(w, kid.save()) as? Mob
+        check("a baby zombie stays a baby, drawn small, across a reload",
+              kid.baby && kid.data.baby == true && back?.baby == true && back?.growUpAge == 0)
+    } else { check("zombie spawns", false) }
 }
 
 section("world spawn on dry land")

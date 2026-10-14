@@ -1,0 +1,7 @@
+# Tiles the bundled Faithful pack has no art for, on purpose. `pebble check-pack`
+# fails if any other tile goes without art (after a pack update, say).
+air
+cave_air
+void_air
+end_portal
+snow_particle
