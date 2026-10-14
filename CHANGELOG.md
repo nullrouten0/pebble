@@ -3,6 +3,15 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.2 — 2026-10-13 — bred animals grow up
+
+- **Bred animals grow up.** A baby stayed drawn at half size forever, for
+  you and for LAN guests, even once it had grown up. Feeding a baby that was
+  close to grown, or reloading the world while it was a baby, could also stop
+  it growing for good. Babies now keep their time to grow up in the save, and
+  ones already stuck in a world start growing again.
+- **Baby zombies are drawn small**, as they always should have been.
+
 ## 1.6.1 — 2026-10-13 — saving keeps your animals and chests
 
 - **Saving keeps everything again.** Saving (the pause menu, quitting, or the

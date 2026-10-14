@@ -2668,6 +2668,40 @@ do {
     }
 }
 
+section("baby animals grow up")
+do {
+    let w = World(dim: .overworld, seed: 1)
+    let wheat = ItemStack(iid("wheat"), 1)
+    if let calf = spawnMob(w, "cow", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        check("a bred baby is drawn as a baby", calf.data.baby == true)
+        calf.ageUp(23_999)
+        check("it stays a baby until its time is up", calf.baby && calf.data.baby == true)
+        calf.ageUp(1)
+        check("then it grows up and is drawn full size", !calf.baby && calf.data.baby == nil)
+    } else { check("cow spawns", false) }
+    if let calf = spawnMob(w, "cow", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        calf.growUpAge = 1000
+        _ = calf.tryFeed(nil, wheat)
+        check("feeding a nearly grown baby finishes growing it", !calf.baby && calf.data.baby == nil)
+    } else { check("cow spawns", false) }
+    if let calf = spawnMob(w, "mochi_bunny", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        calf.growUpAge = 5000
+        let back = loadEntity(w, calf.save()) as? Mob
+        check("a baby keeps its time to grow up across a reload",
+              back?.baby == true && back?.growUpAge == 5000 && back?.data.baby == true, "\(String(describing: back?.growUpAge))")
+        var old = calf.save(); old["growUpAge"] = nil   // a save from before 1.6.2
+        let legacy = loadEntity(w, old) as? Mob
+        check("a baby from an older save grows up again", legacy?.baby == true && (legacy?.growUpAge ?? 0) > 0)
+    } else { check("mochi_bunny spawns", false) }
+    if let kid = spawnMob(w, "zombie", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        kid.growUpAge = 0
+        kid.ageUp(100_000)
+        let back = loadEntity(w, kid.save()) as? Mob
+        check("a baby zombie stays a baby, drawn small, across a reload",
+              kid.baby && kid.data.baby == true && back?.baby == true && back?.growUpAge == 0)
+    } else { check("zombie spawns", false) }
+}
+
 section("world spawn on dry land")
 do {
     // the spawn search reads a terrain estimate, so a new world could start

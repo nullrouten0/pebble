@@ -309,8 +309,12 @@ open class Mob: LivingEntity {
     public var lookX: Double? = nil
     public var lookY = 0.0, lookZ = 0.0
     public var ambientSoundTimer = 0
-    public var baby = false
-    public var growUpAge = 0       // ticks until adult (if baby)
+    /// kept in `data` so the renderer and LAN guests see it
+    public var baby: Bool {
+        get { data.baby ?? false }
+        set { data.baby = newValue ? true : nil }
+    }
+    public var growUpAge = 0       // ticks until adult; a baby at 0 (baby zombies) never grows up
     public var loveTicks = 0
     public var breedCooldown = 0
     public var category = MobCategory.creature
@@ -350,10 +354,7 @@ open class Mob: LivingEntity {
         }
 
         // baby growth
-        if baby && growUpAge > 0 {
-            growUpAge -= 1
-            if growUpAge <= 0 { baby = false }
-        }
+        ageUp(1)
         if loveTicks > 0 {
             loveTicks -= 1
             if age % 8 == 0 { world.hooks.addParticles("heart", x, y + height + 0.3, z, 1, 0.3, 0) }
@@ -410,11 +411,18 @@ open class Mob: LivingEntity {
 
     open func isFood(_ stack: ItemStack?) -> Bool { false }
 
+    /// bring a growing baby `ticks` closer to adulthood
+    public func ageUp(_ ticks: Int) {
+        guard baby && growUpAge > 0 else { return }
+        growUpAge = max(0, growUpAge - ticks)
+        if growUpAge == 0 { baby = false }
+    }
+
     /// breeding interaction — returns true if consumed
     public func tryFeed(_ player: Entity?, _ stack: ItemStack) -> Bool {
         if !isFood(stack) { return false }
         if baby {
-            growUpAge = max(0, growUpAge - 1200)
+            ageUp(1200)
             return true
         }
         if loveTicks <= 0 && breedCooldown <= 0 {
@@ -428,6 +436,7 @@ open class Mob: LivingEntity {
         var d = super.save()
         d["health"] = health
         d["baby"] = baby
+        if growUpAge > 0 { d["growUpAge"] = growUpAge }
         d["sitting"] = sitting
         if let ownerId { d["ownerId"] = ownerId }
         return d
@@ -436,6 +445,9 @@ open class Mob: LivingEntity {
         super.load(d)
         health = (d["health"] as? NSNumber)?.doubleValue ?? maxHealth
         baby = (d["baby"] as? Bool) ?? false
+        // saves before 1.6.2 didn't keep the countdown: a bred baby starts over
+        let legacyAge = baby && category != .monster ? 24000 : 0
+        growUpAge = (d["growUpAge"] as? NSNumber)?.intValue ?? legacyAge
         sitting = (d["sitting"] as? Bool) ?? false
         ownerId = (d["ownerId"] as? NSNumber)?.intValue
     }
