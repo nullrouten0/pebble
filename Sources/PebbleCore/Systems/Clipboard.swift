@@ -145,6 +145,7 @@ public struct PasteResult {
     public let changed: Int
     /// cells that fell above or below the world and were left out
     public let outside: Int
+    /// the box it covers, inside the world's height
     public let lo: BlockPos, hi: BlockPos
 }
 
@@ -190,5 +191,5 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
     }
     batch.finishLight()
     return PasteResult(changed: changed, outside: outside,
-                       lo: BlockPos(x0, y0, z0), hi: BlockPos(x1, y0 + clip.h - 1, z1))
+                       lo: BlockPos(x0, max(y0, minY), z0), hi: BlockPos(x1, min(y0 + clip.h - 1, maxY), z1))
 }

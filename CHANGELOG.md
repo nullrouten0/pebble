@@ -3,6 +3,19 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.9 — 2026-10-13 — editing tool fixes
+
+- **Undo works anywhere.** More than about 16.7 million blocks from the
+  centre of the world, undo said it had worked but left everything as it
+  was. It now reaches as far as you can teleport.
+- **Redo isn't lost to an edit that changes nothing**, such as pasting a copy
+  over itself. Only an edit that actually changes a block clears it.
+- **`//paste` checks its options.** Anything other than `-a` is refused with
+  a usage hint instead of being ignored.
+- **Paste and undo messages are exact.** A paste that runs past the top or
+  bottom of the world reports the part inside it, and undo counts only the
+  blocks it actually put back.
+
 ## 1.6.8 — 2026-10-13 — texture pack updates by release
 
 - **The built-in texture pack updates by release.** Pebble replaced its copy

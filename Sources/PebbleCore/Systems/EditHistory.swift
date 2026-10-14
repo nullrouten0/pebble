@@ -21,6 +21,8 @@ public final class EditBatch {
     /// finishLight() relights every chunk they touched once
     public var bulkLight = false
     var touched: [Int64: Chunk] = [:]
+    /// a new edit clears its owner's redo steps, but only once it changes something
+    var clearsRedo = false
 
     init(_ world: World, _ label: String, owner: Int = editOwner) {
         self.world = world
@@ -30,12 +32,13 @@ public final class EditBatch {
 
     public var count: Int { keys.count }
 
-    // x: 25 bits (±16M) at 38, y: 12 bits at 26, z: 26 bits — 63 bits, sign bit clear
+    // x: 26 bits at 37, y: 11 bits at 26, z: 26 bits — 63 bits, sign bit clear.
+    // x and z cover ±33.5M, past the ±30M coordinates commands accept
     @inline(__always) static func pack(_ x: Int, _ y: Int, _ z: Int) -> Int64 {
-        (Int64(x + (1 << 24)) << 38) | (Int64(y + 2048) << 26) | Int64(z + (1 << 25))
+        (Int64(x + (1 << 25)) << 37) | (Int64(y + 1024) << 26) | Int64(z + (1 << 25))
     }
     @inline(__always) static func unpack(_ k: Int64) -> (Int, Int, Int) {
-        (Int(k >> 38) - (1 << 24), Int((k >> 26) & 0xFFF) - 2048, Int(k & 0x3FF_FFFF) - (1 << 25))
+        (Int(k >> 37) - (1 << 25), Int((k >> 26) & 0x7FF) - 1024, Int(k & 0x3FF_FFFF) - (1 << 25))
     }
 
     /// set a block, remembering what was there first; returns true if it changed
@@ -70,6 +73,10 @@ public final class EditBatch {
     private func remember(_ x: Int, _ y: Int, _ z: Int, _ old: Int, _ be: BlockEntityData?) {
         let k = EditBatch.pack(x, y, z)
         guard seen.insert(k).inserted else { return }
+        if clearsRedo {
+            clearsRedo = false
+            redoStack.removeAll { $0.owner == owner }
+        }
         keys.append(k)
         olds.append(UInt16(old))
         if let be { bes[k] = be }
@@ -86,11 +93,11 @@ private let UNDO_MAX_CELLS = 6_000_000
 /// edits bigger than this relight whole chunks at the end (EditBatch.bulkLight)
 public let BULK_LIGHT_CELLS = 4096
 
-/// open a new undoable edit; clears the redo stack
+/// open a new undoable edit; its first change clears the owner's redo steps
 public func beginEdit(_ w: World, _ label: String) -> EditBatch {
     let b = EditBatch(w, label)
+    b.clearsRedo = true
     undoStack.append(b)
-    redoStack.removeAll { $0.owner == b.owner }
     var total = undoStack.reduce(0) { $0 + $1.count }
     while undoStack.count > UNDO_MAX_BATCHES || (total > UNDO_MAX_CELLS && undoStack.count > 1) {
         total -= undoStack.removeFirst().count
@@ -122,21 +129,22 @@ private func revert(_ b: EditBatch) -> EditBatch {
     return inv
 }
 
-/// undo `owner`'s most recent edit; nil when there's nothing to undo
+/// undo `owner`'s most recent edit; returns what was put back (cells in
+/// unloaded chunks are skipped), nil when there's nothing to undo
 public func undoLastEdit(owner: Int = 0) -> EditBatch? {
     // skip edits that never changed anything (a rocket that hit only air)
     undoStack.removeAll { $0.owner == owner && $0.count == 0 && $0.jobs.allSatisfy({ $0.done }) }
     guard let i = undoStack.lastIndex(where: { $0.owner == owner }) else { return nil }
-    let b = undoStack.remove(at: i)
-    redoStack.append(revert(b))
-    return b
+    let inv = revert(undoStack.remove(at: i))
+    redoStack.append(inv)
+    return inv
 }
 
 public func redoLastEdit(owner: Int = 0) -> EditBatch? {
     guard let i = redoStack.lastIndex(where: { $0.owner == owner }) else { return nil }
-    let b = redoStack.remove(at: i)
-    undoStack.append(revert(b))
-    return b
+    let inv = revert(redoStack.remove(at: i))
+    undoStack.append(inv)
+    return inv
 }
 
 /// forget every edit (leaving a world: they point at it and would keep it in memory)

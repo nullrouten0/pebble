@@ -2746,6 +2746,79 @@ do {
     }
 }
 
+section("copy, paste and undo edge cases")
+do {
+    // a small flat world of loaded chunks: 0..1 by 0..1, plus one far out
+    let w = World(dim: .overworld, seed: 1)
+    let farCX = 20_000_000 / 16
+    func flat(_ cx: Int, _ cz: Int) {
+        let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
+        var blocks = [UInt16](repeating: 0, count: 16 * 16 * WORLD_H)
+        for i in 0..<(256 * (64 - GEN_MIN_Y)) { blocks[i] = cell(B.stone) }
+        c.blocks = blocks
+        c.skyLight = [UInt8](repeating: 15, count: blocks.count)
+        c.blockLight = [UInt8](repeating: 0, count: blocks.count)
+        c.buildHeightmap(); c.scanSpecials(); c.status = .lit
+        w.setChunk(c)
+    }
+    for cz in 0...1 { for cx in 0...1 { flat(cx, cz) } }
+    flat(farCX, 0)
+    let glass = Int(cell(B.glass))
+    let p = Player(world: w)
+    p.setPos(8, 64, 8)
+
+    // undo far from spawn
+    let fx = farCX * 16 + 1
+    beginEdit(w, "far").set(fx, 70, 3, glass)
+    _ = undoLastEdit()
+    check("undo works 20 million blocks out", w.getBlock(fx, 70, 3) == 0)
+    clearEditHistory()
+
+    // redo survives an edit that changes nothing, and goes when one does
+    beginEdit(w, "a").set(2, 70, 2, glass)
+    _ = undoLastEdit()
+    beginEdit(w, "nothing").set(2, 70, 2, 0)
+    check("an edit that changes nothing keeps your redo", editCounts().redo == 1)
+    _ = redoLastEdit()
+    check("redo puts the edit back", w.getBlock(2, 70, 2) == glass)
+    _ = undoLastEdit()
+    beginEdit(w, "b").set(3, 70, 3, glass)
+    check("a real edit clears redo", editCounts().redo == 0)
+    clearEditHistory()
+
+    // a furnace pasted then undone leaves nothing ticking
+    w.setBlock(4, 64, 4, Int(cell(B.furnace)))
+    w.setBlockEntity(makeFurnaceBE(4, 64, 4, .furnace))
+    p.selection = Selection(dim: w.dim, a: BlockPos(4, 64, 4), b: BlockPos(4, 64, 4))
+    _ = try? copySelection(p, cut: false)
+    let ticking = w.tickingBEList.count
+    _ = try? pasteClipboard(p, skipAir: false, at: BlockPos(10, 64, 10))
+    let pastedTicks = w.tickingBEList.count == ticking + 1
+    _ = undoLastEdit()
+    check("a pasted furnace ticks, and stops when the paste is undone",
+          pastedTicks && w.tickingBEList.count == ticking && w.getBlockEntity(10, 64, 10) == nil)
+    _ = redoLastEdit()
+    check("redoing the paste brings the furnace back, ticking",
+          w.getBlockEntity(10, 64, 10)?.type == "furnace" && w.tickingBEList.count == ticking + 1)
+
+    // pastes partly outside the world, into unloaded land, across dimensions
+    let top = w.info.minY + w.info.height - 1
+    p.selection = Selection(dim: w.dim, a: BlockPos(1, 64, 1), b: BlockPos(2, 67, 2))
+    _ = try? copySelection(p, cut: false)
+    let r = try? pasteClipboard(p, skipAir: false, at: BlockPos(1, top - 1, 1))
+    check("a paste through the build limit reports what was left out, inside the world",
+          r?.outside == 8 && r?.hi.y == top && w.getBlock(1, top, 1) == 0, "\(String(describing: r))")
+    let before = editCounts().undo
+    var unloaded = false
+    do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(100, 64, 100)) } catch ClipboardError.unloaded { unloaded = true } catch {}
+    check("a paste into unloaded land is refused and adds no undo step", unloaded && editCounts().undo == before)
+    p.selection = Selection(dim: .nether, a: BlockPos(1, 64, 1), b: BlockPos(2, 64, 2))
+    var otherDim = false
+    do { _ = try copySelection(p, cut: false) } catch ClipboardError.otherDimension { otherDim = true } catch {}
+    check("a selection in another dimension can't be copied", otherDim)
+    clearEditHistory()
+}
+
 section("item copies")
 do {
     let box = ItemStack(iid("lurker_box"), 1)

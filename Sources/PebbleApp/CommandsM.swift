@@ -227,6 +227,9 @@ func runCommand(_ game: GameCore, _ raw: String) {
         if game.netClient != nil { return fail("In a LAN game only the host can copy and paste for now") }
         do {
             if cmd == "/paste" {
+                if let bad = args.first(where: { $0 != "-a" }) {
+                    return fail("Unknown option \(bad). Usage: //paste [-a] (-a leaves blocks where the copy has air)")
+                }
                 let t0 = Date()
                 let r = try pasteClipboard(p, skipAir: args.contains("-a"))
                 let ms = Int(Date().timeIntervalSince(t0) * 1000)
