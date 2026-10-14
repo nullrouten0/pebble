@@ -107,14 +107,13 @@ in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 - **New wording** for death messages and all 55 advancements.
 - Existing worlds open with everything renamed in place: blocks, items,
   creatures, effects, enchantments and earned advancements carry over.
-- Resource packs in the Java Edition layout still apply: their texture
+- Resource packs in the standard pack layout still apply: their texture
   names are translated on load.
 
 ## 1.5.0 — 2026-10-13 — worlds that survive updates
 
-Pebble now aims at vanilla Minecraft: Java Edition rather than the
-JavaScript original it was ported from, and its saves are built to outlast
-changes to the game.
+Pebble no longer tries to match the JavaScript original it was ported from,
+and its saves are built to outlast changes to the game.
 
 - **Every chunk you visit is saved, blocks and all.** Before, untouched
   land was saved without its blocks and rebuilt from the seed each time it
@@ -130,8 +129,8 @@ changes to the game.
   falling as soon as snow settled on them). **Worlds created before 1.5 keep
   their original generator**, so their unvisited land matches what it would
   always have been.
-- **Blast furnaces only smelt ores and smokers only cook food**, as in
-  Minecraft (the blast furnace used to take sand, cobblestone and logs).
+- **Blast furnaces only smelt ores and smokers only cook food** (the blast
+  furnace used to take sand, cobblestone and logs).
 - Open 1.5 worlds only in 1.5 or later: older builds don't know about
   palettes or generator versions.
 
@@ -141,7 +140,7 @@ regenerates snapshots and lists exactly what changed.
 
 ## 1.4.11 — 2026-10-13 — anvils are "Too Expensive!" again
 
-- **Anvils follow Minecraft's limit:** a job costing 40 levels or more says
+- **Anvils have a limit:** a job costing 40 levels or more says
   "Too Expensive!" and can't be taken in survival (creative ignores the
   limit). Renaming alone is held at 39, so you can always rename an item.
   Pebble used to cap every job at 39, so heavily reworked gear could be
@@ -179,12 +178,12 @@ track destroyed blocks by exact position.
 ## 1.4.7 — 2026-10-13 — fall damage, spiders, mobs that remember
 
 - **Falls over 5 blocks follow the rules again.** Feather Falling now
-  protects against them, armor no longer does (as in Minecraft), and
+  protects against them, armor no longer does, and
   cats, chickens, bees, parrots, bats, lurkers and iron golems are immune
   at any height, not just short drops.
-- **Spiders are neutral in the light**, as in Minecraft: they only come
-  for you in the dark, though they still fight back if you hit one.
-- **Natural regeneration matches Minecraft:** with a full food bar, the
+- **Spiders are neutral in the light:** they only come for you in the
+  dark, though they still fight back if you hit one.
+- **Natural regeneration is fixed:** with a full food bar, the
   fast heal spends saturation and slows down as saturation runs below 6.
 - **Saved and reloaded correctly now:** a slime's size and health,
   saddles on striders and camels (which also drop their saddle),
@@ -243,7 +242,7 @@ notice:
 
 - **Anvils charge you.** Taking an anvil result when you couldn't afford
   it used to work and just left you at level 0. Now the result can't be
-  taken until you have the levels (creative is free, as in Minecraft).
+  taken until you have the levels (creative is free).
 - **Crashes fixed:** hovering an item enchanted with `/enchant <id> 0`;
   `/tp`, `/setblock`, `/fill` and `/summon` with `nan` or huge
   coordinates; `/effect`, `/xp` and `/fill` with numbers big enough to
@@ -264,8 +263,8 @@ notice:
   `/gamerule` rejects values that aren't numbers.
 - Keys the game can't name (Home, Page Up…) can't be bound any more, which
   used to leave the action on no key.
-- Resource packs with several namespaces always load from `minecraft`
-  first, instead of whichever one happened to come up first.
+- Resource packs with several namespaces always load from the main
+  namespace first, instead of whichever one happened to come up first.
 - Sparkstone torch burnout is tracked per world, and its memory is trimmed.
 - Every `B.<block>` name used in code is in the generated block-id cache
   (16 newer names fell back to a string lookup), and a missing one is now
@@ -284,8 +283,8 @@ notice:
 ## 1.4.2 — 2026-10-12 — creative inventory tab, icon tabs
 
 - **Your character and armor slots in creative.** The creative screen has
-  an **Inventory** tab (the chest, at the far end of the bottom row), as in
-  Minecraft: it shows your character, the helmet, chestplate, leggings and
+  an **Inventory** tab (the chest, at the far end of the bottom row): it
+  shows your character, the helmet, chestplate, leggings and
   boots slots, the offhand slot and crafting, with the tabs still around it
   to go back to the items. The inventory button reopens whichever tab you
   were on.
@@ -351,11 +350,11 @@ here ships to the Mac too unless it says touch, iPad or iPhone.
     cave brought the whole deposit down: over 1,000 falling blocks at once
     on one route, all simulated (and sent to guests) by the host. Fluid
     flowing in beside or above a gravity block no longer unsettles it;
-    flowing in underneath still does, as in Minecraft. 81% fewer falls.
+    flowing in underneath still does. 81% fewer falls.
   - *Forests shed saplings.* 2-3% of generated leaves sit past the
     6-block reach to a log, and every random tick re-checked them, so
     about 100 saplings and sticks dropped around spawn every 5 minutes.
-    Like Minecraft, leaves now re-check only after something next to them
+    Leaves now re-check only after something next to them
     changes: chopping a trunk still brings its canopy down, leaf by leaf.
 - **Hosting a LAN game is much lighter (1.3.2).** The host has to load and
   run every guest's surroundings (it owns the world), but it was also
@@ -404,7 +403,7 @@ here ships to the Mac too unless it says touch, iPad or iPhone.
   buttons, long-press for right-click in inventories), hardware keyboard and
   mouse, and game controllers all work. Mac↔iPad LAN games work because
   both apps are always the same version.
-- **Hold to dig, like Minecraft.** Press and hold a finger still on the
+- **Hold to dig.** Press and hold a finger still on the
   look area for a quarter second and it digs for as long as the finger stays
   down; a finger that rolls slightly keeps digging. Only a fresh press digs:
   steering with the look finger stops the dig, and pausing mid-turn no longer
@@ -525,8 +524,8 @@ here ships to the Mac too unless it says touch, iPad or iPhone.
   format uses a narrow no-break space, which the font doesn't have.
 - **Title screen fits short windows.** The Options / Quit row no longer
   covers the texture credit in the bottom-left corner.
-- **Elder Guardians no longer curse creative players** with Mining Fatigue,
-  as in vanilla.
+- **Elder Guardians no longer curse creative players** with Mining
+  Fatigue.
 - **Status effects say what they are.** When an effect starts or changes
   level, its name (with the level, e.g. "Mining Fatigue III") shows under the
   icons in the top right for 5 seconds.
@@ -712,7 +711,7 @@ All are tools-category items, given with `/give`.
 - **Fixed over-dark lighting in pits, holes and undersides.** Smooth lighting
   averaged in the zero skylight of solid neighbours, so the walls and floor of
   a freshly-dug hole rendered far darker than they should in daylight. Opaque
-  neighbours now contribute the face light (standard vanilla smooth lighting);
+  neighbours now contribute the face light (standard smooth lighting);
   ambient occlusion still shades the corners. Re-baselined the mesh goldens.
 - **The installer now checks your Swift version up front.** `./pebble install`
   needs Swift 6.0+; if you're below that it explains the fix and can install a
@@ -727,7 +726,7 @@ All are tools-category items, given with `/give`.
   install` fail to compile. The expressions are now hoisted into typed locals;
   worldgen/mesh output is byte-identical.
 - **Fixed entity facing.** Mobs and the third-person player were rendered
-  rotated by `-yaw` instead of the Minecraft `180° - yaw` convention, so they
+  rotated by `-yaw` instead of the `180° - yaw` convention, so they
   faced (and appeared to walk) backward. Render-side only.
 
 ## 1.0.0 — 2026-06-11 — first public beta
@@ -749,11 +748,11 @@ The initial release. What ships:
   nether (fortresses, bastions) → end (dragon fight, end cities, gateways),
   plus the Blight and the Warden.
 - **Worldgen**: multi-noise climate sampling, spline terrain, 3D density caves,
-  ravines, aquifers, vanilla-1.20 ore tables, snow lines, cave biomes
+  ravines, aquifers, layered ore tables, snow lines, cave biomes
   including the deep dark.
 - **Sparkstone**: wire networks, repeaters, comparators with container reading,
   pistons with quasi-connectivity, observers, hoppers, rails, hush sensors.
-- **Vanilla-exact player physics**, verified by independent derivations in the
+- **Precise player physics**, verified by independent derivations in the
   test suite (walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks).
 - **Synthesized audio**: every sound and all music generated in real time
   from oscillator recipes — zero audio files.
@@ -771,8 +770,7 @@ The initial release. What ships:
 ### Known limitations
 
 - Singleplayer only, for now — there is no networking code in 1.0.0.
-- Wingsuit flight omits vanilla's dive-redirect term (look-pitch speed transfer);
-  flight feel is otherwise vanilla-derived.
+- Wingsuit flight omits a dive-redirect term (look-pitch speed transfer).
 - Armor trims show in tooltips but not yet on worn armor.
 - No resource-pack or shader-pack loading — the Faithful art and the ultra
   pipeline are built in; user-supplied packs are not a feature.
