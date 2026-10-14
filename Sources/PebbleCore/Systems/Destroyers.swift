@@ -317,9 +317,7 @@ private var laserBatch = [ObjectIdentifier: (EditBatch, Int)]()
 /// one tick of beam: erase a round slab (radius 2.5 → 5 wide, or 4.5 → 9 wide)
 /// two blocks deep where the beam lands. Hold it to bore a tunnel.
 public func fireLaser(_ w: World, _ p: Player, wide: Bool, tick: Int) {
-    let dx = -detSin(p.yaw) * detCos(p.pitch)
-    let dy = -detSin(p.pitch)
-    let dz = detCos(p.yaw) * detCos(p.pitch)
+    let (dx, dy, dz) = p.lookDir()
     let ex = p.x, ey = p.eyeY(), ez = p.z
     let hit = w.raycast(ex, ey, ez, dx, dy, dz, LASER_RANGE)
     let len = hit?.t ?? LASER_RANGE

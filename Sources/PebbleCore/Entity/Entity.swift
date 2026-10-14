@@ -91,6 +91,10 @@ open class Entity: EntityRef {
         return AABB(x - hw, y, z - hw, x + hw, y + height, z + hw)
     }
     public func eyeY() -> Double { y + height * 0.85 }
+    /// unit vector along the view (yaw 0 faces +z, positive pitch looks down)
+    public func lookDir() -> (Double, Double, Double) {
+        (-detSin(yaw) * detCos(pitch), -detSin(pitch), detCos(yaw) * detCos(pitch))
+    }
 
     public func setPos(_ x: Double, _ y: Double, _ z: Double) {
         self.x = x; self.y = y; self.z = z

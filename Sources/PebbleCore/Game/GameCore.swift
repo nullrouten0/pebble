@@ -2409,18 +2409,14 @@ public final class GameCore {
     public func crosshairBlock() -> RaycastHit? {
         let p = player!
         let reach = p.gameMode == GameMode.creative ? REACH_CREATIVE : REACH_SURVIVAL
-        let dx = -detSin(p.yaw) * detCos(p.pitch)
-        let dy = -detSin(p.pitch)
-        let dz = detCos(p.yaw) * detCos(p.pitch)
+        let (dx, dy, dz) = p.lookDir()
         return world.raycast(p.x, p.eyeY(), p.z, dx, dy, dz, reach)
     }
 
     /// nearest entity under the crosshair within attack reach
     private func crosshairEntity(_ maxDist: Double) -> Entity? {
         let p = player!
-        let dx = -detSin(p.yaw) * detCos(p.pitch)
-        let dy = -detSin(p.pitch)
-        let dz = detCos(p.yaw) * detCos(p.pitch)
+        let (dx, dy, dz) = p.lookDir()
         let ox = p.x, oy = p.eyeY(), oz = p.z
         var best: Entity? = nil
         var bestT = maxDist
@@ -2722,12 +2718,9 @@ public final class GameCore {
         return paused ? 1 : clampD(accumulator / TICK_MS, 0, 1)
     }
 
-    // ===========================================================================
-    // Infinity wipe (the cut itself is in Systems/InfinityWipe.swift)
-    // ===========================================================================
-    /// first use arms it; a second use within 3 s fires it
-    /// selection wand: the clicked block becomes corner 1 or 2 (a LAN guest's
-    /// click replays here on the host too, so its copy of the selection matches)
+    /// selection wand: the clicked block becomes corner 1 or 2. A LAN guest's
+    /// right-click (corner 2) replays here on the host too; its left-click
+    /// (corner 1) stays on the guest, which is fine while only the host can copy
     private func markCorner(_ p: Player, _ corner: Int, _ hit: RaycastHit) {
         let line = setSelectionCorner(p, corner, BlockPos(hit.x, hit.y, hit.z))
         guard p === player else { return }
@@ -2735,6 +2728,10 @@ public final class GameCore {
         host?.playUI("ui.button.click")
     }
 
+    // ===========================================================================
+    // Infinity wipe (the cut itself is in Systems/InfinityWipe.swift)
+    // ===========================================================================
+    /// first use arms it; a second use within 3 s fires it
     private func useInfinityWipe(_ p: Player) {
         let w = p.world
         if w.dim != .overworld { return tell(p, "§cThe Infinity Wipe only works in the Overworld") }

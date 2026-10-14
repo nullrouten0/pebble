@@ -427,9 +427,7 @@ public final class Riftwalker: Monster {
                 // is the player looking at my head?
                 let dx = x - p.x, dy = (y + 2.55) - p.eyeY(), dz = z - p.z
                 let dist = (dx * dx + dy * dy + dz * dz).squareRoot()
-                let lookX = -detSin(p.yaw) * detCos(p.pitch)
-                let lookY = -detSin(p.pitch)
-                let lookZ = detCos(p.yaw) * detCos(p.pitch)
+                let (lookX, lookY, lookZ) = p.lookDir()
                 let dot = (dx / dist) * lookX + (dy / dist) * lookY + (dz / dist) * lookZ
                 if dot > 0.99 && p.canSee(self) {
                     setTarget(p)

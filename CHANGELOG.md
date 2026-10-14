@@ -3,6 +3,12 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.11 — 2026-10-13 — tidying
+
+- The selection wand's outline no longer builds new lists of points every
+  frame, and code comments that had gone wrong or ended up beside the wrong
+  function are fixed. Nothing changes in play.
+
 ## 1.6.10 — 2026-10-13 — anime animal touch-ups
 
 - **Kitsune Kit's three tails wag out of step**, as they were meant to; the

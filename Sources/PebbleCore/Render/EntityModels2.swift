@@ -1446,9 +1446,9 @@ private func registerModels2() {
             s.box(62, 20, 3, 3, 1, 0x7a5228, 0.1)
         },
         packTex: ["entity/boat/oak.png"]))
-    // pack-layout end crystal art (32×32): glass shell (0,0), core (0,16); the
-    // base samples the core region too (the pack art has no texture for the
-    // block it stands on)
+    // pack-layout end crystal art (a 64×32 sheet): glass shell (0,0), core
+    // (0,16); the base samples the core region too (the crystal stands on a
+    // real block, which an entity's art can't draw)
     M2("rift_crystal_model", MobModel(
         texW: 64, texH: 32,
         parts: [

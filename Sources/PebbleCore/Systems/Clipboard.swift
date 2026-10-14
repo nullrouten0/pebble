@@ -66,7 +66,7 @@ extension BlockEntityData {
 /// - with nothing in reach it stands level with your feet, 3 blocks ahead
 public func pasteOrigin(_ p: Player, _ clip: Clipboard) -> (Int, Int, Int) {
     let fx = -detSin(p.yaw), fz = detCos(p.yaw)
-    let dx = fx * detCos(p.pitch), dy = -detSin(p.pitch), dz = fz * detCos(p.pitch)
+    let (dx, dy, dz) = p.lookDir()
     var tx: Int, ty: Int, tz: Int, nx = 0, ny = 1, nz = 0
     if let hit = p.world.raycast(p.x, p.eyeY(), p.z, dx, dy, dz, PASTE_REACH) {
         nx = DIR_X[hit.face]; ny = DIR_Y[hit.face]; nz = DIR_Z[hit.face]
