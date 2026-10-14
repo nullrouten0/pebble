@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="packaging/pebble-brighter-world.png" alt="Pebble" width="520">
+  <img src="packaging/pebble-brighter-world_b.png" alt="Pebble" width="520">
 </p>
 
-<h3 align="center">Build a brighter world.</h3>
+<h3 align="center">Create a brighter world.</h3>
 
 <p align="center">
   <img src="packaging/homepage.png" alt="In-game render — dawn over a lake in a cherry grove, mountains behind, ultra graphics" width="49%">
