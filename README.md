@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packaging/pebble-brighter-world.png" alt="Pebble" width="520">
+  <img src="packaging/pebble-brighter-world_b.png" alt="Pebble" width="520">
 </p>
 
 <h3 align="center">Build a brighter world.</h3>
