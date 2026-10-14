@@ -3,6 +3,16 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.8 — 2026-10-13 — texture pack updates by release
+
+- **The built-in texture pack updates by release.** Pebble replaced its copy
+  of the default pack whenever the file size differed from the one in the
+  app, and deleted the old copy before copying the new one, so a failed copy
+  (a full disk, say) silently left you on the plain fallback textures. It now
+  records which release it installed and copies a newer one once, beside
+  the old file before swapping it in. A failure is logged and leaves the
+  working pack where it is.
+
 ## 1.6.7 — 2026-10-13 — unknown creatures are kept
 
 - **Opening a world in an older version keeps the newer mobs.** A version
