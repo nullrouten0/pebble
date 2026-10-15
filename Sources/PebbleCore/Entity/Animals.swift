@@ -258,8 +258,7 @@ public final class Chicken: Animal {
     }
     public override func tick() {
         super.tick()
-        // flap fall
-        if !onGround && vy < 0 { vy *= 0.6 }
+        flutterFall()
         if !baby {
             eggTime -= 1
             if eggTime <= 0 {

@@ -2692,6 +2692,10 @@ do {
         check("anime animal skins fit their texture sheets", uvOK)
         let natural = Set(BIOMES.compactMap { $0 }.flatMap { $0.creatures.map { $0.0 } })
         check("anime animals never spawn naturally", ANIME_ANIMALS.allSatisfy { !natural.contains($0.id) })
+        check("only the tanuki wears the raccoon mask, only the chick flutters, and the neko and chick shrug off falls",
+              ANIME_ANIMALS.filter { $0.raccoonMask }.map { $0.id } == ["leaf_tanuki"]
+              && ANIME_ANIMALS.filter { $0.flutters }.map { $0.id } == ["piyo_chick"]
+              && ANIME_ANIMALS.filter { $0.fallImmune }.map { $0.id } == ["bell_neko", "piyo_chick"])
         if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob,
            let mate = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z + 1, SpawnOpts()) as? Animal {
             check("an anime animal is tempted by its favourite food", bunny.isFood(ItemStack(iid("carrot"), 1))
@@ -2922,17 +2926,19 @@ do {
     // stays at least 3 blocks away (it used to cover you looking diagonally)
     let w = World(dim: .overworld, seed: 1)
     let p = Player(world: w)
-    p.setPos(0.5, 80, 0.5)
     var covered: [String] = []
-    for (wid, len) in [(107, 107), (31, 80), (9, 9)] {
-        for deg in stride(from: 0, to: 360, by: 5) {
-            p.yaw = Double(deg) * .pi / 180
-            let (tx, tz) = placementAhead(p, width: wid, length: len)
-            // the footprint placePrefab makes around (tx, tz)
-            let x0 = tx - (wid - 1) / 2, z0 = tz - (len - 1) / 2
-            let gapX = max(Double(x0) - p.x, p.x - Double(x0 + wid))
-            let gapZ = max(Double(z0) - p.z, p.z - Double(z0 + len))
-            if max(gapX, gapZ) < 2 { covered.append("\(wid)x\(len)@\(deg)") }
+    for (px, pz) in [(0.5, 0.5), (0.05, 0.95), (0.95, 0.3)] {
+        p.setPos(px, 80, pz)
+        for (wid, len) in [(107, 107), (31, 80), (9, 9), (10, 4)] {
+            for deg in 0..<360 {
+                p.yaw = Double(deg) * .pi / 180
+                let (tx, tz) = placementAhead(p, width: wid, length: len)
+                // the footprint placePrefab makes around (tx, tz)
+                let x0 = tx - (wid - 1) / 2, z0 = tz - (len - 1) / 2
+                let gapX = max(Double(x0) - p.x, p.x - Double(x0 + wid))
+                let gapZ = max(Double(z0) - p.z, p.z - Double(z0 + len))
+                if max(gapX, gapZ) < 3 { covered.append("\(wid)x\(len)@\(deg) from \(px),\(pz)") }
+            }
         }
     }
     check("/place puts its footprint clear of you at every heading", covered.isEmpty, "\(covered.prefix(6))")
@@ -3004,6 +3010,9 @@ do {
           "\(String(describing: r))")
     w.setBlock(1, 65, 1, 0)
     let before = editCounts().undo
+    var allOutside = false
+    do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(1, top + 5, 1)) } catch ClipboardError.outsideWorld { allOutside = true } catch {}
+    check("a paste wholly outside the world is refused and adds no undo step", allOutside && editCounts().undo == before)
     var unloaded = false
     do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(100, 64, 100)) } catch ClipboardError.unloaded { unloaded = true } catch {}
     check("a paste into unloaded land is refused and adds no undo step", unloaded && editCounts().undo == before)

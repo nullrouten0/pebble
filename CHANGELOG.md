@@ -3,6 +3,25 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.20 — 2026-10-14 — loose ends
+
+- **`/place` keeps a full 3 blocks clear of you**, as 1.6.12 said; rounding
+  could bring the footprint to about 2.
+- **Undoing `/place` brings back a chest's own contents** when the structure
+  put a chest exactly where yours was.
+- **A paste that would land entirely outside the world is refused** instead
+  of reporting an upside-down box and using up an undo step.
+- **Leaving a world forgets everything the editing tools held on to:** the
+  mining laser's last burst, running carve jobs, and the wall and box
+  builders' memory of recent builds (which a new world could pick up).
+- Big `/fill`s and `/place`s relight each chunk once, like pastes.
+- The selection wand's outline really no longer builds lists every frame
+  (1.6.11 missed a few); `pebble check-pack` cleans up after itself if
+  interrupted and notices at once if the app quits early; the mountain aims
+  with the same maths as everything else; the anime animals' quirks (the
+  tanuki's mask, the chick's flutter, the neko landing on its feet) are named
+  per animal rather than read off body shapes.
+
 ## 1.6.19 — 2026-10-14 — pack and portal edges
 
 - **The built-in texture pack notices when it's been swapped.** It was

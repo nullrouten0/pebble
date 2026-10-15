@@ -25,6 +25,8 @@ private let FALL_IMMUNE: Set<String> = ["cat", "ocelot", "chicken", "bat", "parr
 open class LivingEntity: Entity {
     /// takes no fall damage
     open var fallImmune: Bool { FALL_IMMUNE.contains(type) }
+    /// flap to fall slowly, as chickens (and the chick) do: call each tick
+    public func flutterFall() { if !onGround && vy < 0 { vy *= 0.6 } }
     public var health = 20.0
     public var maxHealth = 20.0
     public var absorption = 0.0

@@ -15,7 +15,9 @@ public let PREFAB_GROUND = 64
 /// of the footprint reaches back over them)
 public func placementAhead(_ p: Entity, width: Int, length: Int, margin: Double = 3) -> (Int, Int) {
     let fx = -detSin(p.yaw), fz = detCos(p.yaw)
-    let hx = Double(width) / 2 + margin, hz = Double(length) / 2 + margin
+    // one more block: rounding to a block, and centring an even size, each
+    // give back up to half of one
+    let hx = Double(width) / 2 + margin + 1, hz = Double(length) / 2 + margin + 1
     let rx = abs(fx) > 1e-9 ? hx / abs(fx) : .infinity
     let rz = abs(fz) > 1e-9 ? hz / abs(fz) : .infinity
     let reach = min(rx, rz)

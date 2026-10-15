@@ -209,6 +209,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         }
         var n = 0
         let batch = beginEdit(world, "fill")
+        batch.bulkLight = vol > BULK_LIGHT_CELLS
         for y in min(y0, y1)...max(y0, y1) {
             for z in min(z0, z1)...max(z0, z1) {
                 for x in min(x0, x1)...max(x0, x1) {
@@ -216,6 +217,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
                 }
             }
         }
+        batch.finishLight()
         batch.liftEntities()
         ok("Filled \(n) blocks")
     case "/pos1", "/pos2":
@@ -351,8 +353,8 @@ func runCommand(_ game: GameCore, _ raw: String) {
             } else {
                 // far enough ahead that you're at its foot, not inside it
                 let reach = MOUNTAIN_RADIUS * 1.25 + 8
-                tx = Int((p.x - sin(p.yaw) * reach).rounded(.down))
-                tz = Int((p.z + cos(p.yaw) * reach).rounded(.down))
+                tx = ifloor(p.x - detSin(p.yaw) * reach)
+                tz = ifloor(p.z + detCos(p.yaw) * reach)
             }
             let plan = game.placeMountain(tx, tz, variant: variant)
             if plan.keys.isEmpty { return fail("No room for a mountain at \(tx) \(tz) - the ground there is already higher") }

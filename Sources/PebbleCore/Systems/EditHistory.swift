@@ -201,11 +201,16 @@ public func redoLastEdit(owner: Int = 0) -> EditBatch? {
     return inv
 }
 
-/// forget every edit (leaving a world: they point at it and would keep it in memory)
+/// forget every edit (leaving a world: they point at it and would keep it in
+/// memory), with the jobs still writing into them, the laser's open burst and
+/// the builders' list of recent builds
 public func clearEditHistory() {
     for b in undoStack { stopJobs(of: b) }
     undoStack.removeAll()
     redoStack.removeAll()
+    stopAllJobs()
+    forgetLaserBursts()
+    forgetBuilds()
 }
 
 /// how many undo / redo steps `owner` has

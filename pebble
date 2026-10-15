@@ -216,19 +216,24 @@ cmd_test() {
 cmd_check_pack() {
     need_swift
     (cd "$REPO" && "$PEBBLE_SWIFT" build -c release --product Pebble) || die "build failed"
-    local home log
-    home="$(mktemp -d)"; log="$home/log"
-    PEBBLE_HOME="$home" PEBBLE_PACKDEBUG=1 PEBBLE_WINDOWED=1 PEBBLE_WINSIZE=400x300 \
+    # the app and its scratch profile go however this ends (Ctrl-C included)
+    CHECK_HOME="$(mktemp -d)"; CHECK_PID=""
+    trap 'kill $CHECK_PID 2>/dev/null || true; rm -rf "$CHECK_HOME"' EXIT
+    local log="$CHECK_HOME/log" i
+    PEBBLE_HOME="$CHECK_HOME" PEBBLE_PACKDEBUG=1 PEBBLE_WINDOWED=1 PEBBLE_WINSIZE=400x300 \
         "$REPO/.build/release/Pebble" >"$log" 2>&1 &
-    local pid=$! i
-    for i in $(seq 1 60); do grep -q "tiles, " "$log" && break; sleep 1; done
-    kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null || true
-    grep -q "tiles, " "$log" || { rm -rf "$home"; die "the app never reported loading the pack"; }
+    CHECK_PID=$!
+    for i in $(seq 1 60); do
+        grep -q "tiles, " "$log" && break
+        kill -0 "$CHECK_PID" 2>/dev/null || break   # it quit (or crashed) without loading
+        sleep 1
+    done
+    kill "$CHECK_PID" 2>/dev/null; wait "$CHECK_PID" 2>/dev/null || true
+    grep -q "tiles, " "$log" || die "the app never reported loading the pack"
     grep "tiles, " "$log" | sed 's/^\[packs\] /  /'
     local got want
     got="$(sed -n 's/.*no pack art for tile [0-9]*: //p' "$log" | sort)"
-    want="$(grep -v '^#' "$REPO/packaging/pack-missing-tiles.txt" | sed '/^$/d' | sort)"
-    rm -rf "$home"
+    want="$({ grep -v '^#' "$REPO/packaging/pack-missing-tiles.txt" || true; } | sed '/^$/d' | sort)"
     if [ "$got" = "$want" ]; then
         say "Every tile has art except the expected $(printf '%s\n' "$want" | wc -l | tr -d ' ')."
     else

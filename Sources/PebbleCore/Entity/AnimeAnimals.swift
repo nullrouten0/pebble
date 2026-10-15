@@ -16,6 +16,8 @@ public struct AnimeAnimalSpec {
     public enum Extra { case none, bell, leaf, scarf, cheeks, pandaPatches, mask }
     /// a snout box on the face (fox, dog, raccoon-dog…) or a beak (birds)
     public enum Muzzle { case none, snout, beak }
+    /// one animal's own quirks, named rather than read off its body shape
+    public enum Trait { case raccoonMask, flutters, landsOnFeet }
 
     public let id: String
     public let shape: Shape
@@ -33,10 +35,12 @@ public struct AnimeAnimalSpec {
     public let iris: Int
     public let foods: [String]
     /// hitbox: as tall as the head (ears aside) and wide enough to click most
-    /// of a long face, but under a block so they fit through one-block gaps
+    /// of a long face, but narrower than a block so they fit through
+    /// one-block-wide gaps
     public let width: Double, height: Double
     /// voice: base pitch (Hz) and how it bends (end/start ratio)
     public let voice: Double, bend: Double
+    public var traits: Set<Trait> = []
 }
 
 extension AnimeAnimalSpec {
@@ -44,11 +48,11 @@ extension AnimeAnimalSpec {
     /// the penguin and the chick stand on two legs
     public var plan: Plan { shape == .egg || shape == .puffball ? .biped : .quad }
     /// the tanuki's raccoon-dog mask across the eyes (the red panda's is `Extra.mask`)
-    public var raccoonMask: Bool { shape == .tubby }
+    public var raccoonMask: Bool { traits.contains(.raccoonMask) }
     /// flaps to slow its falls, like a chicken
-    public var flutters: Bool { shape == .puffball }
+    public var flutters: Bool { traits.contains(.flutters) }
     /// no fall damage: the chick flutters down, the neko lands on its feet like a cat
-    public var fallImmune: Bool { flutters || shape == .sleek }
+    public var fallImmune: Bool { flutters || traits.contains(.landsOnFeet) }
 }
 
 private typealias S = AnimeAnimalSpec
@@ -65,11 +69,13 @@ public let ANIME_ANIMALS: [AnimeAnimalSpec] = [
     S(id: "bell_neko", shape: .sleek,
       head: (9, 8, 8), body: (5, 4.5, 9), legH: 3.5, ears: .pointed, tail: .thin, extra: .bell,
       muzzle: .none, fur: 0xfaf0dc, light: 0xffffff, accent: 0xe8902c, dark: 0x3a3030,
-      iris: 0x3aa860, foods: ["cod", "salmon"], width: 0.75, height: 0.95, voice: 950, bend: 1.35),
+      iris: 0x3aa860, foods: ["cod", "salmon"], width: 0.75, height: 0.95, voice: 950, bend: 1.35,
+      traits: [.landsOnFeet]),
     S(id: "leaf_tanuki", shape: .tubby,
       head: (10, 8, 8), body: (8, 6, 8), legH: 2, ears: .round, tail: .ringed, extra: .leaf,
       muzzle: .snout, fur: 0x9a7650, light: 0xe8d8bc, accent: 0x5a4030, dark: 0x3a2a20,
-      iris: 0x6a3a1a, foods: ["apple", "sweet_berries"], width: 0.8, height: 0.95, voice: 700, bend: 1.2),
+      iris: 0x6a3a1a, foods: ["apple", "sweet_berries"], width: 0.8, height: 0.95, voice: 700, bend: 1.2,
+      traits: [.raccoonMask]),
     S(id: "bao_panda", shape: .chunky,
       head: (11, 9, 9), body: (10, 7, 11), legH: 3, ears: .round, tail: .stub, extra: .pandaPatches,
       muzzle: .none, fur: 0xf6f6f2, light: 0xffffff, accent: 0x2a2a2e, dark: 0x1c1c20,
@@ -95,7 +101,7 @@ public let ANIME_ANIMALS: [AnimeAnimalSpec] = [
       head: (8, 7, 7), body: (7, 6, 6), legH: 2, ears: .tuft, tail: .none, extra: .none,
       muzzle: .beak, fur: 0xffd83a, light: 0xfff2a0, accent: 0xffc020, dark: 0xf08a20,
       iris: 0x2a2a2a, foods: ["wheat_seeds", "melon_seeds", "pumpkin_seeds"], width: 0.45, height: 0.95,
-      voice: 2000, bend: 1.35),
+      voice: 2000, bend: 1.35, traits: [.flutters]),
 ]
 
 public let ANIME_ANIMAL_BY_ID: [String: AnimeAnimalSpec] =
@@ -118,6 +124,6 @@ public final class AnimeAnimal: Animal {
     public override var fallImmune: Bool { spec.fallImmune }
     public override func tick() {
         super.tick()
-        if spec.flutters && !onGround && vy < 0 { vy *= 0.6 }
+        if spec.flutters { flutterFall() }
     }
 }

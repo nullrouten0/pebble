@@ -1097,6 +1097,7 @@ public final class GameCore {
         let flags = SET_NO_NEIGHBORS
         var changed = 0, skipped = 0
         let batch = beginEdit(w, "place \(pf.id)")
+        batch.bulkLight = pf.cells.count > BULK_LIGHT_CELLS
         func put(_ x: Int, _ y: Int, _ z: Int, _ c: Int) {
             guard w.isLoadedAt(x, z) else { skipped += 1; return }
             if batch.set(x, y, z, c, flags) { changed += 1 }
@@ -1166,6 +1167,7 @@ public final class GameCore {
         for spec in pf.blockEntities {
             let s = BESpec(x: spec.x + dx, y: spec.y + dy, z: spec.z + dz, kind: spec.kind, data: spec.data)
             guard let c = w.getChunkAt(s.x, s.z) else { continue }
+            batch.record(s.x, s.y, s.z)   // a chest left the same block still gets new contents
             resolveBESpec(w, c, s)
             if let be = c.getBlockEntity(posMod(s.x, 16), s.y, posMod(s.z, 16)), beTickHandlers[be.type] != nil {
                 w.trackTickingBE(be)
@@ -1181,6 +1183,7 @@ public final class GameCore {
         if !pf.surface, let (ex, ey, ez) = entranceTarget(pf) {
             r.entrance = digEntrance(w, ex + dx, ey + dy, ez + dz, put)
         }
+        batch.finishLight()
         // anyone it landed on (you, LAN guests, mobs) climbs out of its walls
         batch.liftEntities()
         return r

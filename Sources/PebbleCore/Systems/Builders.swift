@@ -48,6 +48,8 @@ private func remember(_ w: World, _ x0: Int, _ y0: Int, _ z0: Int, _ x1: Int, _ 
     built.append((ObjectIdentifier(w), x0, y0, z0, x1, y1, z1))
     if built.count > 4096 { built.removeFirst(1024) }
 }
+/// leaving a world: its builds are gone, and a new world can reuse its identifier
+func forgetBuilds() { built.removeAll() }
 /// base height for a build: on top of / under what was clicked, or level with
 /// the earlier build whose side was clicked
 private func baseY(_ w: World, _ hit: RaycastHit, _ size: Int) -> Int {
