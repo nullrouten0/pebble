@@ -3,6 +3,17 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.17 — 2026-10-14 — baby zombies stay put
+
+- **Zombies keep their speed across a save.** Every zombie, husk and drowned
+  re-rolled its 1-in-20 baby chance as it loaded and kept the speed from that
+  roll, so some adults came back running at a baby's speed and saved babies
+  came back at an adult's. Speed now follows whether it's a baby.
+- **A baby zombie that drowns stays a baby.** The baby drowned it turned into
+  grew up 20 minutes later; and an adult zombie could turn into a baby
+  drowned. It's now the same age it was, and baby monsters already saved
+  with a countdown stay babies.
+
 ## 1.6.16 — 2026-10-14 — nobody stays stuck in blocks
 
 - **No building tool leaves anyone stuck inside blocks.** The box builder

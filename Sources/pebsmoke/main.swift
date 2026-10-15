@@ -3021,12 +3021,29 @@ do {
         check("a baby from an older save grows up again", legacy?.baby == true && (legacy?.growUpAge ?? 0) > 0)
     } else { check("mochi_bunny spawns", false) }
     if let kid = spawnMob(w, "zombie", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
-        kid.growUpAge = 0
+        let startsAt = kid.growUpAge
         kid.ageUp(100_000)
         let back = loadEntity(w, kid.save()) as? Mob
         check("a baby zombie stays a baby, drawn small, across a reload",
-              kid.baby && kid.data.baby == true && back?.baby == true && back?.growUpAge == 0)
+              startsAt == 0 && kid.baby && kid.data.baby == true && back?.baby == true && back?.growUpAge == 0)
+        check("and keeps its baby speed", kid.speed > 0.1 && back?.speed == kid.speed, "\(kid.speed) → \(String(describing: back?.speed))")
     } else { check("zombie spawns", false) }
+    // the spawn roll makes about 1 zombie in 20 a baby, but a loaded zombie
+    // is whatever was saved, speed included
+    if let adult = spawnMob(w, "zombie", 0, 80, 0) as? Mob {
+        adult.baby = false
+        let save = adult.save()
+        var wrong = 0
+        for _ in 0..<200 {
+            if let z = loadEntity(w, save) as? Mob, z.baby || z.speed != adult.speed { wrong += 1 }
+        }
+        check("a reloaded adult zombie never comes back with a baby's speed", wrong == 0, "\(wrong) of 200")
+    } else { check("zombie spawns", false) }
+    if let d = spawnMob(w, "drowned", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        var old = d.save(); old["growUpAge"] = 24000   // saved by 1.6.16 or earlier
+        let back = loadEntity(w, old) as? Mob
+        check("a baby zombie that drowned stays a baby", d.growUpAge == 0 && back?.growUpAge == 0)
+    } else { check("drowned spawns", false) }
 }
 
 section("world spawn on dry land")
