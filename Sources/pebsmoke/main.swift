@@ -2567,6 +2567,17 @@ do {
               "\(w.getSkyLight(bx + 1, ry - 1, mid.2))")
         _ = undoLastEdit()
         check("undoing the big paste brings the daylight back", w.getSkyLight(mid.0, mid.1, mid.2) == 15)
+        // a torch under it: the roof stops its light, which still fills the space below
+        w.setBlock(mid.0, ry - 3, mid.2, Int(cell(B.torch, 0)))
+        let below = (w.getBlockLight(mid.0 + 1, ry - 3, mid.2), w.getBlockLight(mid.0, ry - 1, mid.2))
+        let aboveBefore = w.getBlockLight(mid.0, ry + 2, mid.2)
+        _ = try? pasteClipboard(p, skipAir: false, at: BlockPos(bx, ry, bz))
+        check("a big roof pasted over a torch keeps its light below and shuts it out above",
+              below.0 > 0 && w.getBlockLight(mid.0 + 1, ry - 3, mid.2) == below.0 && w.getBlockLight(mid.0, ry - 1, mid.2) == below.1
+              && aboveBefore > 0 && w.getBlockLight(mid.0, ry + 2, mid.2) == 0,
+              "below \(below) above \(aboveBefore) → \(w.getBlockLight(mid.0, ry + 2, mid.2))")
+        _ = undoLastEdit()
+        w.setBlock(mid.0, ry - 3, mid.2, 0)
 
         p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 200, by + 30, bz + 200))
         var tooBig = false
@@ -2631,6 +2642,24 @@ do {
         edit.liftEntities()
         check("standing on a slab under a slab ceiling isn't lifted", p.y == onSlab && entityFits(p), "y \(onSlab) → \(p.y)")
         clearEditHistory()
+
+        // a boat and the pig riding it climb out together (the rider follows its boat)
+        let ry = sy + 10
+        if let boat = spawnMob(w, "boat", Double(mx) + 0.5, Double(ry), Double(mz) + 0.5),
+           let pig = spawnMob(w, "pig", Double(mx) + 0.5, Double(ry), Double(mz) + 0.5) {
+            pig.mount(boat)
+            pig.setPos(boat.x, boat.y + boat.height * 0.6, boat.z)
+            let roof = beginEdit(w, "over the boat")
+            for y in ry...(ry + 2) { roof.set(mx, y, mz, Int(cell(B.stone))) }
+            roof.liftEntities()
+            check("a boat and its rider are lifted out together",
+                  boat.y >= Double(ry + 3) && entityFits(boat) && entityFits(pig) && pig.vehicle === boat,
+                  "boat \(boat.y) pig \(pig.y)")
+            clearEditHistory()
+            pig.remove(); boat.remove()
+        } else {
+            check("boat and pig spawn", false)
+        }
         g.exitToTitle()
     } else {
         check("placement world loads", false)
@@ -2670,8 +2699,10 @@ do {
             let before = Set(w.entities.map { ObjectIdentifier($0) })
             mate.spawnBaby(mate, bunny)
             let kit = w.entities.first { !before.contains(ObjectIdentifier($0)) && ($0 as? Entity)?.type == "mochi_bunny" } as? Mob
+            let bornBaby = kit?.baby == true && kit?.data.baby == true && (kit?.growUpAge ?? 0) > 0
             kit?.ageUp(24_000)
-            check("two anime animals breed a baby of their kind that grows up", kit != nil && kit?.baby == false && kit?.data.baby == nil)
+            check("two anime animals breed a baby of their kind that grows up",
+                  bornBaby && kit?.baby == false && kit?.data.baby == nil)
         } else {
             check("mochi_bunny spawns", false)
         }
@@ -2871,6 +2902,15 @@ do {
         g.waitForSaves()
         let kept = g.db.getChunk(id, dim, cx, cz)?.entities.contains { $0["type"] as? String == "mob_from_the_future" } ?? false
         check("a mob this build doesn't know survives opening and saving the world", loaded && kept, "loaded \(loaded)")
+        // and stays one mob through more saves and another reopen
+        g.loadWorld(id)
+        n = 0
+        while n < 100 && g.world.getChunk(cx, cz) == nil { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1 }
+        g.saveAndFlush(); g.saveAndFlush()
+        g.exitToTitle()
+        g.waitForSaves()
+        let copies = g.db.getChunk(id, dim, cx, cz)?.entities.filter { $0["type"] as? String == "mob_from_the_future" }.count ?? 0
+        check("it stays one mob through more saves and a reopen", copies == 1, "\(copies) copies")
     } else {
         check("future-mob world loads", false)
     }
@@ -2955,11 +2995,14 @@ do {
 
     // pastes partly outside the world, into unloaded land, across dimensions
     let top = w.info.minY + w.info.height - 1
+    w.setBlock(1, 65, 1, glass)   // lands on the top layer
     p.selection = Selection(dim: w.dim, a: BlockPos(1, 64, 1), b: BlockPos(2, 67, 2))
     _ = try? copySelection(p, cut: false)
     let r = try? pasteClipboard(p, skipAir: false, at: BlockPos(1, top - 1, 1))
     check("a paste through the build limit reports what was left out, inside the world",
-          r?.outside == 8 && r?.hi.y == top && w.getBlock(1, top, 1) == 0, "\(String(describing: r))")
+          r?.outside == 8 && r?.hi.y == top && w.getBlock(1, top, 1) == glass && w.getBlock(1, top - 1, 1) == 0,
+          "\(String(describing: r))")
+    w.setBlock(1, 65, 1, 0)
     let before = editCounts().undo
     var unloaded = false
     do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(100, 64, 100)) } catch ClipboardError.unloaded { unloaded = true } catch {}
@@ -2968,6 +3011,15 @@ do {
     var otherDim = false
     do { _ = try copySelection(p, cut: false) } catch ClipboardError.otherDimension { otherDim = true } catch {}
     check("a selection in another dimension can't be copied", otherDim)
+    clearEditHistory()
+
+    // the world's lowest and highest layers undo like any other
+    let bottom = w.info.minY
+    let was = (w.getBlock(2, bottom, 2), w.getBlock(2, top, 2))
+    let edge = beginEdit(w, "edges")
+    let both = edge.set(2, bottom, 2, glass) && edge.set(2, top, 2, glass)
+    _ = undoLastEdit()
+    check("edits at the bottom and top of the world undo", both && w.getBlock(2, bottom, 2) == was.0 && w.getBlock(2, top, 2) == was.1)
     clearEditHistory()
 
     // cells an edit can't reach are left alone, not remembered as air for undo
