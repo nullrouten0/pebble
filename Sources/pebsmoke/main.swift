@@ -2771,6 +2771,34 @@ do {
         check("reopen world loads", false)
     }
 
+    // saves: a chunk left and revisited within a second, before its unload
+    // record is written, comes back as it was left, not as it was last saved
+    if let g = settled() {
+        g.settings.renderDistance = 4
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)) + 3, bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(cell(B.glass)))
+        g.saveAndFlush(); g.waitForSaves()
+        w.setBlock(bx, by, bz, Int(cell(B.gold_block)))
+        let key = chunkKey(floorDiv(bx, 16), floorDiv(bz, 16))
+        let home = (p.x, p.y, p.z)
+        p.flying = true
+        p.setPos(home.0 + 3000, 200, home.2)
+        var n = 0
+        while n < 200 && w.chunks[key] != nil { _ = g.frame(dtMs: 50); n += 1 }
+        let left = w.chunks[key] == nil
+        p.setPos(home.0, home.1, home.2)
+        n = 0
+        while n < 400 && w.chunks[key] == nil {
+            _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1
+        }
+        check("a chunk left and revisited within a second comes back as it was left",
+              left && w.getBlock(bx, by, bz) == Int(cell(B.gold_block)), "left \(left) block \(w.getBlock(bx, by, bz) >> 4)")
+        g.exitToTitle()
+    } else {
+        check("revisit world loads", false)
+    }
+
     // saves: a mob this build doesn't know (from a newer build) is kept, not deleted
     if let g = settled() {
         let p = g.player!, id = g.worldRec!.id

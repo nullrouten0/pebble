@@ -249,6 +249,8 @@ public final class GameCore {
     public var lastChunkUpdates = 0
     /// unload records awaiting the once-per-second batched write
     private var pendingChunkSaves: [String: ChunkRecord] = [:]
+    /// chunk records handed to the save queue and not yet written (key → batches)
+    private var chunkWritesInFlight: [String: Int] = [:]
 
     private let genQueue = DispatchQueue(label: "pebble.gen", qos: .userInitiated, attributes: .concurrent)
     private let meshQueue = DispatchQueue(label: "pebble.mesh", qos: .userInitiated, attributes: .concurrent)
@@ -731,11 +733,7 @@ public final class GameCore {
         for r in pendingChunkSaves.values { records.append(r) }
         pendingChunkSaves.removeAll()
         for r in records { savedChunkKeys.insert(r.key) }
-        if synchronous {
-            saveQueue.sync { self.writeChunkBatch(records) }
-        } else {
-            saveQueue.async { [weak self] in self?.writeChunkBatch(records) }
-        }
+        writeChunks(records, synchronous: synchronous)
         for w in worlds.values {
             for c in w.chunks.values { c.modified = false }
         }
@@ -743,6 +741,42 @@ public final class GameCore {
 
     /// block until queued chunk writes have landed (tests, diagnostics)
     public func waitForSaves() { saveQueue.sync {} }
+
+    /// hand records to the save queue; until they land, loading one of those
+    /// chunks reads behind the write (storedChunk)
+    private func writeChunks(_ records: [ChunkRecord], synchronous: Bool) {
+        if synchronous {
+            saveQueue.sync { self.writeChunkBatch(records) }
+            return
+        }
+        for r in records { chunkWritesInFlight[r.key, default: 0] += 1 }
+        saveQueue.async { [weak self] in
+            self?.writeChunkBatch(records)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                for r in records {
+                    if let n = self.chunkWritesInFlight[r.key], n > 1 { self.chunkWritesInFlight[r.key] = n - 1 }
+                    else { self.chunkWritesInFlight[r.key] = nil }
+                }
+            }
+        }
+    }
+
+    /// a chunk's newest saved record, read with what's returned (call on main,
+    /// run the result anywhere): one still waiting in the unload buffer, else
+    /// the database, behind any write of it already queued. Reading only the
+    /// database brought a chunk left and revisited within a second back as it
+    /// was before
+    private func storedChunk(_ worldId: String, _ d: Dim, _ cx: Int, _ cz: Int) -> () -> ChunkRecord? {
+        let key = db.chunkKey(worldId, d.rawValue, cx, cz)
+        if let r = pendingChunkSaves[key] { return { r } }
+        let db = self.db
+        if chunkWritesInFlight[key] != nil {
+            let q = saveQueue
+            return { q.sync { db.getChunk(worldId, d.rawValue, cx, cz) } }
+        }
+        return { db.getChunk(worldId, d.rawValue, cx, cz) }
+    }
 
     /// runs ON the save queue; on failure re-marks the chunks dirty (on main)
     /// so the next autosave retries instead of silently losing the edits
@@ -822,14 +856,14 @@ public final class GameCore {
         let height = w.info.height
         let hasSky = w.info.hasSky
         let saved = savedChunkKeys.contains(db.chunkKey(worldId, d.rawValue, cx, cz))
-        let db = self.db
+        let stored = storedChunk(worldId, d, cx, cz)
         let minY = w.info.minY
         // wipe zones this chunk still owes a cut (applied before it's lit)
         let wipeIdx = wipesOwed(w, cx, cz)
         let zones = wipeIdx.map { wipes[$0] }
         genQueue.async { [weak self] in
             var savedRec: ChunkRecord? = nil
-            if saved { savedRec = db.getChunk(worldId, d.rawValue, cx, cz) }
+            if saved { savedRec = stored() }
             let c: Chunk
             var beSpecs: [BESpec]? = nil
             var entitySpecs: [EntitySpec]? = nil
@@ -861,7 +895,7 @@ public final class GameCore {
                 guard let self else { return }
                 self.genInFlight.remove(flight)
                 guard self.inWorld, self.worlds[d] === w, w.chunks[key] == nil else { return }
-                if loadedFull { self.savedFullKeys.insert(db.chunkKey(worldId, d.rawValue, cx, cz)) }
+                if loadedFull { self.savedFullKeys.insert(self.db.chunkKey(worldId, d.rawValue, cx, cz)) }
                 self.adoptChunk(w, c, beSpecs, entitySpecs, savedFinal)
                 self.wipeOnLoad(w, c, cutBy: wipeIdx, changed: wipedFinal)
                 self.enqueueLightAround(w, cx, cz)
@@ -1345,7 +1379,7 @@ public final class GameCore {
                 if w.chunks[chunkKey(cx, cz)] != nil { continue }
                 var saved: ChunkRecord? = nil
                 if let worldId, savedChunkKeys.contains(db.chunkKey(worldId, w.dim.rawValue, cx, cz)) {
-                    saved = db.getChunk(worldId, w.dim.rawValue, cx, cz)
+                    saved = storedChunk(worldId, w.dim, cx, cz)()
                     if let s = saved, Self.recordUsable(s, height: w.info.height) {
                         savedFullKeys.insert(s.key)   // its blocks are already on disk
                         let light = computeLocalLight(blocks: s.blocks!, height: w.info.height, hasSky: w.info.hasSky)
@@ -2022,7 +2056,7 @@ public final class GameCore {
         if !pendingChunkSaves.isEmpty && w.time % 20 == 0 {
             let batch = Array(pendingChunkSaves.values)
             pendingChunkSaves.removeAll()
-            saveQueue.async { [weak self] in self?.writeChunkBatch(batch) }
+            writeChunks(batch, synchronous: false)
         }
 
         // autosave

@@ -3,6 +3,15 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.15 — 2026-10-14 — quick revisits keep your changes
+
+- **Land you leave and come straight back to keeps your changes.** A chunk
+  you moved away from waited up to a second before it was written to disk,
+  and coming back read only what was on disk: `/tp` away and back quickly
+  and it loaded as it was at the last save (or as brand-new land), and the
+  next save wrote that over your changes. Loading now picks up a chunk's
+  newest record, written yet or not.
+
 ## 1.6.14 — 2026-10-14 — placed lurker boxes keep their own items
 
 - **Lurker boxes placed in creative keep their own items.** Creative keeps
