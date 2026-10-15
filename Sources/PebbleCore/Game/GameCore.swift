@@ -1712,7 +1712,9 @@ public final class GameCore {
         let fromDim = dim
         let destDim: Dim = fromDim == .nether ? .overworld : .nether
         let scale = DIMS[fromDim.rawValue].coordScale / DIMS[destDim.rawValue].coordScale
-        let tx = p.x * scale, tz = p.z * scale
+        // ×8 out of the Nether could land past the world's edge
+        func inside(_ v: Double) -> Double { max(-WORLD_COORD_LIMIT, min(WORLD_COORD_LIMIT, v * scale)) }
+        let tx = inside(p.x), tz = inside(p.z)
         let destW = worlds[destDim]!
         ensureChunksLoaded(destW, floorDiv(ifloor(tx), 16), floorDiv(ifloor(tz), 16), 1)
         let (px, py, pz) = findOrCreatePortal(

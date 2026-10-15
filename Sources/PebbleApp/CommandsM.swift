@@ -42,7 +42,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
     /// "1e300" would otherwise trap in Int() here or ifloor() on the next tick
     func parseCoord(_ s: String, _ base: Double) -> Double {
         let v = s.hasPrefix("~") ? base + (s.count > 1 ? Double(s.dropFirst()) ?? 0 : 0) : Double(s) ?? 0
-        return v.isFinite ? max(-30_000_000, min(30_000_000, v)) : base
+        return v.isFinite ? max(-WORLD_COORD_LIMIT, min(WORLD_COORD_LIMIT, v)) : base
     }
     func arg(_ i: Int) -> String? { i < args.count ? args[i] : nil }
     /// an integer argument clamped to a range, so later arithmetic can't overflow

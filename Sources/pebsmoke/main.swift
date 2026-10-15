@@ -3020,6 +3020,32 @@ do {
           first?.count == 32 && w.getBlockEntity(5, 64, 4)?.items?[0]?.count == 64 && held.data.contents?[0]?.count == 64)
 }
 
+section("default texture pack install")
+do {
+    let fm = FileManager.default
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory() + "pebsmoke-packs-\(getpid())")
+    try? fm.removeItem(at: dir)
+    try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: dir) }
+    let bundled = dir.appendingPathComponent("bundle.zip")
+    try? Data(repeating: 7, count: 3000).write(to: bundled)
+    let file = "Pack.zip", dest = dir.appendingPathComponent(file)
+    func install(_ release: String = "r2") -> PackInstall {
+        installBundledPack(bundled: bundled, into: dir, file: file, release: release)
+    }
+    func size() -> Int { ((try? fm.attributesOfItem(atPath: dest.path)[.size]) as? NSNumber)?.intValue ?? -1 }
+    let first = install(), again = install()
+    check("a missing pack is copied in, then left alone", first == .restored && again == .kept && size() == 3000,
+          "\(first) \(again)")
+    try? Data(repeating: 1, count: 1000).write(to: dest)   // an older build copies its own zip over it
+    check("a pack replaced behind the stamp is copied again", install() == .updated && size() == 3000)
+    try? fm.removeItem(at: dir.appendingPathComponent(".default-pack-size"))   // stamped by 1.6.8–1.6.18
+    check("a pack stamped before sizes were kept is stamped, not copied", install() == .stamped && install() == .kept)
+    check("a new release is copied once", install("r3") == .updated && install("r3") == .kept)
+    let names = (try? fm.contentsOfDirectory(atPath: dir.path)) ?? []
+    check("no partial copy is left behind", !names.contains { $0.hasSuffix(".partial") }, "\(names)")
+}
+
 section("baby animals grow up")
 do {
     let w = World(dim: .overworld, seed: 1)

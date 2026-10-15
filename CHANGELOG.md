@@ -3,6 +3,19 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.19 — 2026-10-14 — pack and portal edges
+
+- **The built-in texture pack notices when it's been swapped.** It was
+  re-copied only when this build's release differed from the one recorded
+  beside it, so if an older build copied its own art over it (opening the
+  same profile), newer builds kept that older art until the next release.
+  The pack's installed size is now recorded too, and a pack that no longer
+  matches is copied again. Builds from 1.6.8 on still read the same record.
+- **Portals stop at the world's edge.** Coming out of the Nether multiplies
+  your position by 8, which from far enough out landed past the ±30 million
+  blocks commands keep to (and past where undo can keep track). You now
+  arrive at the edge instead.
+
 ## 1.6.18 — 2026-10-14 — saving skips unchanged land
 
 - **Saving skips land that hasn't changed.** Since 1.6.1, every save

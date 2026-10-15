@@ -39,8 +39,8 @@ public final class EditBatch {
     public var count: Int { keys.count }
 
     // x: 26 bits at 37, y: 11 bits at 26, z: 26 bits — 63 bits, sign bit clear.
-    // x and z cover ±33.5M, past the ±30M coordinates commands and portals
-    // allow; y covers ±1024, and only cells inside the world are recorded
+    // x and z cover ±33.5M, past WORLD_COORD_LIMIT (±30M), which commands and
+    // portals keep to; y covers ±1024, and only cells inside the world are recorded
     @inline(__always) static func pack(_ x: Int, _ y: Int, _ z: Int) -> Int64 {
         (Int64(x + (1 << 25)) << 37) | (Int64(y + 1024) << 26) | Int64(z + (1 << 25))
     }
