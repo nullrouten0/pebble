@@ -8,6 +8,7 @@ public enum PackInstall: Equatable {
     case kept            // already this release, untouched since
     case stamped         // installed before the stamps existed; now stamped
     case updated         // replaced with this build's release
+    case replaced        // same release, but the file had changed: put back
     case restored        // was missing; copied in
     case failed(String)  // the copy failed; any old pack stays in place
 }
@@ -31,12 +32,13 @@ public func installBundledPack(bundled: URL, into dir: URL, file: String, releas
         if let n = size(dest) { try? String(n).write(to: sizeStamp, atomically: true, encoding: .utf8) }
     }
     let installed = size(dest)
-    if let installed, read(releaseStamp) ?? release == release {
-        if let recorded = read(sizeStamp).flatMap({ Int64($0) }) {
-            if recorded == installed && read(releaseStamp) == release { return .kept }
-        } else if installed == size(bundled) {
-            // stamped by 1.6.8–1.6.18 (no size yet), or never stamped: the same
-            // size as the bundled zip means it's this release
+    let stampedRelease = read(releaseStamp), recordedSize = read(sizeStamp).flatMap { Int64($0) }
+    let sameRelease = stampedRelease == release
+    if let installed {
+        if sameRelease && recordedSize == installed { return .kept }
+        // stamped by 1.6.8–1.6.18 (no size yet), or never stamped: the same
+        // size as the bundled zip means it's this release
+        if (sameRelease || stampedRelease == nil) && recordedSize == nil && installed == size(bundled) {
             stamp()
             return .stamped
         }
@@ -49,7 +51,7 @@ public func installBundledPack(bundled: URL, into dir: URL, file: String, releas
         if installed != nil {
             _ = try fm.replaceItemAt(dest, withItemAt: tmp)
             stamp()
-            return .updated
+            return sameRelease ? .replaced : .updated
         }
         try fm.moveItem(at: tmp, to: dest)
         stamp()

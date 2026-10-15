@@ -60,15 +60,19 @@ open class Zombie: Monster {
             if conversionTime < 0 { conversionTime = 600 }
             else {
                 conversionTime -= 1
-                if conversionTime <= 0 {
-                    let d = spawnMobFn?(world, "drowned", x, y, z, SpawnOpts(baby: baby))
-                    (d as? Mob)?.baby = baby   // not the drowned's own spawn roll
-                    if d != nil { remove() }
-                }
+                if conversionTime <= 0 { convertToDrowned() }
             }
         } else if type == "zombie" {
             conversionTime = -1
         }
+    }
+    /// a zombie that drowned comes back as a drowned of the same age
+    @discardableResult
+    public func convertToDrowned() -> Mob? {
+        let d = spawnMobFn?(world, "drowned", x, y, z, SpawnOpts(baby: baby)) as? Mob
+        d?.baby = baby   // not the drowned's own spawn roll
+        if d != nil { remove() }
+        return d
     }
     open override func drops() -> [DropEntry] {
         [

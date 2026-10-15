@@ -228,7 +228,8 @@ cmd_check_pack() {
         kill -0 "$CHECK_PID" 2>/dev/null || break   # it quit (or crashed) without loading
         sleep 1
     done
-    kill "$CHECK_PID" 2>/dev/null; wait "$CHECK_PID" 2>/dev/null || true
+    kill "$CHECK_PID" 2>/dev/null || true   # already gone if it quit early
+    wait "$CHECK_PID" 2>/dev/null || true
     grep -q "tiles, " "$log" || die "the app never reported loading the pack"
     grep "tiles, " "$log" | sed 's/^\[packs\] /  /'
     local got want

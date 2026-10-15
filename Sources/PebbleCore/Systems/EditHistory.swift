@@ -21,6 +21,9 @@ public final class EditBatch {
     /// for big edits: blocks go in without a light update each, and
     /// finishLight() relights every chunk they touched once
     public var bulkLight = false
+    /// switch to bulkLight once the edit passes BULK_LIGHT_CELLS (an edit
+    /// whose size isn't known up front)
+    public var autoBulkLight = false
     var touched: [Int64: Chunk] = [:]
     /// a new edit clears its owner's redo steps, but only once it changes something
     var clearsRedo = false
@@ -54,6 +57,7 @@ public final class EditBatch {
     @discardableResult
     public func set(_ x: Int, _ y: Int, _ z: Int, _ c: Int, _ flags: Int = SET_NO_NEIGHBORS) -> Bool {
         guard reachable(x, y, z) else { return false }
+        if autoBulkLight && !bulkLight && keys.count >= BULK_LIGHT_CELLS { bulkLight = true }
         let be = world.getBlockEntity(x, y, z)
         let old = world.setBlock(x, y, z, c, bulkLight ? flags & ~2 : flags)
         if old == c { return false }
@@ -81,6 +85,21 @@ public final class EditBatch {
         remember(x, y, z, world.getBlock(x, y, z), world.getBlockEntity(x, y, z))
     }
 
+    /// whether a cell this edit changed now holds something solid inside
+    /// `e`'s own box (not its riders')
+    private func placedInside(_ e: Entity) -> Bool {
+        let hw = e.width / 2 - 1e-6
+        for y in ifloor(e.y + 1e-6)...ifloor(e.y + e.height - 1e-6) {
+            for z in ifloor(e.z - hw)...ifloor(e.z + hw) {
+                for x in ifloor(e.x - hw)...ifloor(e.x + hw)
+                where seen.contains(EditBatch.pack(x, y, z)) && blockDefs[world.getBlockId(x, y, z)].solid {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     @inline(__always) private func reachable(_ x: Int, _ y: Int, _ z: Int) -> Bool {
         world.getChunkAt(x, z)?.inYRange(y) ?? false
     }
@@ -104,23 +123,32 @@ public final class EditBatch {
 
     /// everyone this edit left inside blocks (players and LAN guests, mobs,
     /// vehicles with their riders) climbs out on top, and is remembered so an
-    /// undo can put them back where they stood
+    /// undo can put them back where they stood. Only someone a block of this
+    /// edit landed inside: a cart rider under a low tunnel roof, someone asleep
+    /// in a low room or a mob that flies through walls is left where it is
     public func liftEntities() {
         guard let b = bounds else { return }
         for ref in world.entities {
-            guard let e = ref as? Entity, !e.dead, e.vehicle == nil,
+            guard let e = ref as? Entity, !e.dead, e.vehicle == nil, !e.noClip,
                   e is LivingEntity || !e.passengers.isEmpty else { continue }
+            if let p = e as? Player, p.sleepTicks > 0 { continue }
             let hw = e.width / 2
             if e.x + hw < Double(b.x0) || e.x - hw > Double(b.x1 + 1) || e.z + hw < Double(b.z0) || e.z - hw > Double(b.z1 + 1)
                 || e.y + e.height < Double(b.y0) || e.y > Double(b.y1 + 1) { continue }
-            let (x, y, z) = (e.x, e.y, e.z)
-            guard liftOutOfBlocks(e) else { continue }
-            // lifted again (a rising mountain): undo still goes back to the start
-            if let i = lifts.firstIndex(where: { $0.entity === e }) {
-                lifts[i] = Lift(entity: e, x: lifts[i].x, y: lifts[i].y, z: lifts[i].z, toY: e.y)
-            } else {
-                lifts.append(Lift(entity: e, x: x, y: y, z: z, toY: e.y))
-            }
+            guard placedInside(e) else { continue }
+            lift(e)
+        }
+    }
+
+    /// lift `e` out of blocks, remembering where it stood
+    func lift(_ e: Entity) {
+        let (x, y, z) = (e.x, e.y, e.z)
+        guard liftOutOfBlocks(e) else { return }
+        // lifted again (a rising mountain): undo still goes back to the start
+        if let i = lifts.firstIndex(where: { $0.entity === e }) {
+            lifts[i] = Lift(entity: e, x: lifts[i].x, y: lifts[i].y, z: lifts[i].z, toY: e.y)
+        } else {
+            lifts.append(Lift(entity: e, x: x, y: y, z: z, toY: e.y))
         }
     }
 }
@@ -177,6 +205,9 @@ private func revert(_ b: EditBatch) -> EditBatch {
         e.vy = 0
         e.fallDistance = 0
         for r in e.passengers { r.setPos(r.x, l.y + riderOffset(e), r.z); r.fallDistance = 0 }
+        movedByTool(e)
+        // blocks placed there since (by hand, by someone else) still count
+        inv.lift(e)
     }
     // and anyone the restored blocks now enclose climbs out
     inv.liftEntities()

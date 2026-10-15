@@ -359,6 +359,7 @@ func ensureDefaultPack() {
                               file: DEFAULT_PACK_FILE, release: DEFAULT_PACK_RELEASE) {
     case .kept, .stamped: break
     case .updated: print("[packs] default pack updated to the \(DEFAULT_PACK_RELEASE) release")
+    case .replaced: print("[packs] \(DEFAULT_PACK_FILE) had changed: put the built-in copy back (give your own packs their own file names)")
     case .restored: print("[packs] default pack restored from app bundle")
     case .failed(let why): print("[packs] couldn't install the default pack: \(why)")
     }

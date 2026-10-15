@@ -34,7 +34,7 @@ public struct DimState: Codable {
 /// overlay and save records all read this (Info.plist is bumped separately
 /// at packaging time). major.minor.revision: a new minor adds features, a
 /// new revision is a small feature or a fix.
-public let PEBBLE_VERSION = "1.6.20"
+public let PEBBLE_VERSION = "1.6.22"
 
 /// the commit this build came from: 8 hex digits, "+" when built with
 /// uncommitted changes. Stamped into the app's Info.plist at build time
@@ -116,6 +116,22 @@ public struct ChunkRecord {
         self.blockEntities = blockEntities
         self.entities = entities
     }
+
+    /// the same record with block entities of its own (they're objects), for
+    /// a chunk going live while this record may still be written out
+    func withOwnBlockEntities() -> ChunkRecord {
+        var r = self
+        r.blockEntities = blockEntities.map(copiedBlockEntities)
+        return r
+    }
+}
+
+/// independent copies of block entities (a reference type), by a JSON round
+/// trip: what's saved or loaded mustn't share objects with the live world
+func copiedBlockEntities(_ bes: [BlockEntityData]) -> [BlockEntityData] {
+    guard let data = try? JSONEncoder().encode(bes),
+          let copy = try? JSONDecoder().decode([BlockEntityData].self, from: data) else { return bes }
+    return copy
 }
 
 /// JSON can't carry NaN/Infinity (structured clone could) — scrub them so one
@@ -251,7 +267,7 @@ public final class SaveDB {
         // LAN guests' players are stored as "<world id>#guest:<name>"
         run("DELETE FROM player WHERE world LIKE ?", bind: { self.bindText($0, 1, id + "#guest:%") })
         exec("COMMIT")
-        hashLock.withLock { writtenHashes = writtenHashes.filter { !$0.key.hasPrefix(id + ":") } }
+        forgetWrites(id)
     }
 
     // ---- chunks ---------------------------------------------------------------
@@ -336,6 +352,13 @@ public final class SaveDB {
         }
         if ok { hashLock.withLock { writtenHashes.merge(hashes) { $1 } } }
         return ok
+    }
+
+    /// stop trusting what this process last wrote for a world: another build
+    /// (another process) may have rewritten its rows since, e.g. migrating its
+    /// palette. Called on opening a world, and on deleting one
+    public func forgetWrites(_ worldId: String) {
+        hashLock.withLock { writtenHashes = writtenHashes.filter { !$0.key.hasPrefix(worldId + ":") } }
     }
 
     // binary container: "VCK1" | u8 flags | [u32 nBlocks, u16[] LE, u32 nBiomes, u8[]] | u32 jsonLen, json

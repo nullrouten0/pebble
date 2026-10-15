@@ -66,7 +66,17 @@ public func liftOutOfBlocks(_ e: Entity) -> Bool {
         r.vy = 0
         r.fallDistance = 0
     }
+    movedByTool(e)
     return true
+}
+
+/// a tool moved `e` (and its riders) outside the tick: tell any player's LAN
+/// client now, before the host's next tick puts the guest back where its
+/// client last said it was
+func movedByTool(_ e: Entity) {
+    for m in [e] + e.passengers {
+        if let p = m as? Player { e.world.hooks.onPlayerMovedByTool?(p) }
+    }
 }
 
 /// ChunkSink over an unbounded sparse volume: stone below `ground`, air above,

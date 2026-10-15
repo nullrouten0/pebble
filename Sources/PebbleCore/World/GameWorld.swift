@@ -61,6 +61,9 @@ public struct WorldHooks {
     /// every block write that changed a cell (x, y, z, new cell) — the LAN
     /// host replicates these to guests
     public var onBlockChanged: ((Int, Int, Int, Int) -> Void)?
+    /// a building tool or undo moved a player (liftOutOfBlocks): the LAN host
+    /// sends that guest's client a teleport at once
+    public var onPlayerMovedByTool: ((Player) -> Void)?
 
     public init() {}
 }

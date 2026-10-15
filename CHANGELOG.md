@@ -3,6 +3,51 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.22 — 2026-10-15 — /spawn anime_zoo
+
+- **`/spawn anime_zoo` brings all ten anime animals at once**, in rows of
+  five a few blocks ahead of you, each on the ground and facing you. They
+  stay until you remove them, like ones you summon. `/spawn` alone lists the
+  groups; this is the first, and the creative menus to come will use the
+  same groups. A LAN guest's `/spawn` runs on the host, in front of the guest.
+
+## 1.6.21 — 2026-10-15 — round six fixes
+
+Fixes from a review of 1.6.13–1.6.20, several in those releases' own changes.
+
+- **LAN guests really are freed now.** When the host's `/place`, paste,
+  builder or undo lifted a guest out of blocks, the guest's own next report
+  put them straight back, and they stayed stuck; undo putting a guest back
+  was lost the same way. The guest is now teleported the moment it happens.
+- **Only people a block actually landed in are lifted.** The lift also moved
+  anyone inside the edit's whole box who didn't quite fit: a minecart rider
+  under a two-high tunnel roof (sent up through the rock, off the rails),
+  someone asleep in a low bedroom, someone in a crawl space, or a vex.
+- **Undo puts you back safely** even if a block went in where you stood
+  since; you land on top of it instead of inside it.
+- **`/place` of a buried structure in the Nether or near the top of the
+  world no longer crashes the game**, and puts nothing above the build
+  limit. Buried structures get their marked entrance in the Overworld only.
+- **A chunk you come straight back to can't be overwritten by its older
+  copy** when you save right after, and its chests and furnaces are no longer
+  shared with the copy waiting to be written. Coming back while that copy is
+  still being written no longer waits for the write.
+- **A world rewritten by another build** (an older one opening it) is now
+  saved in full again when you reopen it here; before, chunks this build had
+  saved earlier could be skipped and left in that build's block ids.
+- **A save that fails while leaving a world** is retried for that world, not
+  applied to the next one you open.
+- Leaving a world lets go of a rising mountain; mountains pin land only in
+  their own dimension; big `/place` clearings relight in bulk; a whole
+  dimension unloads in one pass; portals arrive a few blocks inside the edge.
+- **Measured, about saving:** 1.6.18's skip helps chunks that truly didn't
+  change, but in a lived-in world about a third of the loaded chunks really
+  do change each minute (grass, crops, leaves), so autosave still writes them:
+  about 90 chunks, 350 KB and 5 ms of main-thread time a minute.
+- `pebble check-pack` now says why when the app quits before loading the
+  pack (it exited silently); a default pack replaced under its own name is
+  put back with a message saying so.
+
 ## 1.6.20 — 2026-10-14 — loose ends
 
 - **`/place` keeps a full 3 blocks clear of you**, as 1.6.12 said; rounding

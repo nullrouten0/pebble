@@ -20,6 +20,47 @@ func builderMaterial(_ p: Player) -> (Int, String) {
     return (Int(cell(B.stone_bricks)), "stone_bricks")
 }
 
+public let FILL_MAX_BLOCKS = 32768
+
+public enum FillError: Error, CustomStringConvertible {
+    case tooBig, outsideWorld(Int, Int), unloaded
+    public var description: String {
+        switch self {
+        case .tooBig: return "Too many blocks (more than \(FILL_MAX_BLOCKS))"
+        case .outsideWorld(let lo, let hi): return "Can't fill outside the world (y \(lo) to \(hi))"
+        case .unloaded: return "That area isn't loaded"
+        }
+    }
+}
+
+/// /fill: one cell through a box (corners in any order) as one undoable
+/// edit, refusing a box partly outside the world or in land that isn't
+/// loaded; returns how many blocks changed
+public func fillBox(_ w: World, _ x0: Int, _ y0: Int, _ z0: Int, _ x1: Int, _ y1: Int, _ z1: Int, _ c: Int) throws -> Int {
+    // coordinates are within the border, so each side fits; the product may not
+    let (vxz, o1) = (abs(x1 - x0) + 1).multipliedReportingOverflow(by: abs(z1 - z0) + 1)
+    let (vol, o2) = vxz.multipliedReportingOverflow(by: abs(y1 - y0) + 1)
+    if o1 || o2 || vol > FILL_MAX_BLOCKS { throw FillError.tooBig }
+    let top = w.info.minY + w.info.height - 1
+    if min(y0, y1) < w.info.minY || max(y0, y1) > top { throw FillError.outsideWorld(w.info.minY, top) }
+    for cz in floorDiv(min(z0, z1), 16)...floorDiv(max(z0, z1), 16) {
+        for cx in floorDiv(min(x0, x1), 16)...floorDiv(max(x0, x1), 16) where w.getChunk(cx, cz) == nil {
+            throw FillError.unloaded
+        }
+    }
+    var n = 0
+    let batch = beginEdit(w, "fill")
+    batch.bulkLight = vol > BULK_LIGHT_CELLS
+    for y in min(y0, y1)...max(y0, y1) {
+        for z in min(z0, z1)...max(z0, z1) {
+            for x in min(x0, x1)...max(x0, x1) where batch.set(x, y, z, c, SET_DEFAULT) { n += 1 }
+        }
+    }
+    batch.finishLight()
+    batch.liftEntities()
+    return n
+}
+
 /// put a block unless it's unbreakable (bedrock, portals)
 @inline(__always) private func place(_ b: EditBatch, _ x: Int, _ y: Int, _ z: Int, _ c: Int) {
     if blockDefs[b.world.getBlockId(x, y, z)].hardness < 0 { return }
