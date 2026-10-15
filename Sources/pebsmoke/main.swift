@@ -2909,6 +2909,34 @@ do {
     dup.data.contents?[0]?.count = 1
     check("a copied lurker box has its own contents (a pasted chest can't share them)",
           box.data.contents?[0]?.count == 5 && dup.data.contents?.count == 2)
+
+    // creative keeps the held box, so two boxes placed from it must not share
+    // its stacks with each other or with the box still in your hand
+    let w = World(dim: .overworld, seed: 1)
+    let c = Chunk(cx: 0, cz: 0, minY: GEN_MIN_Y, height: WORLD_H)
+    var blocks = [UInt16](repeating: 0, count: 16 * 16 * WORLD_H)
+    for i in 0..<(256 * (64 - GEN_MIN_Y)) { blocks[i] = cell(B.stone) }
+    c.blocks = blocks
+    c.skyLight = [UInt8](repeating: 15, count: blocks.count)
+    c.blockLight = [UInt8](repeating: 0, count: blocks.count)
+    c.buildHeightmap(); c.scanSpecials(); c.status = .lit
+    w.setChunk(c)
+    let p = Player(world: w)
+    p.setPos(8.5, 64, 12.5)
+    w.addEntity(p)
+    let held = ItemStack(iid("lurker_box"), 1)
+    held.data.contents = [ItemStack(iid("diamond"), 64), nil]
+    let ctx = InteractCtx(world: w, player: p)
+    func onTop(_ x: Int) -> RaycastHit {
+        RaycastHit(x: x, y: 63, z: 4, face: 1, cell: w.getBlock(x, 63, 4), t: 0, px: Double(x) + 0.5, py: 64, pz: 4.5)
+    }
+    let bid = Int(itemDef(held.id).block!)
+    _ = placeBlock(ctx, onTop(2), bid, held)
+    _ = placeBlock(ctx, onTop(5), bid, held)
+    let first = w.getBlockEntity(2, 64, 4)?.items?[0]
+    first?.count -= 32
+    check("lurker boxes placed from one box keep their own stacks",
+          first?.count == 32 && w.getBlockEntity(5, 64, 4)?.items?[0]?.count == 64 && held.data.contents?[0]?.count == 64)
 }
 
 section("baby animals grow up")

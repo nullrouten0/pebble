@@ -3,6 +3,13 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.14 — 2026-10-14 — placed lurker boxes keep their own items
+
+- **Lurker boxes placed in creative keep their own items.** Creative keeps
+  the box in your hand, and every box placed from it shared the same stacks
+  with it and with each other: take half a stack from one and the others
+  lost it too. Each placed box now gets its own copy.
+
 ## 1.6.13 — 2026-10-14 — undo leaves untouched land alone
 
 - **Undo no longer erases land an edit never touched.** An edit that reached
