@@ -75,6 +75,7 @@ public let DEFAULT_KEYBINDS: [String: String] = [
     "command": "Slash",
     "perspective": "F5",
     "swapOffhand": "KeyF",
+    "tools": "KeyG",
 ]
 
 /// ~/Library/Application Support/Pebble — created on first touch.

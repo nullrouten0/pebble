@@ -2713,6 +2713,8 @@ public final class GameCore {
             } else {
                 host?.openScreen("inventory", nil)
             }
+        } else if code == keybinds["tools"] {
+            openTools()
         } else if code == keybinds["chat"] {
             host?.openChat("")
         } else if code == keybinds["command"] {
@@ -2742,6 +2744,16 @@ public final class GameCore {
         if code == keybinds["forward"] {
             if now - lastForwardPress < 250 { sprintHeld = true }
             lastForwardPress = now
+        }
+    }
+
+    /// the creative Tools menu (the tools key, or its touch button)
+    public func openTools() {
+        guard inWorld, let p = player else { return }
+        if p.gameMode == GameMode.creative {
+            host?.openScreen("tools", nil)
+        } else {
+            host?.showActionBar("§eThe Tools menu is for creative mode", 60)
         }
     }
 

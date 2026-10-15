@@ -658,7 +658,7 @@ final class SettingsScreen: Screen {
                 ("forward", "Forward"), ("back", "Back"), ("left", "Left"), ("right", "Right"),
                 ("jump", "Jump"), ("sneak", "Sneak"), ("sprint", "Sprint"), ("inventory", "Inventory"),
                 ("drop", "Drop Item"), ("chat", "Chat"), ("command", "Command"), ("perspective", "Perspective"),
-                ("swapOffhand", "Swap Offhand"),
+                ("swapOffhand", "Swap Offhand"), ("tools", "Creative Tools"),
             ]
             for (i, bind) in binds.enumerated() {
                 let col = i % 2

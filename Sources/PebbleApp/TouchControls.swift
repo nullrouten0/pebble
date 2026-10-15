@@ -51,7 +51,12 @@ public final class TouchControls {
     }
 
     private enum WorldButton: CaseIterable {
-        case jump, sneak, drop, swap, inventory, chat, perspective, pause
+        case jump, sneak, drop, swap, inventory, chat, perspective, pause, tools
+    }
+
+    /// the buttons showing now: the Tools menu's only in creative
+    private var worldButtons: [WorldButton] {
+        game.player?.gameMode == GameMode.creative ? WorldButton.allCases : WorldButton.allCases.filter { $0 != .tools }
     }
 
     private var left: Double { ui.safeLeft }
@@ -79,6 +84,7 @@ public final class TouchControls {
         case .pause: return Rect(x: R - 22, y: T + 4, w: 18, h: 16)
         case .chat: return Rect(x: R - 44, y: T + 4, w: 18, h: 16)
         case .perspective: return Rect(x: R - 66, y: T + 4, w: 18, h: 16)
+        case .tools: return Rect(x: R - 98, y: T + 4, w: 28, h: 16)
         }
     }
 
@@ -162,6 +168,15 @@ public final class TouchControls {
             "#...###...#",
             ".##.....##.",
             "...#####...",
+        ]
+        case .tools: return [       // toolbox, with its key beside it
+            "...###...",
+            "...#.#...",
+            "#########",
+            "#.......#",
+            "####.####",
+            "#.......#",
+            "#########",
         ]
         case .pause: return [
             "##..##",
@@ -314,7 +329,7 @@ public final class TouchControls {
     // MARK: - in-world
 
     private func beganInWorld(_ gx: Double, _ gy: Double) -> Role {
-        for b in WorldButton.allCases where rect(b).contains(gx, gy) {
+        for b in worldButtons where rect(b).contains(gx, gy) {
             pressButton(b)
             return .button(b)
         }
@@ -380,6 +395,7 @@ public final class TouchControls {
         case .chat: tapKey(key("chat"))
         case .perspective: tapKey(key("perspective"))
         case .pause: tapKey("Escape")
+        case .tools: game.openTools()
         }
     }
 
@@ -631,6 +647,13 @@ public final class TouchControls {
     private func drawButton(_ cv: UICanvas, _ b: WorldButton, active: Bool) {
         let r = rect(b)
         buttonFrame(cv, r, active: active)
+        if b == .tools {
+            // the key that opens it on a keyboard (G), so the two read as one
+            drawIcon(cv, icon(.tools), in: Rect(x: r.x, y: r.y, w: 17, h: r.h))
+            let key = game.keybinds["tools"].map { $0.hasPrefix("Key") ? String($0.dropFirst(3)) : "" } ?? ""
+            cv.drawText(key, r.x + 18, r.y + (r.h - 8) / 2, 1)
+            return
+        }
         guard b == .drop else { drawIcon(cv, icon(b), in: r); return }
         // drop: the held item (or an empty slot) and an arrow out of the hand
         let item = Rect(x: r.x + 4, y: r.y + (r.h - 10) / 2, w: 10, h: 10)
@@ -650,7 +673,7 @@ public final class TouchControls {
         let pressed = Set(touches.values.compactMap { e -> WorldButton? in
             if case .button(let b) = e.role { return b } else { return nil }
         })
-        for b in WorldButton.allCases {
+        for b in worldButtons {
             let active = pressed.contains(b) || (b == .sneak && sneakToggled)
             drawButton(cv, b, active: active)
         }

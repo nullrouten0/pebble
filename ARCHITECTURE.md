@@ -18,7 +18,7 @@ This is the technical tour. The one-paragraph version: **PebbleCore** is a headl
 │  WorldRenderer     Metal pipelines, mesh arena, atlas, shadows,  │
 │                    sky/celestials/clouds, bloom, ultra, capture  │
 │  UICanvas/UIManager/Screens/Menus/HUD   canvas-2D-style batcher, │
-│                    screen stack, 16 gameplay screens, menus      │
+│                    screen stack, 17 gameplay screens, menus      │
 │  Audio             AVAudioSourceNode synth, recipes, reverb      │
 │  ResourcePacks     built-in Faithful loading (installed by       │
 │                    the core's PackInstall)                       │
@@ -81,7 +81,7 @@ The host runs the only real simulation; guests run a copy of the world that the 
 - **Guest (`NetClient`).** The guest simulates only its own player; entities are drawn copies that are never ticked. Actions run locally for instant feedback and are also sent to the host, which replays them with the guest's held items (`performUse`, `finishBreaking`, `playerAttack`…) so world effects happen once. Item and XP drops the guest predicts are forwarded instead of duplicated. After each action the host resends the cells around it, which repairs any misprediction.
 - **Edits and undo.** `EditBatch` records an owner (`editOwner`), so each player's undo/redo only touches their own edits. A building tool or undo that moves a player (see below) tells the host through `WorldHooks.onPlayerMovedByTool`, which teleports that guest at once.
 
-**Building tools and undo (Systems/).** Every big edit is an `EditBatch`: `/fill` (`fillBox`), `/place`, paste and cut, the wall and box builders, the destroyers and the mountain. It records each changed cell once (only cells inside the world and in loaded chunks), relights whole chunks at the end when it's large (`bulkLight`), and then `liftEntities` lifts anyone a block of the edit landed inside (players and guests, mobs, vehicles with their riders, by the blocks' real collision shapes) onto the first spot where they fit. Undo restores the cells and puts lifted people back where they stood. x and z stay within `WORLD_COORD_LIMIT` (±30M): commands clamp to it and portals arrive inside it.
+**Building tools and undo (Systems/).** Every big edit is an `EditBatch`: `/fill` (`fillBox`), `/place`, paste and cut, the wall and box builders, the destroyers and the mountain. It records each changed cell once (only cells inside the world and in loaded chunks), relights whole chunks at the end when it's large (`bulkLight`), and then `liftEntities` lifts anyone a block of the edit landed inside (players and guests, mobs, vehicles with their riders, by the blocks' real collision shapes) onto the first spot where they fit. Undo restores the cells and puts lifted people back where they stood. x and z stay within `WORLD_COORD_LIMIT` (±30M): commands clamp to it and portals arrive inside it. The creative Tools menu (`ToolsScreen`) adds no new paths: its entries come from `toolEntries` (Systems/ToolCatalog.swift), and each one is a chat command run through `runCommand`, so a LAN guest's world edits still run on the host. Checks hold the catalog to what the commands accept.
 
 The determinism contract isn't needed for this: guests never re-simulate anything, they only show what the host sends.
 
@@ -95,7 +95,7 @@ Block and item ids follow registration order, which may change between builds. E
 
 ## The test harness (pebsmoke)
 
-About 890 checks, run with `pebble test`:
+About 900 checks, run with `pebble test`:
 
 random/noise/math → block & item registries → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full sparkstone contraption, explosion crater, interactions, portals) → a suite that *independently derives* the physics constants instead of trusting goldens → and analog (stick/touch) movement checked against the keyboard path through a live headless `GameCore`.
 

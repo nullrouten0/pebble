@@ -3,6 +3,50 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.7.0 — 2026-10-15 — Creative Tools menu
+
+### Creative Tools menu
+- **Everything the building and demolition releases added, without typing.**
+  Press **G** (rebindable in Options → Controls) or tap the new toolbox
+  button, marked G, at the top of a touch screen. It's for creative mode
+  only. In survival, G just says so, and the button is hidden.
+- **Four tabs:**
+  - **Tools** puts a tool in your hand. It has the bazooka, mining laser,
+    void bomb, quarry charge, wall and box builders, Infinity Wipe, selection
+    wand and headlamp.
+  - **Structures** has every `/place` structure, the mountain included, and
+    places it in front of you. **Layout** picks one of ten layouts, the same
+    as `/place`'s variant number.
+  - **Creatures** spawns one creature in front of you, or all ten anime
+    animals at once. Each spawn egg shows beside its name.
+  - **Edit** has undo, redo, selection corners at your feet, copy, cut,
+    paste, paste skipping air, and clear selection. Undo and redo are now one
+    tap away on iPad and iPhone.
+- **What happened shows at the bottom of the menu**, such as where a
+  structure landed or why a paste didn't. Hovering an entry shows the command
+  it runs, so you can learn the typed form.
+- **The menu stays open**, so you can place, spawn and undo in a row. G again,
+  Esc or Done closes it.
+- **It works for LAN guests.** Every entry runs its chat command, so a
+  guest's structures, creatures and undo still run on the host, the same as
+  typing them.
+
+### Also
+- **`/spawn <creature>`** brings one creature in front of you, on the
+  ground and facing you, like `/spawn anime_zoo` does for a group.
+
+### Development
+- **`#click X Y` in `PEBBLE_CMD`** clicks the open screen at UI units X, Y,
+  for scripted menu checks.
+- **Five new checks (897).**
+  - The menu offers every special tool and every `/place` structure, and each
+    structure's layouts.
+  - It offers every creature group and creature.
+  - The Edit tab has undo, redo and the clipboard.
+  - A single `/spawn` lands ahead of you on the ground.
+  - A tool added later without a menu entry fails the first check. I tested
+    this by leaving one out.
+
 ## 1.6.22 — 2026-10-15 — /spawn anime_zoo
 
 - **`/spawn anime_zoo` brings all ten anime animals at once**, in rows of
