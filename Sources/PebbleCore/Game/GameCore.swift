@@ -1173,20 +1173,14 @@ public final class GameCore {
             let m = spawnMob(w, es.mob, es.x + Double(dx), es.y + Double(dy), es.z + Double(dz), spawnOptsFrom(es.data))
             m?.persistent = true
         }
-        // anyone the structure landed on is lifted out of its walls (a LAN
-        // guest's own client places its player)
-        let fx0 = pf.x0 + dx - 1, fx1 = pf.x1 + dx + 1, fz0 = pf.z0 + dz - 1, fz1 = pf.z1 + dz + 1
-        for e in w.entities {
-            guard let ent = e as? LivingEntity, !ent.dead, ent === player || !(ent is Player) else { continue }
-            let ex = ifloor(ent.x), ez = ifloor(ent.z)
-            if ex >= fx0 && ex <= fx1 && ez >= fz0 && ez <= fz1 { liftOutOfBlocks(ent) }
-        }
         var r = PlaceResult(changed: changed, skippedCells: skipped,
                             x0: pf.x0 + dx, y0: pf.y0 + dy, z0: pf.z0 + dz, x1: pf.x1 + dx, y1: pf.y1 + dy, z1: pf.z1 + dz)
         // buried structures get a lit ladder shaft and a flag so they can be found
         if !pf.surface, let (ex, ey, ez) = entranceTarget(pf) {
             r.entrance = digEntrance(w, ex + dx, ey + dy, ez + dz, put)
         }
+        // anyone it landed on (you, LAN guests, mobs) climbs out of its walls
+        batch.liftEntities()
         return r
     }
 
@@ -2909,10 +2903,7 @@ public final class GameCore {
         let baseY = groundLevel(w, x, z) - 1
         let plan = planMountain(w, cx: x, cz: z, baseY: baseY, variant: variant)
         if plan.keys.isEmpty { return plan }
-        let job = startMountain(w, plan, players: { [weak self] in
-            guard let self else { return [] }
-            return [self.player] + (self.netHost?.proxies ?? [])
-        })
+        let job = startMountain(w, plan)
         var keys = Set<Int64>()
         for dz in -cr...cr { for dx in -cr...cr { keys.insert(chunkKey(ccx + dx, ccz + dz)) } }
         mountainPins.append((job, keys))

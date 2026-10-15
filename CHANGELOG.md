@@ -3,6 +3,28 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.16 — 2026-10-14 — nobody stays stuck in blocks
+
+- **No building tool leaves anyone stuck inside blocks.** The box builder
+  clicked on the ground you stand on put its floor at your feet; a paste, a
+  `/fill`, or an undo that closed a hole you'd walked into could seal you in
+  too. Each of them now lifts anyone left inside blocks onto the first spot
+  where they fit, as `/place` and the mountain did.
+- **Everyone is freed, not just you.** `/place` lifted only the player who
+  ran it: in a LAN game the host or the other guests stayed stuck in its
+  walls. Players, guests, mobs, and boats or minecarts with their riders are
+  all lifted now.
+- **It only lifts people who are really stuck.** Standing on a slab, a path
+  or farmland counted as being inside a block, so someone under a low
+  ceiling could be pushed up through the roof. It now goes by the blocks'
+  real shapes, across a mob's whole width.
+- **A buried structure's entrance can't wall you back in.** `/place` lifted
+  you before it built the ladder shaft and flag, so they could go in around
+  you; it now lifts once everything is built.
+- **Undo puts lifted people back.** Undoing a structure that lifted you onto
+  its roof dropped you from up there (with fall damage); you're now put back
+  where you stood, if you haven't moved since.
+
 ## 1.6.15 — 2026-10-14 — quick revisits keep your changes
 
 - **Land you leave and come straight back to keeps your changes.** A chunk

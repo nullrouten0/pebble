@@ -2584,25 +2584,53 @@ do {
     if let g = settled() {
         // a structure placed right where you stand lifts you out of its walls
         let p = g.player!, w = g.world
-        func stuck() -> Bool {
-            let x = ifloor(p.x), z = ifloor(p.z), y = ifloor(p.y)
-            return blockDefs[w.getBlockId(x, y, z)].solid || blockDefs[w.getBlockId(x, y + 1, z)].solid
-        }
         let px = ifloor(p.x), pz = ifloor(p.z)
         for y in ifloor(p.y)...(ifloor(p.y) + 2) { w.setBlock(px, y, pz, Int(cell(B.stone))) }
         liftOutOfBlocks(p)
-        check("someone inside blocks is lifted to where they fit", !stuck(), "\(p.y)")
+        check("someone inside blocks is lifted to where they fit", entityFits(p), "\(p.y)")
         if let pf = capturePrefab("small_school", dim: w.dim.rawValue, minY: w.info.minY,
                                   maxY: w.info.minY + w.info.height, biome: 1, variant: 0) {
-            // line a solid block of the building up with your feet
+            // line a solid block of the building up with your feet; a second
+            // player (a LAN guest, or the host when a guest places) stands beside you
             let wasY = p.y
+            let guest = Player(world: w)
+            guest.setPos(p.x + 0.3, p.y, p.z + 0.3)
+            w.addEntity(guest)
             let (sx, sy, sz, _) = pf.cells.first { blockDefs[Int($0.3 >> 4)].solid && $0.1 >= PREFAB_GROUND }!
             let tx = ifloor(p.x) - sx + floorDiv(pf.x0 + pf.x1, 2), tz = ifloor(p.z) - sz + floorDiv(pf.z0 + pf.z1, 2)
             _ = g.placePrefab(pf, tx, ifloor(p.y) - sy + PREFAB_GROUND, tz)
-            check("a structure placed on top of you leaves you free", !stuck(), "y \(wasY) → \(p.y)")
+            check("a structure placed on top of you leaves you free", p.y > wasY && entityFits(p), "y \(wasY) → \(p.y)")
+            check("and frees the other players it lands on", guest.y > wasY && entityFits(guest), "y \(wasY) → \(guest.y)")
+            _ = undoLastEdit()
+            check("undoing it puts you back where you stood", abs(p.y - wasY) < 1e-9 && entityFits(p), "y \(p.y)")
+            w.removeEntity(guest)
         } else {
             check("small_school captures", false)
         }
+
+        // the box builder clicked on the ground you stand on puts its floor at
+        // your feet (mid-cell, clear of the walls it raises around the edge)
+        let mx = floorDiv(px, BUILDER_SIZE) * BUILDER_SIZE + 8, mz = floorDiv(pz, BUILDER_SIZE) * BUILDER_SIZE + 8
+        p.setPos(Double(mx) + 0.5, Double(w.surfaceY(mx, mz)), Double(mz) + 0.5)
+        let feetY = p.y
+        let ground = ifloor(p.y) - 1
+        let hit = RaycastHit(x: mx, y: ground, z: mz, face: 1, cell: w.getBlock(mx, ground, mz), t: 0,
+                             px: Double(mx) + 0.5, py: Double(ground) + 1, pz: Double(mz) + 0.5)
+        buildBox(w, p, hit)
+        check("a box built under your feet leaves you standing on its floor", entityFits(p) && p.y == feetY + 1, "y \(feetY) → \(p.y)")
+        clearEditHistory()
+
+        // standing on a slab, under a slab ceiling, isn't being stuck in blocks
+        let sy = ifloor(p.y) + 20
+        w.setBlock(mx, sy, mz, Int(cell(B.sandstone_slab, 0)))       // bottom half
+        w.setBlock(mx, sy + 2, mz, Int(cell(B.sandstone_slab, 1)))   // top half
+        p.setPos(Double(mx) + 0.5, Double(sy) + 0.5, Double(mz) + 0.5)
+        let onSlab = p.y
+        let edit = beginEdit(w, "beside")
+        edit.set(mx + 1, sy, mz, Int(cell(B.stone)))
+        edit.liftEntities()
+        check("standing on a slab under a slab ceiling isn't lifted", p.y == onSlab && entityFits(p), "y \(onSlab) → \(p.y)")
+        clearEditHistory()
         g.exitToTitle()
     } else {
         check("placement world loads", false)

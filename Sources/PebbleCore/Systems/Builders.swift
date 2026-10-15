@@ -90,6 +90,7 @@ public func buildWall(_ w: World, _ p: Player, _ hit: RaycastHit) -> Int {
     let x1 = alongX ? s0 + size - 1 : tx, z1 = alongX ? tz : s0 + size - 1
     remember(w, alongX ? s0 : tx, y0, alongX ? tz : s0, x1, y0 + size - 1, z1)
     builderFX(w, alongX ? s0 : tx, y0, alongX ? tz : s0, x1, y0 + size - 1, z1, c)
+    b.liftEntities()
     return b.count
 }
 
@@ -114,5 +115,6 @@ public func buildBox(_ w: World, _ p: Player, _ hit: RaycastHit) -> Int {
     }
     remember(w, x0, y0, z0, x0 + size - 1, y0 + size - 1, z0 + size - 1)
     builderFX(w, x0, y0, z0, x0 + size - 1, y0 + size - 1, z0 + size - 1, c)
+    b.liftEntities()   // its floor goes in at the feet of whoever stands in the cell
     return b.count
 }

@@ -190,6 +190,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
         }
     }
     batch.finishLight()
+    batch.liftEntities()
     return PasteResult(changed: changed, outside: outside,
                        lo: BlockPos(x0, max(y0, minY), z0), hi: BlockPos(x1, min(y0 + clip.h - 1, maxY), z1))
 }

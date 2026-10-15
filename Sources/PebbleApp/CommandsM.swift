@@ -216,6 +216,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
                 }
             }
         }
+        batch.liftEntities()
         ok("Filled \(n) blocks")
     case "/pos1", "/pos2":
         // at your feet, or at typed coordinates
