@@ -33,7 +33,8 @@ public final class EditBatch {
     public var count: Int { keys.count }
 
     // x: 26 bits at 37, y: 11 bits at 26, z: 26 bits — 63 bits, sign bit clear.
-    // x and z cover ±33.5M, past the ±30M coordinates commands accept
+    // x and z cover ±33.5M, past the ±30M coordinates commands and portals
+    // allow; y covers ±1024, and only cells inside the world are recorded
     @inline(__always) static func pack(_ x: Int, _ y: Int, _ z: Int) -> Int64 {
         (Int64(x + (1 << 25)) << 37) | (Int64(y + 1024) << 26) | Int64(z + (1 << 25))
     }
@@ -41,9 +42,12 @@ public final class EditBatch {
         (Int(k >> 37) - (1 << 25), Int((k >> 26) & 0x7FF) - 1024, Int(k & 0x3FF_FFFF) - (1 << 25))
     }
 
-    /// set a block, remembering what was there first; returns true if it changed
+    /// set a block, remembering what was there first; returns true if it changed.
+    /// A cell in a chunk that isn't loaded, or outside the world's height, is
+    /// left alone and not recorded (undo would otherwise "restore" it to air)
     @discardableResult
     public func set(_ x: Int, _ y: Int, _ z: Int, _ c: Int, _ flags: Int = SET_NO_NEIGHBORS) -> Bool {
+        guard reachable(x, y, z) else { return false }
         let be = world.getBlockEntity(x, y, z)
         let old = world.setBlock(x, y, z, c, bulkLight ? flags & ~2 : flags)
         if old == c { return false }
@@ -67,7 +71,12 @@ public final class EditBatch {
     /// remember a cell as it is now without changing it — for an edit that
     /// replaces only its block entity (a chest pasted over a chest)
     public func record(_ x: Int, _ y: Int, _ z: Int) {
+        guard reachable(x, y, z) else { return }
         remember(x, y, z, world.getBlock(x, y, z), world.getBlockEntity(x, y, z))
+    }
+
+    @inline(__always) private func reachable(_ x: Int, _ y: Int, _ z: Int) -> Bool {
+        world.getChunkAt(x, z)?.inYRange(y) ?? false
     }
 
     private func remember(_ x: Int, _ y: Int, _ z: Int, _ old: Int, _ be: BlockEntityData?) {

@@ -3,6 +3,18 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.13 — 2026-10-14 — undo leaves untouched land alone
+
+- **Undo no longer erases land an edit never touched.** An edit that reached
+  land that wasn't loaded yet, or above the top of the world, wrote nothing
+  there but remembered it all as air. Walk over and `/undo` later, and that
+  whole box of ground was dug out; a `/fill` far above the build limit dug
+  out a block somewhere else entirely. Edits now remember only the blocks
+  they really changed.
+- **`/fill` says when it can't reach.** It refuses a box outside the world's
+  height or in land that isn't loaded, instead of reporting blocks it never
+  placed, and its count is the blocks it changed.
+
 ## 1.6.12 — 2026-10-14 — /place lands clear of you
 
 - **`/place` no longer drops a structure on top of you.** It aimed the

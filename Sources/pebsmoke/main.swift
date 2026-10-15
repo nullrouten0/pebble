@@ -2888,6 +2888,17 @@ do {
     do { _ = try copySelection(p, cut: false) } catch ClipboardError.otherDimension { otherDim = true } catch {}
     check("a selection in another dimension can't be copied", otherDim)
     clearEditHistory()
+
+    // cells an edit can't reach are left alone, not remembered as air for undo
+    // to dig out later (y 2024 used to wrap around to y -24)
+    let stoneCell = w.getBlock(1, -24, 0)
+    let far = beginEdit(w, "unreachable")
+    let touchedNone = !far.set(100, 63, 100, glass) && !far.set(1, top + 1, 1, glass) && !far.set(0, 2024, 0, glass)
+    flat(6, 6)
+    _ = undoLastEdit()
+    check("an edit in unloaded land or outside the world records nothing, and its undo digs nothing",
+          touchedNone && far.count == 0 && w.getBlock(100, 63, 100) == stoneCell && w.getBlock(1, -24, 0) == stoneCell)
+    clearEditHistory()
 }
 
 section("item copies")
