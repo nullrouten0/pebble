@@ -185,7 +185,7 @@ On the Mac, everything is in `~/Library/Application Support/Pebble/`:
 |---|---|
 | `pebble.db` | All worlds, chunks, players and advancements in one SQLite database, including LAN guests who visited your worlds |
 | `settings.json`, `keybinds.json` | Settings (including your LAN name) and keybinds |
-| `resourcepacks/` | Texture packs, including the default Faithful 32x |
+| `resourcepacks/` | Texture packs, including the default Faithful 32x (kept as shipped: give your own packs their own file names) |
 
 A LAN guest stores nothing about the host's world. On iPad and iPhone the same files live inside the app, and deleting the app deletes them.
 

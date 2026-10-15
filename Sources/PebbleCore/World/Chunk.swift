@@ -8,6 +8,14 @@ public let CHUNK_W = 16
 /// how far out x and z go: commands clamp to it and portals arrive inside it
 /// (undo's packing, EditBatch.pack, covers a little past it)
 public let WORLD_COORD_LIMIT = 30_000_000.0
+
+/// where a portal trip lands: scaled (×8 out of the Nether, ÷8 into it), but
+/// a little inside the world's edge so the portal built there (up to 4 wide)
+/// is inside too
+public func portalArrival(_ x: Double, _ z: Double, scale: Double) -> (Double, Double) {
+    let edge = WORLD_COORD_LIMIT - 16
+    return (max(-edge, min(edge, x * scale)), max(-edge, min(edge, z * scale)))
+}
 public let SECTION_H = 16
 
 public enum Dim: Int, Codable {

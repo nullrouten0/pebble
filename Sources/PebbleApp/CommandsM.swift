@@ -195,31 +195,12 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let blockName = args[6]
         let id: UInt16? = blockName == "air" ? 0 : bidOpt(blockName)
         guard let id else { return fail("Unknown block: \(blockName)") }
-        // coordinates are within the border, so each side fits; the product may not
-        let (vxz, o1) = (abs(x1 - x0) + 1).multipliedReportingOverflow(by: abs(z1 - z0) + 1)
-        let (vol, o2) = vxz.multipliedReportingOverflow(by: abs(y1 - y0) + 1)
-        if o1 || o2 || vol > 32768 { return fail("Too many blocks (more than 32768)") }
-        if min(y0, y1) < world.info.minY || max(y0, y1) >= world.info.minY + world.info.height {
-            return fail("Can't fill outside the world (y \(world.info.minY) to \(world.info.minY + world.info.height - 1))")
+        do {
+            let n = try fillBox(world, x0, y0, z0, x1, y1, z1, id == 0 ? 0 : Int(cell(id, 0)))
+            ok("Filled \(n) blocks")
+        } catch {
+            fail("\(error)")
         }
-        for cz in floorDiv(min(z0, z1), 16)...floorDiv(max(z0, z1), 16) {
-            for cx in floorDiv(min(x0, x1), 16)...floorDiv(max(x0, x1), 16) where world.getChunk(cx, cz) == nil {
-                return fail("That area isn't loaded")
-            }
-        }
-        var n = 0
-        let batch = beginEdit(world, "fill")
-        batch.bulkLight = vol > BULK_LIGHT_CELLS
-        for y in min(y0, y1)...max(y0, y1) {
-            for z in min(z0, z1)...max(z0, z1) {
-                for x in min(x0, x1)...max(x0, x1) {
-                    if batch.set(x, y, z, id == 0 ? 0 : Int(cell(id, 0)), SET_DEFAULT) { n += 1 }
-                }
-            }
-        }
-        batch.finishLight()
-        batch.liftEntities()
-        ok("Filled \(n) blocks")
     case "/pos1", "/pos2":
         // at your feet, or at typed coordinates
         if !args.isEmpty && args.count < 3 { return fail("Usage: /\(cmd) [x y z]") }

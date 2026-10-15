@@ -249,8 +249,9 @@ public final class GameCore {
     public var lastChunkUpdates = 0
     /// unload records awaiting the once-per-second batched write
     private var pendingChunkSaves: [String: ChunkRecord] = [:]
-    /// chunk records handed to the save queue and not yet written (key → batches)
-    private var chunkWritesInFlight: [String: Int] = [:]
+    /// chunk records handed to the save queue and not yet written: how many
+    /// batches hold each key, and the newest record (served to loads meanwhile)
+    private var chunkWritesInFlight: [String: (batches: Int, record: ChunkRecord)] = [:]
 
     private let genQueue = DispatchQueue(label: "pebble.gen", qos: .userInitiated, attributes: .concurrent)
     private let meshQueue = DispatchQueue(label: "pebble.mesh", qos: .userInitiated, attributes: .concurrent)
@@ -277,7 +278,7 @@ public final class GameCore {
     /// player entity id → world time the wipe was armed
     private var wipeArmedAt: [Int: Int] = [:]
     /// chunks a rising mountain still needs, kept loaded until it's done
-    private var mountainPins: [(job: MountainJob, keys: Set<Int64>)] = []
+    private var mountainPins: [(job: MountainJob, dim: Dim, keys: Set<Int64>)] = []
     private var lastLightHealTick = -1
     private var lastSlot = 0
     public var heldNameTime = 0
@@ -491,6 +492,7 @@ public final class GameCore {
     public func exitToTitle() {
         if inWorld { saveAndFlush(synchronous: true) }
         clearEditHistory()   // its edits belong to the world being closed
+        mountainPins.removeAll()
         if let nc = netClient {
             nc.disconnect()
             netClient = nil
@@ -564,6 +566,7 @@ public final class GameCore {
     }
 
     public func loadWorld(_ id: String) {
+        db.forgetWrites(id)   // the rows may have changed while it was closed
         guard let rec = db.getWorld(id) else { return }
         if let remap = db.migratePalette(id) {
             print("[saves] \(rec.name): rewritten for this build's block/item ids"
@@ -689,6 +692,7 @@ public final class GameCore {
             guard let self, let w else { return }
             self.requestChunk(w, cx, cz)
         }
+        hooks.onPlayerMovedByTool = { [weak self] p in self?.netHost?.movedByTool(p) }
         w.hooks = hooks
     }
 
@@ -732,8 +736,9 @@ public final class GameCore {
                 }
             }
         }
-        // include any unload records still waiting in the batch buffer
-        for r in pendingChunkSaves.values { records.append(r) }
+        // unload records still waiting in the batch buffer go first, so a live
+        // chunk's own record (later in the batch) is the one that lands
+        records = Array(pendingChunkSaves.values) + records
         pendingChunkSaves.removeAll()
         for r in records { savedChunkKeys.insert(r.key) }
         writeChunks(records, synchronous: synchronous)
@@ -746,39 +751,49 @@ public final class GameCore {
     public func waitForSaves() { saveQueue.sync {} }
 
     /// hand records to the save queue; until they land, loading one of those
-    /// chunks reads behind the write (storedChunk)
+    /// chunks is served the record itself (storedChunk)
     private func writeChunks(_ records: [ChunkRecord], synchronous: Bool) {
         if synchronous {
             saveQueue.sync { self.writeChunkBatch(records) }
+            // on disk now, after anything queued before: older copies in memory are stale
+            for r in records { chunkWritesInFlight[r.key] = nil }
             return
         }
-        for r in records { chunkWritesInFlight[r.key, default: 0] += 1 }
+        for r in records { chunkWritesInFlight[r.key] = ((chunkWritesInFlight[r.key]?.batches ?? 0) + 1, r) }
         saveQueue.async { [weak self] in
             self?.writeChunkBatch(records)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 for r in records {
-                    if let n = self.chunkWritesInFlight[r.key], n > 1 { self.chunkWritesInFlight[r.key] = n - 1 }
-                    else { self.chunkWritesInFlight[r.key] = nil }
+                    guard let f = self.chunkWritesInFlight[r.key] else { continue }
+                    self.chunkWritesInFlight[r.key] = f.batches > 1 ? (f.batches - 1, f.record) : nil
                 }
             }
         }
     }
 
-    /// a chunk's newest saved record, read with what's returned (call on main,
-    /// run the result anywhere): one still waiting in the unload buffer, else
-    /// the database, behind any write of it already queued. Reading only the
-    /// database brought a chunk left and revisited within a second back as it
-    /// was before
-    private func storedChunk(_ worldId: String, _ d: Dim, _ cx: Int, _ cz: Int) -> () -> ChunkRecord? {
+    /// a chunk's newest saved record (call on main; run `read` anywhere): one
+    /// still waiting in the unload buffer or on its way to disk, else the
+    /// database. Reading only the database brought a chunk left and revisited
+    /// within a second back as it was before. A record from memory comes with
+    /// block entities of its own (the saved copy may still be being written)
+    /// and `fromMemory`: the chunk must be saved again (takeOver)
+    private func storedChunk(_ worldId: String, _ d: Dim, _ cx: Int, _ cz: Int)
+        -> (read: () -> ChunkRecord?, fromMemory: Bool) {
         let key = db.chunkKey(worldId, d.rawValue, cx, cz)
-        if let r = pendingChunkSaves[key] { return { r } }
-        let db = self.db
-        if chunkWritesInFlight[key] != nil {
-            let q = saveQueue
-            return { q.sync { db.getChunk(worldId, d.rawValue, cx, cz) } }
+        if let r = pendingChunkSaves[key] ?? chunkWritesInFlight[key]?.record {
+            let own = r.withOwnBlockEntities()
+            return ({ own }, true)
         }
-        return { db.getChunk(worldId, d.rawValue, cx, cz) }
+        let db = self.db
+        return ({ db.getChunk(worldId, d.rawValue, cx, cz) }, false)
+    }
+
+    /// a chunk just loaded from a record still in memory is live again: its
+    /// unload record mustn't be written over it, and it's saved afresh
+    private func takeOver(_ c: Chunk, _ dbKey: String) {
+        pendingChunkSaves[dbKey] = nil
+        c.modified = true
     }
 
     /// runs ON the save queue; on failure re-marks the chunks dirty (on main)
@@ -789,11 +804,13 @@ public final class GameCore {
             guard let self else { return }
             print("[saves] chunk batch failed - re-marking \(records.count) chunks dirty for retry")
             for r in records {
-                guard let d = Dim(rawValue: r.dim), let w = self.worlds[d] else { continue }
-                if let c = w.chunks[chunkKey(r.cx, r.cz)] {
+                // still loaded in the same world: save it again from the live chunk
+                if r.worldId == self.worldRec?.id, let d = Dim(rawValue: r.dim), let w = self.worlds[d],
+                   let c = w.chunks[chunkKey(r.cx, r.cz)] {
                     c.modified = true
                 } else {
-                    // already unloaded — requeue the record itself
+                    // unloaded, or that world has been closed (a failed save on
+                    // the way out): requeue the record itself
                     self.pendingChunkSaves[r.key] = r
                 }
             }
@@ -831,14 +848,9 @@ public final class GameCore {
         savedFullKeys.insert(key)
         // deep-copy block entities — live BEs keep mutating while the save
         // queue serializes, and BlockEntityData is a reference type
-        var besCopy: [BlockEntityData]? = nil
-        let besLive = Array(c.blockEntities.values)
-        if let data = try? JSONEncoder().encode(besLive) {
-            besCopy = try? JSONDecoder().decode([BlockEntityData].self, from: data)
-        }
         return ChunkRecord(
-            key: key, worldId: worldId, dim: d.rawValue, cx: c.cx, cz: c.cz,
-            blocks: c.blocks, biomes: c.biomes, blockEntities: besCopy ?? besLive, entities: ents)
+            key: key, worldId: worldId, dim: d.rawValue, cx: c.cx, cz: c.cz, blocks: c.blocks, biomes: c.biomes,
+            blockEntities: copiedBlockEntities(Array(c.blockEntities.values)), entities: ents)
     }
 
     // ===========================================================================
@@ -857,7 +869,8 @@ public final class GameCore {
         let genVersion = w.genVersion
         let height = w.info.height
         let hasSky = w.info.hasSky
-        let saved = savedChunkKeys.contains(db.chunkKey(worldId, d.rawValue, cx, cz))
+        let dbKey = db.chunkKey(worldId, d.rawValue, cx, cz)
+        let saved = savedChunkKeys.contains(dbKey)
         let stored = storedChunk(worldId, d, cx, cz)
         let minY = w.info.minY
         // wipe zones this chunk still owes a cut (applied before it's lit)
@@ -865,7 +878,7 @@ public final class GameCore {
         let zones = wipeIdx.map { wipes[$0] }
         genQueue.async { [weak self] in
             var savedRec: ChunkRecord? = nil
-            if saved { savedRec = stored() }
+            if saved { savedRec = stored.read() }
             let c: Chunk
             var beSpecs: [BESpec]? = nil
             var entitySpecs: [EntitySpec]? = nil
@@ -897,8 +910,9 @@ public final class GameCore {
                 guard let self else { return }
                 self.genInFlight.remove(flight)
                 guard self.inWorld, self.worlds[d] === w, w.chunks[key] == nil else { return }
-                if loadedFull { self.savedFullKeys.insert(self.db.chunkKey(worldId, d.rawValue, cx, cz)) }
+                if loadedFull { self.savedFullKeys.insert(dbKey) }
                 self.adoptChunk(w, c, beSpecs, entitySpecs, savedFinal)
+                if saved && stored.fromMemory { self.takeOver(c, dbKey) }
                 self.wipeOnLoad(w, c, cutBy: wipeIdx, changed: wipedFinal)
                 self.enqueueLightAround(w, cx, cz)
             }
@@ -1097,7 +1111,7 @@ public final class GameCore {
         let flags = SET_NO_NEIGHBORS
         var changed = 0, skipped = 0
         let batch = beginEdit(w, "place \(pf.id)")
-        batch.bulkLight = pf.cells.count > BULK_LIGHT_CELLS
+        batch.autoBulkLight = true   // clearing and foundations can far outgrow the cells
         func put(_ x: Int, _ y: Int, _ z: Int, _ c: Int) {
             guard w.isLoadedAt(x, z) else { skipped += 1; return }
             if batch.set(x, y, z, c, flags) { changed += 1 }
@@ -1166,21 +1180,25 @@ public final class GameCore {
         // block entities after blocks: setBlock drops BEs whose block changes
         for spec in pf.blockEntities {
             let s = BESpec(x: spec.x + dx, y: spec.y + dy, z: spec.z + dz, kind: spec.kind, data: spec.data)
-            guard let c = w.getChunkAt(s.x, s.z) else { continue }
+            // nothing above the build limit or below the floor: undo couldn't remove it
+            guard let c = w.getChunkAt(s.x, s.z), c.inYRange(s.y) else { continue }
             batch.record(s.x, s.y, s.z)   // a chest left the same block still gets new contents
             resolveBESpec(w, c, s)
             if let be = c.getBlockEntity(posMod(s.x, 16), s.y, posMod(s.z, 16)), beTickHandlers[be.type] != nil {
                 w.trackTickingBE(be)
             }
         }
-        for es in pf.entities {
+        let worldTop = Double(w.info.minY + w.info.height)
+        for es in pf.entities where es.y + Double(dy) >= Double(w.info.minY) && es.y + Double(dy) < worldTop {
             let m = spawnMob(w, es.mob, es.x + Double(dx), es.y + Double(dy), es.z + Double(dz), spawnOptsFrom(es.data))
             m?.persistent = true
         }
         var r = PlaceResult(changed: changed, skippedCells: skipped,
                             x0: pf.x0 + dx, y0: pf.y0 + dy, z0: pf.z0 + dz, x1: pf.x1 + dx, y1: pf.y1 + dy, z1: pf.z1 + dz)
-        // buried structures get a lit ladder shaft and a flag so they can be found
-        if !pf.surface, let (ex, ey, ez) = entranceTarget(pf) {
+        // buried structures get a lit ladder shaft and a flag so they can be
+        // found, in the Overworld only: the Nether's "ground" is its bedrock
+        // ceiling, and the End has no surface to mark
+        if !pf.surface, w.info.hasSky, let (ex, ey, ez) = entranceTarget(pf) {
             r.entrance = digEntrance(w, ex + dx, ey + dy, ez + dz, put)
         }
         batch.finishLight()
@@ -1216,6 +1234,7 @@ public final class GameCore {
         }
         // clear the canopy over the entrance so the flag shows
         let ceil = min(w.info.minY + w.info.height - 1, top + 40)
+        guard ceil >= top + 3 else { return (x, top, z) }   // no room above for the collar and flag
         var canopy = top
         for oz in -6...6 {
             for ox in -6...6 {
@@ -1378,13 +1397,17 @@ public final class GameCore {
                 if w.chunks[chunkKey(cx, cz)] != nil { continue }
                 var saved: ChunkRecord? = nil
                 if let worldId, savedChunkKeys.contains(db.chunkKey(worldId, w.dim.rawValue, cx, cz)) {
-                    saved = storedChunk(worldId, w.dim, cx, cz)()
+                    let stored = storedChunk(worldId, w.dim, cx, cz)
+                    saved = stored.read()
                     if let s = saved, Self.recordUsable(s, height: w.info.height) {
                         savedFullKeys.insert(s.key)   // its blocks are already on disk
                         let light = computeLocalLight(blocks: s.blocks!, height: w.info.height, hasSky: w.info.hasSky)
                         adoptChunk(w, Self.makeChunk(cx, cz, w.info.minY, w.info.height, s.blocks!, s.biomes!, light.sky, light.blk),
                                    nil, nil, s)
-                        if let c = w.getChunk(cx, cz) { wipeOnLoad(w, c, cutBy: [], changed: false) }
+                        if let c = w.getChunk(cx, cz) {
+                            if stored.fromMemory { takeOver(c, s.key) }
+                            wipeOnLoad(w, c, cutBy: [], changed: false)
+                        }
                         continue
                     }
                 }
@@ -1431,17 +1454,14 @@ public final class GameCore {
         // unload far chunks (tight radius — chunk arrays are ~400KB each),
         // except under a mountain that's still rising
         mountainPins.removeAll { $0.job.done }
-        let pinned = mountainPins.reduce(into: Set<Int64>()) { $0.formUnion($1.keys) }
-        for c in Array(w.chunks.values) {
+        let pinned = mountainPins.reduce(into: Set<Int64>()) { if $1.dim == w.dim { $0.formUnion($1.keys) } }
+        unloadChunks(w, w.chunks.values.filter { c in
             let far = centers.allSatisfy { abs(c.cx - $0.0) > $0.2 + 2 || abs(c.cz - $0.1) > $0.2 + 2 }
-            if far && !pinned.contains(chunkKey(c.cx, c.cz)) { unloadChunk(w, c) }
-        }
+            return far && !pinned.contains(chunkKey(c.cx, c.cz))
+        })
         // inactive dimensions don't stream — drop everything they hold
         if w.time % 100 == 0 {
-            for (d, other) in worlds {
-                if d == dim { continue }
-                for c in Array(other.chunks.values) { unloadChunk(other, c) }
-            }
+            for (d, other) in worlds where d != dim { unloadChunks(other, Array(other.chunks.values)) }
         }
     }
 
@@ -1454,7 +1474,6 @@ public final class GameCore {
         !savedFullKeys.contains(dbKey) || c.modified || hasEntities || c.savedEntities || !c.blockEntities.isEmpty
     }
 
-    /// chunk keys (chunkKey) that saved entities stand in
     /// the live entities (not players) in each chunk, in world order
     private func entitiesByChunk(_ w: World) -> [Int64: [Entity]] {
         var out: [Int64: [Entity]] = [:]
@@ -1465,12 +1484,22 @@ public final class GameCore {
         return out
     }
 
-    private func unloadChunk(_ w: World, _ c: Chunk) {
-        var here: [Entity] = []
-        for e in w.entities {
-            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
-            if floorDiv(ifloor(ent.x), 16) == c.cx && floorDiv(ifloor(ent.z), 16) == c.cz { here.append(ent) }
+    /// unload chunks, saving what needs it: entities are sorted into chunks
+    /// once for the lot (a whole dimension can go at once), not once per chunk
+    private func unloadChunks(_ w: World, _ cs: [Chunk]) {
+        if cs.isEmpty { return }
+        let byChunk = entitiesByChunk(w)
+        let gone = Set(cs.map { chunkKey($0.cx, $0.cz) })
+        for c in cs { unloadChunk(w, c, byChunk[chunkKey(c.cx, c.cz)] ?? []) }
+        // entities standing in those chunks were captured in their records; drop the live ones
+        w.removeEntities { e in
+            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { return false }
+            return gone.contains(chunkKey(floorDiv(ifloor(ent.x), 16), floorDiv(ifloor(ent.z), 16)))
         }
+    }
+
+    /// `here`: the live entities standing in it (entitiesByChunk)
+    private func unloadChunk(_ w: World, _ c: Chunk, _ here: [Entity]) {
         if let rec = worldRec, !w.isRemote {   // a LAN guest's chunks are the host's to keep
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
             if chunkNeedsSave(c, dbKey, hasEntities: !here.isEmpty) {
@@ -1478,11 +1507,6 @@ public final class GameCore {
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record
             }
-        }
-        // entities standing in the chunk were captured in the record; drop the live ones
-        w.removeEntities { e in
-            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { return false }
-            return floorDiv(ifloor(ent.x), 16) == c.cx && floorDiv(ifloor(ent.z), 16) == c.cz
         }
         w.releaseChunkBlockEntities(c)
         w.removeChunk(c.cx, c.cz)
@@ -1715,9 +1739,7 @@ public final class GameCore {
         let fromDim = dim
         let destDim: Dim = fromDim == .nether ? .overworld : .nether
         let scale = DIMS[fromDim.rawValue].coordScale / DIMS[destDim.rawValue].coordScale
-        // ×8 out of the Nether could land past the world's edge
-        func inside(_ v: Double) -> Double { max(-WORLD_COORD_LIMIT, min(WORLD_COORD_LIMIT, v * scale)) }
-        let tx = inside(p.x), tz = inside(p.z)
+        let (tx, tz) = portalArrival(p.x, p.z, scale: scale)
         let destW = worlds[destDim]!
         ensureChunksLoaded(destW, floorDiv(ifloor(tx), 16), floorDiv(ifloor(tz), 16), 1)
         let (px, py, pz) = findOrCreatePortal(
@@ -2911,7 +2933,7 @@ public final class GameCore {
         let job = startMountain(w, plan)
         var keys = Set<Int64>()
         for dz in -cr...cr { for dx in -cr...cr { keys.insert(chunkKey(ccx + dx, ccz + dz)) } }
-        mountainPins.append((job, keys))
+        mountainPins.append((job, w.dim, keys))
         w.hooks.playSound("pebble.mountain.rise", Double(x) + 0.5, Double(baseY), Double(z) + 0.5, 10, 1)
         pendingBlasts.append((Double(x), Double(baseY), Double(z), 20))
         return plan

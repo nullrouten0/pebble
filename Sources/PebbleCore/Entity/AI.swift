@@ -448,7 +448,7 @@ open class Mob: LivingEntity {
         // saves before 1.6.2 didn't keep the countdown: a bred baby starts
         // over. Baby monsters never grow up (before 1.6.17 a baby zombie that
         // drowned was saved with a countdown)
-        let legacyAge = baby && category != .monster ? 24000 : 0
+        let legacyAge = baby ? 24000 : 0
         growUpAge = category == .monster ? 0 : (d["growUpAge"] as? NSNumber)?.intValue ?? legacyAge
         sitting = (d["sitting"] as? Bool) ?? false
         ownerId = (d["ownerId"] as? NSNumber)?.intValue

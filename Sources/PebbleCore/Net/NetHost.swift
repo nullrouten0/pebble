@@ -713,6 +713,18 @@ public final class NetHost {
         for c in clients { c.flush() }
     }
 
+    /// a building tool or undo moved a guest's player between ticks: teleport
+    /// its client now, and take that as its position until the client reports
+    /// again (the next tick would otherwise put back the stale report)
+    func movedByTool(_ p: Player) {
+        guard let c = clients.first(where: { $0.joined && $0.proxy === p }) else { return }
+        var w = ByteWriter()
+        w.f64(p.x); w.f64(p.y); w.f64(p.z)
+        c.queue(.teleport, w)
+        c.st.x = p.x; c.st.y = p.y; c.st.z = p.z
+        c.appliedX = p.x; c.appliedY = p.y; c.appliedZ = p.z
+    }
+
     /// the host world moved / pushed / set fire to a guest's player
     private func forwardProxyChanges(_ c: RemoteClient) {
         let p = c.proxy!

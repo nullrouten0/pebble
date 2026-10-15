@@ -2633,12 +2633,11 @@ do {
 
         // standing on a slab, under a slab ceiling, isn't being stuck in blocks
         let sy = ifloor(p.y) + 20
-        w.setBlock(mx, sy, mz, Int(cell(B.sandstone_slab, 0)))       // bottom half
-        w.setBlock(mx, sy + 2, mz, Int(cell(B.sandstone_slab, 1)))   // top half
         p.setPos(Double(mx) + 0.5, Double(sy) + 0.5, Double(mz) + 0.5)
         let onSlab = p.y
-        let edit = beginEdit(w, "beside")
-        edit.set(mx + 1, sy, mz, Int(cell(B.stone)))
+        let edit = beginEdit(w, "slabs")   // laid by the edit, so its blocks overlap you
+        edit.set(mx, sy, mz, Int(cell(B.sandstone_slab, 0)))       // bottom half
+        edit.set(mx, sy + 2, mz, Int(cell(B.sandstone_slab, 1)))   // top half
         edit.liftEntities()
         check("standing on a slab under a slab ceiling isn't lifted", p.y == onSlab && entityFits(p), "y \(onSlab) → \(p.y)")
         clearEditHistory()
@@ -2660,6 +2659,97 @@ do {
         } else {
             check("boat and pig spawn", false)
         }
+
+        // only someone a block of the edit landed inside is lifted: not a cart
+        // rider whose head is in a low tunnel roof, someone asleep, or someone
+        // in a crawl space the edit's box merely spans
+        let ty = sy + 20
+        if let cart = spawnMob(w, "minecart", Double(mx) + 0.5, Double(ty), Double(mz) + 0.5),
+           let rider = spawnMob(w, "pig", Double(mx) + 0.5, Double(ty), Double(mz) + 0.5) {
+            rider.mount(cart)
+            rider.setPos(cart.x, cart.y + cart.height * 0.6, cart.z)
+            w.setBlock(mx, ty + 1, mz, Int(cell(B.stone)))   // the tunnel roof, through the pig's head
+            let roof = beginEdit(w, "relay the tunnel")   // floor and roof: the edit spans the cart
+            roof.set(mx, ty - 1, mz, Int(cell(B.cobblestone)))
+            roof.set(mx, ty + 1, mz, Int(cell(B.cobblestone)))
+            roof.liftEntities()
+            check("a cart and its rider under a low roof stay on the rails", cart.y == Double(ty), "cart \(cart.y)")
+            clearEditHistory()
+            rider.remove(); cart.remove()
+            w.setBlock(mx, ty + 1, mz, 0)
+        } else {
+            check("minecart and pig spawn", false)
+        }
+        let sleeper = Player(world: w)
+        sleeper.setPos(Double(mx) + 0.5, Double(ty), Double(mz) + 0.5)
+        sleeper.sleepTicks = 10
+        w.addEntity(sleeper)
+        let bedroom = beginEdit(w, "over the bed")
+        bedroom.set(mx, ty + 1, mz, Int(cell(B.stone)))
+        bedroom.liftEntities()
+        check("someone asleep isn't lifted out of bed", sleeper.y == Double(ty))
+        clearEditHistory()
+        w.setBlock(mx, ty + 1, mz, 0)
+        sleeper.sleepTicks = 0
+        w.setBlock(mx, ty + 1, mz, Int(cell(B.stone)))   // a crawl space: the head is in its ceiling
+        let around = beginEdit(w, "around")
+        around.set(mx - 3, ty, mz - 3, Int(cell(B.glass))); around.set(mx + 3, ty + 2, mz + 3, Int(cell(B.glass)))
+        around.liftEntities()
+        check("an edit that only spans someone leaves them be", sleeper.y == Double(ty))
+        clearEditHistory()
+        w.setBlock(mx, ty + 1, mz, 0)
+        w.removeEntity(sleeper)
+
+        // a lift or an undo moving a player tells the LAN host (it teleports that guest)
+        var told: [Player] = []
+        let hookWas = w.hooks.onPlayerMovedByTool
+        w.hooks.onPlayerMovedByTool = { told.append($0) }
+        p.setPos(Double(mx) + 0.5, Double(ty), Double(mz) + 0.5)
+        let bury = beginEdit(w, "bury")
+        bury.set(mx, ty + 1, mz, Int(cell(B.stone)))   // through your head
+        bury.liftEntities()
+        let liftedTold = told.count == 1 && told[0] === p && p.y == Double(ty + 2)
+        // a block goes in by hand where you stood; undo puts you back on top of it
+        w.setBlock(mx, ty, mz, Int(cell(B.stone)))
+        _ = undoLastEdit()
+        check("a tool moving a player lets the LAN host know, lifting and putting back", liftedTold && told.count >= 2,
+              "\(told.count) told")
+        check("undo puts you back, on top of a block placed where you stood since", p.y == Double(ty + 1) && entityFits(p),
+              "y \(p.y)")
+        w.setBlock(mx, ty, mz, 0)
+        w.hooks.onPlayerMovedByTool = hookWas
+        clearEditHistory()
+
+        // a buried structure placed near the top of the world (no room for its
+        // entrance flag) neither crashes nor leaves anything above the world
+        let top = w.info.minY + w.info.height - 1
+        let buried = ["stronghold", "dungeon", "ancient_city", "mineshaft"].lazy.compactMap {
+            capturePrefab($0, dim: w.dim.rawValue, minY: w.info.minY, maxY: w.info.minY + w.info.height, biome: 1, variant: 0)
+        }.first { !$0.surface && !$0.blockEntities.isEmpty }
+        if let pf = buried {
+            _ = g.placePrefab(pf, mx + 40, top - 2, mz)
+            var outside = 0
+            for c in w.chunks.values { for be in c.blockEntities.values where be.y > top { outside += 1 } }
+            check("a buried structure placed at the top of the world stays inside it", outside == 0, "\(outside) above")
+            _ = undoLastEdit()
+        } else {
+            check("a buried structure with chests captures", false)
+        }
+        clearEditHistory()
+
+        // /fill refuses what it can't reach, and counts what it changed
+        let fx = mx + 2, fy = sy + 40
+        var refused = 0
+        do { _ = try fillBox(w, fx, top, mz, fx, top + 1, mz, Int(cell(B.stone))) } catch FillError.outsideWorld { refused += 1 } catch {}
+        do { _ = try fillBox(w, 50_000, 70, 50_000, 50_001, 70, 50_001, Int(cell(B.stone))) } catch FillError.unloaded { refused += 1 } catch {}
+        let steps = editCounts().undo
+        let filled = try? fillBox(w, fx, fy, mz, fx + 1, fy, mz + 1, Int(cell(B.glass)))
+        let again = try? fillBox(w, fx, fy, mz, fx + 1, fy + 1, mz + 1, Int(cell(B.glass)))
+        check("/fill refuses outside the world and unloaded land, and counts the blocks it changed",
+              refused == 2 && steps == 0 && filled == 4 && again == 4, "refused \(refused) filled \(String(describing: filled)) again \(String(describing: again))")
+        _ = undoLastEdit(); _ = undoLastEdit()
+        clearEditHistory()
+
         g.exitToTitle()
     } else {
         check("placement world loads", false)
@@ -2735,8 +2825,11 @@ do {
         }
         check("anime animal hitboxes cover their heads and fit one-block gaps", short.isEmpty, "\(short)")
         // falls: the chick flutters down and the neko lands on its feet; the bunny doesn't
+        // onto a stone floor up in clear air, not whatever (water, leaves) lies below
+        let fx = ifloor(p.x) + 6, fz = ifloor(p.z) + 6, floorY = ifloor(p.y) + 30
+        for dz in -2...2 { for dx in -2...2 { w.setBlock(fx + dx, floorY, fz + dz, Int(cell(B.stone))) } }
         func fall(_ id: String) -> (hurt: Bool, ticks: Int) {
-            guard let m = spawnMob(w, id, p.x + 6, p.y + 12, p.z + 6, SpawnOpts()) as? Mob else { return (true, 0) }
+            guard let m = spawnMob(w, id, Double(fx) + 0.5, Double(floorY + 13), Double(fz) + 0.5, SpawnOpts()) as? Mob else { return (true, 0) }
             var t = 0
             while t < 200 && !m.onGround { m.tick(); t += 1 }
             for _ in 0..<2 { m.tick() }
@@ -2854,6 +2947,12 @@ do {
         let changed = g.db.fullChunkWrites - before - idle
         check("saving again with nothing changed rewrites no chunks, and a change is still written",
               idle == 0 && changed == 1, "idle \(idle) changed \(changed)")
+        // opening the world forgets what was written (another build may have
+        // rewritten it since): the next save writes in full again
+        let skipped = g.db.fullChunkWrites
+        g.db.forgetWrites(g.worldRec!.id)
+        g.saveAndFlush(); g.waitForSaves()
+        check("a world's write record is forgotten when asked", g.db.fullChunkWrites - skipped > 10, "\(g.db.fullChunkWrites - skipped)")
         g.exitToTitle()
     } else {
         check("idle-save world loads", false)
@@ -2882,9 +2981,61 @@ do {
         }
         check("a chunk left and revisited within a second comes back as it was left",
               left && w.getBlock(bx, by, bz) == Int(cell(B.gold_block)), "left \(left) block \(w.getBlock(bx, by, bz) >> 4)")
+        // an edit made straight after, then Save & Quit: the old unload record
+        // mustn't be written over it
+        w.setBlock(bx, by + 1, bz, Int(cell(B.diamond_block)))
+        let id = g.worldRec!.id
+        g.exitToTitle()
+        g.loadWorld(id)
+        n = 0
+        while n < 400 && g.world.getChunk(floorDiv(bx, 16), floorDiv(bz, 16)) == nil {
+            _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1
+        }
+        check("an edit right after a quick revisit survives Save & Quit",
+              g.world.getBlock(bx, by + 1, bz) == Int(cell(B.diamond_block)) && g.world.getBlock(bx, by, bz) == Int(cell(B.gold_block)),
+              "\(g.world.getBlock(bx, by + 1, bz) >> 4)")
         g.exitToTitle()
     } else {
         check("revisit world loads", false)
+    }
+
+    // the same, coming back once the unload record is on its way to disk but
+    // not written yet: served from memory, without waiting for the write
+    if let g = settled() {
+        g.settings.renderDistance = 4
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)) + 3, bz = Int(floor(p.z))
+        g.saveAndFlush(); g.waitForSaves()
+        w.setBlock(bx, by, bz, Int(cell(B.emerald_block)))
+        let key = chunkKey(floorDiv(bx, 16), floorDiv(bz, 16))
+        let home = (p.x, p.y, p.z)
+        p.flying = true
+        p.setPos(home.0 + 3000, 200, home.2)
+        var n = 0
+        while n < 200 && w.chunks[key] != nil { _ = g.frame(dtMs: 50); n += 1 }
+        for _ in 0..<25 { _ = g.frame(dtMs: 50) }   // the once-a-second flush hands it to the save queue
+        p.setPos(home.0, home.1, home.2)
+        n = 0
+        while n < 400 && w.chunks[key] == nil {
+            _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1
+        }
+        check("a chunk revisited while its record is being written comes back as it was left",
+              w.getBlock(bx, by, bz) == Int(cell(B.emerald_block)), "\(w.getBlock(bx, by, bz) >> 4)")
+        g.exitToTitle()
+    } else {
+        check("in-flight revisit world loads", false)
+    }
+
+    // a closed world is freed: nothing (undo, jobs, hooks, pins) keeps it alive
+    do {
+        weak var gone: World?
+        if let g = settled() {
+            gone = g.world
+            g.exitToTitle()
+            g.waitForSaves()
+            for _ in 0..<10 { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
+        }
+        check("leaving a world frees it", gone == nil)
     }
 
     // saves: a mob this build doesn't know (from a newer build) is kept, not deleted
@@ -2910,11 +3061,12 @@ do {
         g.loadWorld(id)
         n = 0
         while n < 100 && g.world.getChunk(cx, cz) == nil { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1 }
+        let reloaded = g.world.getChunk(cx, cz) != nil
         g.saveAndFlush(); g.saveAndFlush()
         g.exitToTitle()
         g.waitForSaves()
         let copies = g.db.getChunk(id, dim, cx, cz)?.entities.filter { $0["type"] as? String == "mob_from_the_future" }.count ?? 0
-        check("it stays one mob through more saves and a reopen", copies == 1, "\(copies) copies")
+        check("it stays one mob through more saves and a reopen", reloaded && copies == 1, "\(copies) copies, reloaded \(reloaded)")
     } else {
         check("future-mob world loads", false)
     }
@@ -3099,12 +3251,26 @@ do {
     check("a missing pack is copied in, then left alone", first == .restored && again == .kept && size() == 3000,
           "\(first) \(again)")
     try? Data(repeating: 1, count: 1000).write(to: dest)   // an older build copies its own zip over it
-    check("a pack replaced behind the stamp is copied again", install() == .updated && size() == 3000)
+    check("a pack replaced behind the stamp is copied again", install() == .replaced && size() == 3000)
     try? fm.removeItem(at: dir.appendingPathComponent(".default-pack-size"))   // stamped by 1.6.8–1.6.18
     check("a pack stamped before sizes were kept is stamped, not copied", install() == .stamped && install() == .kept)
     check("a new release is copied once", install("r3") == .updated && install("r3") == .kept)
     let names = (try? fm.contentsOfDirectory(atPath: dir.path)) ?? []
     check("no partial copy is left behind", !names.contains { $0.hasSuffix(".partial") }, "\(names)")
+    let failed = installBundledPack(bundled: dir.appendingPathComponent("missing.zip"), into: dir, file: file, release: "r4")
+    if case .failed = failed {
+        check("a copy that fails leaves the old pack in place", size() == 3000)
+    } else {
+        check("a copy that fails leaves the old pack in place", false, "\(failed)")
+    }
+}
+
+section("the world's edge")
+do {
+    let (nx, nz) = portalArrival(29_000_000, -10, scale: 8)
+    let (ox, oz) = portalArrival(1000, -2000, scale: 0.125)
+    check("a portal out of the Nether far out lands inside the world's edge", nx < WORLD_COORD_LIMIT - 4 && nx > WORLD_COORD_LIMIT - 100 && nz == -80)
+    check("ordinary portal trips just scale", ox == 125 && oz == -250)
 }
 
 section("baby animals grow up")
@@ -3151,6 +3317,15 @@ do {
         }
         check("a reloaded adult zombie never comes back with a baby's speed", wrong == 0, "\(wrong) of 200")
     } else { check("zombie spawns", false) }
+    var kept = 0
+    for baby in [true, false] {
+        for _ in 0..<40 {
+            guard let z = spawnMob(w, "zombie", 0, 80, 0) as? Zombie else { continue }
+            z.baby = baby
+            if let d = z.convertToDrowned(), d.baby == baby, d.growUpAge == 0, d.speed == z.speed { kept += 1 }
+        }
+    }
+    check("a zombie that drowns becomes a drowned of the same age and speed", kept == 80, "\(kept) of 80")
     if let d = spawnMob(w, "drowned", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
         var old = d.save(); old["growUpAge"] = 24000   // saved by 1.6.16 or earlier
         let back = loadEntity(w, old) as? Mob

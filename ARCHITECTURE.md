@@ -20,7 +20,8 @@ This is the technical tour. The one-paragraph version: **PebbleCore** is a headl
 │  UICanvas/UIManager/Screens/Menus/HUD   canvas-2D-style batcher, │
 │                    screen stack, 16 gameplay screens, menus      │
 │  Audio             AVAudioSourceNode synth, recipes, reverb      │
-│  ResourcePacks (built-in Faithful loading)                       │
+│  ResourcePacks     built-in Faithful loading (installed by       │
+│                    the core's PackInstall)                       │
 └────────────────────────────┬─────────────────────────────────────┘
                    GameHost protocol (openScreen, playSound,
                    addParticles, mesh upload, chunk requests…)
@@ -50,7 +51,7 @@ Rules that keep determinism intact are listed in CONTRIBUTING — the short vers
 - **`Chunk`** — 16×384×16 cells, one `UInt16` per cell packed as `(blockId << 4) | meta`. Separate sky/block light arrays, a heightmap, and biome data at 4×4×4 resolution. Dimensions: overworld y −64…320, nether 128, end 256.
 - **`GameWorld`** — chunk map, block get/set with light + remesh propagation, scheduled ticks (binary heap with stable tie-break ordering), random ticks, block entities (insertion-ordered ticking), entity lists, raycasting. Behavior is attached via handler registries (`blockTickHandlers`, `randomTickHandlers`, `neighborHandlers`, `beTickHandlers`, `onPlacedHandlers`) that the Systems modules fill at startup.
 - **`LightEngine`** — incremental flood-fill for sky and block light with cross-chunk seam stitching. Never propagates into missing chunks (frontier rule), heals dropped chunks once a second.
-- **`GameCore`** — the orchestrator. Fixed 20 Hz tick (50 ms), with chunk generation on a concurrent queue (capped in-flight), meshing on its own queue, and saves on a serial queue. Chunks are generated off-main and only published to the world on the main thread (`adoptChunk`), which is the threading contract that keeps the engine lock-free. Autosave every 60 s; unloads batch their writes into one SQLite transaction per second.
+- **`GameCore`** — the orchestrator. Fixed 20 Hz tick (50 ms), with chunk generation on a concurrent queue (capped in-flight), meshing on its own queue, and saves on a serial queue. Chunks are generated off-main and only published to the world on the main thread (`adoptChunk`), which is the threading contract that keeps the engine lock-free. Autosave every 60 s; unloads batch their writes into one SQLite transaction per second. A chunk loaded again before its record reaches disk is served that record from memory (the unload buffer, or a write still on the save queue), never an older one from the database.
 
 ## Worldgen (Gen/)
 
@@ -78,7 +79,9 @@ The host runs the only real simulation; guests run a copy of the world that the 
 
 - **Host (`NetHost`).** Each guest gets a stand-in `Player` in the host world, so mobs target it and pressure plates see it. The guest moves it and owns its health and inventory; anything the host world does to the stand-in (damage, pickups, XP, effects, knockback, teleports) is forwarded to the guest through `NetPlayerLink`. Per tick the host streams lzfse-compressed chunks nearest-first around each guest, sends block changes (a whole chunk is resent after a big edit), tracks entities in range (spawn with their save data, then per-tick pose snapshots), syncs changed block entities, and relays sounds, particles, time, weather and chat. Chunk loading, random ticks, entity simulation and mob spawning cover every player, not just the host.
 - **Guest (`NetClient`).** The guest simulates only its own player; entities are drawn copies that are never ticked. Actions run locally for instant feedback and are also sent to the host, which replays them with the guest's held items (`performUse`, `finishBreaking`, `playerAttack`…) so world effects happen once. Item and XP drops the guest predicts are forwarded instead of duplicated. After each action the host resends the cells around it, which repairs any misprediction.
-- **Edits and undo.** `EditBatch` records an owner (`editOwner`), so each player's undo/redo only touches their own edits.
+- **Edits and undo.** `EditBatch` records an owner (`editOwner`), so each player's undo/redo only touches their own edits. A building tool or undo that moves a player (see below) tells the host through `WorldHooks.onPlayerMovedByTool`, which teleports that guest at once.
+
+**Building tools and undo (Systems/).** Every big edit is an `EditBatch`: `/fill` (`fillBox`), `/place`, paste and cut, the wall and box builders, the destroyers and the mountain. It records each changed cell once (only cells inside the world and in loaded chunks), relights whole chunks at the end when it's large (`bulkLight`), and then `liftEntities` lifts anyone a block of the edit landed inside (players and guests, mobs, vehicles with their riders, by the blocks' real collision shapes) onto the first spot where they fit. Undo restores the cells and puts lifted people back where they stood. x and z stay within `WORLD_COORD_LIMIT` (±30M): commands clamp to it and portals arrive inside it.
 
 The determinism contract isn't needed for this: guests never re-simulate anything, they only show what the host sends.
 
@@ -88,7 +91,7 @@ One SQLite database (WAL, FULLMUTEX, serial save queue): `worlds(id, json, lastP
 
 Every generated chunk is saved in full, blocks included, the first time it's saved (tracked via `savedFullKeys`), so changes to world generation never reach land a player has seen. Records written before 1.5 may be entity-only stubs; those chunks regenerate once (with the world's generator) and are then saved in full. `WorldRecord.genVersion` says which generator builds a world's new chunks: 1 for worlds made before 1.5 (positional feature salts, unpruned trees), 2 since.
 
-Block and item ids follow registration order, which may change between builds. Each world's `palette` row lists the names behind its ids; `SaveDB.migratePalette` rewrites a world saved under a different palette once, on open (chunk cells, item stacks anywhere in the JSON, `blockCell`/`movedCell`), mapping renames through `BLOCK_ALIASES`/`ITEM_ALIASES` and turning removed blocks into air and removed items into empty slots. Failed batches log and re-mark chunks dirty for retry. Corrupt blobs are clamped (out-of-range block ids → air) rather than trusted.
+Block and item ids follow registration order, which may change between builds. Each world's `palette` row lists the names behind its ids; `SaveDB.migratePalette` rewrites a world saved under a different palette once, on open (chunk cells, item stacks anywhere in the JSON, `blockCell`/`movedCell`), mapping renames through `BLOCK_ALIASES`/`ITEM_ALIASES` and turning removed blocks into air and removed items into empty slots. Failed batches log and re-mark chunks dirty for retry. Corrupt blobs are clamped (out-of-range block ids → air) rather than trusted. A record that would be written byte-for-byte as last time is skipped (`SaveDB.writtenHashes`); that memory is dropped whenever a world is opened, since another build may have rewritten it meanwhile.
 
 ## The test harness (pebsmoke)
 
