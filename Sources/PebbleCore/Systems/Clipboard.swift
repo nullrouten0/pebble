@@ -30,7 +30,7 @@ public final class Clipboard {
 }
 
 public enum ClipboardError: Error, CustomStringConvertible {
-    case noSelection, otherDimension, empty, tooBig(Int), unloaded
+    case noSelection, otherDimension, empty, tooBig(Int), unloaded, outsideWorld(Int, Int)
 
     public var description: String {
         switch self {
@@ -39,6 +39,7 @@ public enum ClipboardError: Error, CustomStringConvertible {
         case .empty: return "Your clipboard is empty - //copy something first"
         case .tooBig(let n): return "Too many blocks (\(n); the limit is \(CLIPBOARD_MAX_BLOCKS))"
         case .unloaded: return "Part of that area isn't loaded - move closer and try again"
+        case .outsideWorld(let lo, let hi): return "That's all outside the world (y \(lo) to \(hi))"
         }
     }
 }
@@ -160,6 +161,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
     let x1 = x0 + clip.w - 1, z1 = z0 + clip.l - 1
     guard boxLoaded(world, x0, z0, x1, z1) else { throw ClipboardError.unloaded }
     let minY = world.info.minY, maxY = world.info.minY + world.info.height - 1
+    if y0 > maxY || y0 + clip.h - 1 < minY { throw ClipboardError.outsideWorld(minY, maxY) }
     let batch = beginEdit(world, "paste")
     batch.bulkLight = clip.cells.count > BULK_LIGHT_CELLS
     var changed = 0, outside = 0, i = 0
@@ -190,6 +192,7 @@ public func pasteClipboard(_ p: Player, skipAir: Bool, at: BlockPos? = nil) thro
         }
     }
     batch.finishLight()
+    batch.liftEntities()
     return PasteResult(changed: changed, outside: outside,
                        lo: BlockPos(x0, max(y0, minY), z0), hi: BlockPos(x1, min(y0 + clip.h - 1, maxY), z1))
 }

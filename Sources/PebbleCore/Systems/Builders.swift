@@ -48,6 +48,8 @@ private func remember(_ w: World, _ x0: Int, _ y0: Int, _ z0: Int, _ x1: Int, _ 
     built.append((ObjectIdentifier(w), x0, y0, z0, x1, y1, z1))
     if built.count > 4096 { built.removeFirst(1024) }
 }
+/// leaving a world: its builds are gone, and a new world can reuse its identifier
+func forgetBuilds() { built.removeAll() }
 /// base height for a build: on top of / under what was clicked, or level with
 /// the earlier build whose side was clicked
 private func baseY(_ w: World, _ hit: RaycastHit, _ size: Int) -> Int {
@@ -90,6 +92,7 @@ public func buildWall(_ w: World, _ p: Player, _ hit: RaycastHit) -> Int {
     let x1 = alongX ? s0 + size - 1 : tx, z1 = alongX ? tz : s0 + size - 1
     remember(w, alongX ? s0 : tx, y0, alongX ? tz : s0, x1, y0 + size - 1, z1)
     builderFX(w, alongX ? s0 : tx, y0, alongX ? tz : s0, x1, y0 + size - 1, z1, c)
+    b.liftEntities()
     return b.count
 }
 
@@ -114,5 +117,6 @@ public func buildBox(_ w: World, _ p: Player, _ hit: RaycastHit) -> Int {
     }
     remember(w, x0, y0, z0, x0 + size - 1, y0 + size - 1, z0 + size - 1)
     builderFX(w, x0, y0, z0, x0 + size - 1, y0 + size - 1, z0 + size - 1, c)
+    b.liftEntities()   // its floor goes in at the feet of whoever stands in the cell
     return b.count
 }

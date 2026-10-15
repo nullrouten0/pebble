@@ -351,37 +351,16 @@ let DEFAULT_PACK_FILE = "Faithful 32x - 1.20.1.zip"
 let DEFAULT_PACK_RELEASE = "2026-09"
 
 /// restore the default pack into the packs folder if it went missing, and
-/// replace the copy once when this build bundles a newer release of it
-/// (recorded in a stamp file beside it)
+/// replace the copy when this build bundles a different release of it or it
+/// changed since it was installed (installBundledPack)
 func ensureDefaultPack() {
-    let dest = resourcePacksDir().appendingPathComponent(DEFAULT_PACK_FILE)
-    let stamp = resourcePacksDir().appendingPathComponent(".default-pack-release")
     guard let bundled = gRuntime?.platform.resourcePath(DEFAULT_PACK_FILE) else { return }
-    let fm = FileManager.default
-    let have = (try? String(contentsOf: stamp, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
-    func size(_ path: String) -> Int64? { (try? fm.attributesOfItem(atPath: path)[.size] as? NSNumber)?.int64Value }
-    func markCurrent() { try? DEFAULT_PACK_RELEASE.write(to: stamp, atomically: true, encoding: .utf8) }
-    if fm.fileExists(atPath: dest.path) {
-        if have == DEFAULT_PACK_RELEASE { return }
-        // installed before the stamp existed: already this release if it's the same size
-        if have == nil && size(dest.path) == size(bundled) { markCurrent(); return }
-    }
-    // copy beside it first, then swap in, so a failed copy leaves the old pack in place
-    let tmp = resourcePacksDir().appendingPathComponent(".\(DEFAULT_PACK_FILE).partial")
-    try? fm.removeItem(at: tmp)
-    do {
-        try fm.copyItem(at: URL(fileURLWithPath: bundled), to: tmp)
-        if fm.fileExists(atPath: dest.path) {
-            _ = try fm.replaceItemAt(dest, withItemAt: tmp)
-            print("[packs] default pack updated to the \(DEFAULT_PACK_RELEASE) release")
-        } else {
-            try fm.moveItem(at: tmp, to: dest)
-            print("[packs] default pack restored from app bundle")
-        }
-        markCurrent()
-    } catch {
-        try? fm.removeItem(at: tmp)
-        print("[packs] couldn't install the default pack: \(error.localizedDescription)")
+    switch installBundledPack(bundled: URL(fileURLWithPath: bundled), into: resourcePacksDir(),
+                              file: DEFAULT_PACK_FILE, release: DEFAULT_PACK_RELEASE) {
+    case .kept, .stamped: break
+    case .updated: print("[packs] default pack updated to the \(DEFAULT_PACK_RELEASE) release")
+    case .restored: print("[packs] default pack restored from app bundle")
+    case .failed(let why): print("[packs] couldn't install the default pack: \(why)")
     }
 }
 

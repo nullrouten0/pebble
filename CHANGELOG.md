@@ -3,6 +3,111 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.20 — 2026-10-14 — loose ends
+
+- **`/place` keeps a full 3 blocks clear of you**, as 1.6.12 said; rounding
+  could bring the footprint to about 2.
+- **Undoing `/place` brings back a chest's own contents** when the structure
+  put a chest exactly where yours was.
+- **A paste that would land entirely outside the world is refused** instead
+  of reporting an upside-down box and using up an undo step.
+- **Leaving a world forgets everything the editing tools held on to:** the
+  mining laser's last burst, running carve jobs, and the wall and box
+  builders' memory of recent builds (which a new world could pick up).
+- Big `/fill`s and `/place`s relight each chunk once, like pastes.
+- The selection wand's outline really no longer builds lists every frame
+  (1.6.11 missed a few); `pebble check-pack` cleans up after itself if
+  interrupted and notices at once if the app quits early; the mountain aims
+  with the same maths as everything else; the anime animals' quirks (the
+  tanuki's mask, the chick's flutter, the neko landing on its feet) are named
+  per animal rather than read off body shapes.
+
+## 1.6.19 — 2026-10-14 — pack and portal edges
+
+- **The built-in texture pack notices when it's been swapped.** It was
+  re-copied only when this build's release differed from the one recorded
+  beside it, so if an older build copied its own art over it (opening the
+  same profile), newer builds kept that older art until the next release.
+  The pack's installed size is now recorded too, and a pack that no longer
+  matches is copied again. Builds from 1.6.8 on still read the same record.
+- **Portals stop at the world's edge.** Coming out of the Nether multiplies
+  your position by 8, which from far enough out landed past the ±30 million
+  blocks commands keep to (and past where undo can keep track). You now
+  arrive at the edge instead.
+
+## 1.6.18 — 2026-10-14 — saving skips unchanged land
+
+- **Saving skips land that hasn't changed.** Since 1.6.1, every save
+  (including the one-minute autosave) wrote out every loaded chunk with an
+  animal or a chest in it, whether anything had changed or not: dozens of
+  chunks each time in a lived-in world. A chunk that would be saved exactly
+  as it was last time is now skipped.
+- **Save & Quit saves once.** It saved the world and then saved it again on
+  the way out; quitting the app did the same in a LAN game.
+- Saving also sorts creatures into their chunks once, rather than going
+  through every creature in the world for each chunk.
+
+## 1.6.17 — 2026-10-14 — baby zombies stay put
+
+- **Zombies keep their speed across a save.** Every zombie, husk and drowned
+  re-rolled its 1-in-20 baby chance as it loaded and kept the speed from that
+  roll, so some adults came back running at a baby's speed and saved babies
+  came back at an adult's. Speed now follows whether it's a baby.
+- **A baby zombie that drowns stays a baby.** The baby drowned it turned into
+  grew up 20 minutes later; and an adult zombie could turn into a baby
+  drowned. It's now the same age it was, and baby monsters already saved
+  with a countdown stay babies.
+
+## 1.6.16 — 2026-10-14 — nobody stays stuck in blocks
+
+- **No building tool leaves anyone stuck inside blocks.** The box builder
+  clicked on the ground you stand on put its floor at your feet; a paste, a
+  `/fill`, or an undo that closed a hole you'd walked into could seal you in
+  too. Each of them now lifts anyone left inside blocks onto the first spot
+  where they fit, as `/place` and the mountain did.
+- **Everyone is freed, not just you.** `/place` lifted only the player who
+  ran it: in a LAN game the host or the other guests stayed stuck in its
+  walls. Players, guests, mobs, and boats or minecarts with their riders are
+  all lifted now.
+- **It only lifts people who are really stuck.** Standing on a slab, a path
+  or farmland counted as being inside a block, so someone under a low
+  ceiling could be pushed up through the roof. It now goes by the blocks'
+  real shapes, across a mob's whole width.
+- **A buried structure's entrance can't wall you back in.** `/place` lifted
+  you before it built the ladder shaft and flag, so they could go in around
+  you; it now lifts once everything is built.
+- **Undo puts lifted people back.** Undoing a structure that lifted you onto
+  its roof dropped you from up there (with fall damage); you're now put back
+  where you stood, if you haven't moved since.
+
+## 1.6.15 — 2026-10-14 — quick revisits keep your changes
+
+- **Land you leave and come straight back to keeps your changes.** A chunk
+  you moved away from waited up to a second before it was written to disk,
+  and coming back read only what was on disk: `/tp` away and back quickly
+  and it loaded as it was at the last save (or as brand-new land), and the
+  next save wrote that over your changes. Loading now picks up a chunk's
+  newest record, written yet or not.
+
+## 1.6.14 — 2026-10-14 — placed lurker boxes keep their own items
+
+- **Lurker boxes placed in creative keep their own items.** Creative keeps
+  the box in your hand, and every box placed from it shared the same stacks
+  with it and with each other: take half a stack from one and the others
+  lost it too. Each placed box now gets its own copy.
+
+## 1.6.13 — 2026-10-14 — undo leaves untouched land alone
+
+- **Undo no longer erases land an edit never touched.** An edit that reached
+  land that wasn't loaded yet, or above the top of the world, wrote nothing
+  there but remembered it all as air. Walk over and `/undo` later, and that
+  whole box of ground was dug out; a `/fill` far above the build limit dug
+  out a block somewhere else entirely. Edits now remember only the blocks
+  they really changed.
+- **`/fill` says when it can't reach.** It refuses a box outside the world's
+  height or in land that isn't loaded, instead of reporting blocks it never
+  placed, and its count is the blocks it changed.
+
 ## 1.6.12 — 2026-10-14 — /place lands clear of you
 
 - **`/place` no longer drops a structure on top of you.** It aimed the

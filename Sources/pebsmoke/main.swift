@@ -2567,6 +2567,17 @@ do {
               "\(w.getSkyLight(bx + 1, ry - 1, mid.2))")
         _ = undoLastEdit()
         check("undoing the big paste brings the daylight back", w.getSkyLight(mid.0, mid.1, mid.2) == 15)
+        // a torch under it: the roof stops its light, which still fills the space below
+        w.setBlock(mid.0, ry - 3, mid.2, Int(cell(B.torch, 0)))
+        let below = (w.getBlockLight(mid.0 + 1, ry - 3, mid.2), w.getBlockLight(mid.0, ry - 1, mid.2))
+        let aboveBefore = w.getBlockLight(mid.0, ry + 2, mid.2)
+        _ = try? pasteClipboard(p, skipAir: false, at: BlockPos(bx, ry, bz))
+        check("a big roof pasted over a torch keeps its light below and shuts it out above",
+              below.0 > 0 && w.getBlockLight(mid.0 + 1, ry - 3, mid.2) == below.0 && w.getBlockLight(mid.0, ry - 1, mid.2) == below.1
+              && aboveBefore > 0 && w.getBlockLight(mid.0, ry + 2, mid.2) == 0,
+              "below \(below) above \(aboveBefore) → \(w.getBlockLight(mid.0, ry + 2, mid.2))")
+        _ = undoLastEdit()
+        w.setBlock(mid.0, ry - 3, mid.2, 0)
 
         p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 200, by + 30, bz + 200))
         var tooBig = false
@@ -2584,24 +2595,70 @@ do {
     if let g = settled() {
         // a structure placed right where you stand lifts you out of its walls
         let p = g.player!, w = g.world
-        func stuck() -> Bool {
-            let x = ifloor(p.x), z = ifloor(p.z), y = ifloor(p.y)
-            return blockDefs[w.getBlockId(x, y, z)].solid || blockDefs[w.getBlockId(x, y + 1, z)].solid
-        }
         let px = ifloor(p.x), pz = ifloor(p.z)
         for y in ifloor(p.y)...(ifloor(p.y) + 2) { w.setBlock(px, y, pz, Int(cell(B.stone))) }
         liftOutOfBlocks(p)
-        check("someone inside blocks is lifted to where they fit", !stuck(), "\(p.y)")
+        check("someone inside blocks is lifted to where they fit", entityFits(p), "\(p.y)")
         if let pf = capturePrefab("small_school", dim: w.dim.rawValue, minY: w.info.minY,
                                   maxY: w.info.minY + w.info.height, biome: 1, variant: 0) {
-            // line a solid block of the building up with your feet
+            // line a solid block of the building up with your feet; a second
+            // player (a LAN guest, or the host when a guest places) stands beside you
             let wasY = p.y
+            let guest = Player(world: w)
+            guest.setPos(p.x + 0.3, p.y, p.z + 0.3)
+            w.addEntity(guest)
             let (sx, sy, sz, _) = pf.cells.first { blockDefs[Int($0.3 >> 4)].solid && $0.1 >= PREFAB_GROUND }!
             let tx = ifloor(p.x) - sx + floorDiv(pf.x0 + pf.x1, 2), tz = ifloor(p.z) - sz + floorDiv(pf.z0 + pf.z1, 2)
             _ = g.placePrefab(pf, tx, ifloor(p.y) - sy + PREFAB_GROUND, tz)
-            check("a structure placed on top of you leaves you free", !stuck(), "y \(wasY) → \(p.y)")
+            check("a structure placed on top of you leaves you free", p.y > wasY && entityFits(p), "y \(wasY) → \(p.y)")
+            check("and frees the other players it lands on", guest.y > wasY && entityFits(guest), "y \(wasY) → \(guest.y)")
+            _ = undoLastEdit()
+            check("undoing it puts you back where you stood", abs(p.y - wasY) < 1e-9 && entityFits(p), "y \(p.y)")
+            w.removeEntity(guest)
         } else {
             check("small_school captures", false)
+        }
+
+        // the box builder clicked on the ground you stand on puts its floor at
+        // your feet (mid-cell, clear of the walls it raises around the edge)
+        let mx = floorDiv(px, BUILDER_SIZE) * BUILDER_SIZE + 8, mz = floorDiv(pz, BUILDER_SIZE) * BUILDER_SIZE + 8
+        p.setPos(Double(mx) + 0.5, Double(w.surfaceY(mx, mz)), Double(mz) + 0.5)
+        let feetY = p.y
+        let ground = ifloor(p.y) - 1
+        let hit = RaycastHit(x: mx, y: ground, z: mz, face: 1, cell: w.getBlock(mx, ground, mz), t: 0,
+                             px: Double(mx) + 0.5, py: Double(ground) + 1, pz: Double(mz) + 0.5)
+        buildBox(w, p, hit)
+        check("a box built under your feet leaves you standing on its floor", entityFits(p) && p.y == feetY + 1, "y \(feetY) → \(p.y)")
+        clearEditHistory()
+
+        // standing on a slab, under a slab ceiling, isn't being stuck in blocks
+        let sy = ifloor(p.y) + 20
+        w.setBlock(mx, sy, mz, Int(cell(B.sandstone_slab, 0)))       // bottom half
+        w.setBlock(mx, sy + 2, mz, Int(cell(B.sandstone_slab, 1)))   // top half
+        p.setPos(Double(mx) + 0.5, Double(sy) + 0.5, Double(mz) + 0.5)
+        let onSlab = p.y
+        let edit = beginEdit(w, "beside")
+        edit.set(mx + 1, sy, mz, Int(cell(B.stone)))
+        edit.liftEntities()
+        check("standing on a slab under a slab ceiling isn't lifted", p.y == onSlab && entityFits(p), "y \(onSlab) → \(p.y)")
+        clearEditHistory()
+
+        // a boat and the pig riding it climb out together (the rider follows its boat)
+        let ry = sy + 10
+        if let boat = spawnMob(w, "boat", Double(mx) + 0.5, Double(ry), Double(mz) + 0.5),
+           let pig = spawnMob(w, "pig", Double(mx) + 0.5, Double(ry), Double(mz) + 0.5) {
+            pig.mount(boat)
+            pig.setPos(boat.x, boat.y + boat.height * 0.6, boat.z)
+            let roof = beginEdit(w, "over the boat")
+            for y in ry...(ry + 2) { roof.set(mx, y, mz, Int(cell(B.stone))) }
+            roof.liftEntities()
+            check("a boat and its rider are lifted out together",
+                  boat.y >= Double(ry + 3) && entityFits(boat) && entityFits(pig) && pig.vehicle === boat,
+                  "boat \(boat.y) pig \(pig.y)")
+            clearEditHistory()
+            pig.remove(); boat.remove()
+        } else {
+            check("boat and pig spawn", false)
         }
         g.exitToTitle()
     } else {
@@ -2635,6 +2692,10 @@ do {
         check("anime animal skins fit their texture sheets", uvOK)
         let natural = Set(BIOMES.compactMap { $0 }.flatMap { $0.creatures.map { $0.0 } })
         check("anime animals never spawn naturally", ANIME_ANIMALS.allSatisfy { !natural.contains($0.id) })
+        check("only the tanuki wears the raccoon mask, only the chick flutters, and the neko and chick shrug off falls",
+              ANIME_ANIMALS.filter { $0.raccoonMask }.map { $0.id } == ["leaf_tanuki"]
+              && ANIME_ANIMALS.filter { $0.flutters }.map { $0.id } == ["piyo_chick"]
+              && ANIME_ANIMALS.filter { $0.fallImmune }.map { $0.id } == ["bell_neko", "piyo_chick"])
         if let bunny = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z, SpawnOpts()) as? Mob,
            let mate = spawnMob(w, "mochi_bunny", p.x + 2, p.y, p.z + 1, SpawnOpts()) as? Animal {
             check("an anime animal is tempted by its favourite food", bunny.isFood(ItemStack(iid("carrot"), 1))
@@ -2642,8 +2703,10 @@ do {
             let before = Set(w.entities.map { ObjectIdentifier($0) })
             mate.spawnBaby(mate, bunny)
             let kit = w.entities.first { !before.contains(ObjectIdentifier($0)) && ($0 as? Entity)?.type == "mochi_bunny" } as? Mob
+            let bornBaby = kit?.baby == true && kit?.data.baby == true && (kit?.growUpAge ?? 0) > 0
             kit?.ageUp(24_000)
-            check("two anime animals breed a baby of their kind that grows up", kit != nil && kit?.baby == false && kit?.data.baby == nil)
+            check("two anime animals breed a baby of their kind that grows up",
+                  bornBaby && kit?.baby == false && kit?.data.baby == nil)
         } else {
             check("mochi_bunny spawns", false)
         }
@@ -2771,6 +2834,59 @@ do {
         check("reopen world loads", false)
     }
 
+    // saves: a save with nothing changed since the last one writes no chunk
+    // again (each one with a mob or a chest used to be rewritten every time),
+    // and the next change is still written
+    if let g = settled() {
+        let w = g.world, p = g.player!
+        _ = spawnMob(w, "pig", p.x + 3, p.y, p.z)
+        let bx = Int(floor(p.x)) - 2, by = Int(floor(p.y)), bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(B.chest) << 4)
+        let be = BlockEntityData(type: "chest", x: bx, y: by, z: bz)
+        be.items = [ItemStack?](repeating: nil, count: 27)
+        w.setBlockEntity(be)
+        g.saveAndFlush(); g.waitForSaves()
+        let before = g.db.fullChunkWrites
+        g.saveAndFlush(); g.waitForSaves()
+        let idle = g.db.fullChunkWrites - before
+        be.items![0] = ItemStack(iid("diamond"), 5)
+        g.saveAndFlush(); g.waitForSaves()
+        let changed = g.db.fullChunkWrites - before - idle
+        check("saving again with nothing changed rewrites no chunks, and a change is still written",
+              idle == 0 && changed == 1, "idle \(idle) changed \(changed)")
+        g.exitToTitle()
+    } else {
+        check("idle-save world loads", false)
+    }
+
+    // saves: a chunk left and revisited within a second, before its unload
+    // record is written, comes back as it was left, not as it was last saved
+    if let g = settled() {
+        g.settings.renderDistance = 4
+        let w = g.world, p = g.player!
+        let bx = Int(floor(p.x)) + 2, by = Int(floor(p.y)) + 3, bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(cell(B.glass)))
+        g.saveAndFlush(); g.waitForSaves()
+        w.setBlock(bx, by, bz, Int(cell(B.gold_block)))
+        let key = chunkKey(floorDiv(bx, 16), floorDiv(bz, 16))
+        let home = (p.x, p.y, p.z)
+        p.flying = true
+        p.setPos(home.0 + 3000, 200, home.2)
+        var n = 0
+        while n < 200 && w.chunks[key] != nil { _ = g.frame(dtMs: 50); n += 1 }
+        let left = w.chunks[key] == nil
+        p.setPos(home.0, home.1, home.2)
+        n = 0
+        while n < 400 && w.chunks[key] == nil {
+            _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1
+        }
+        check("a chunk left and revisited within a second comes back as it was left",
+              left && w.getBlock(bx, by, bz) == Int(cell(B.gold_block)), "left \(left) block \(w.getBlock(bx, by, bz) >> 4)")
+        g.exitToTitle()
+    } else {
+        check("revisit world loads", false)
+    }
+
     // saves: a mob this build doesn't know (from a newer build) is kept, not deleted
     if let g = settled() {
         let p = g.player!, id = g.worldRec!.id
@@ -2790,6 +2906,15 @@ do {
         g.waitForSaves()
         let kept = g.db.getChunk(id, dim, cx, cz)?.entities.contains { $0["type"] as? String == "mob_from_the_future" } ?? false
         check("a mob this build doesn't know survives opening and saving the world", loaded && kept, "loaded \(loaded)")
+        // and stays one mob through more saves and another reopen
+        g.loadWorld(id)
+        n = 0
+        while n < 100 && g.world.getChunk(cx, cz) == nil { _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.002)); n += 1 }
+        g.saveAndFlush(); g.saveAndFlush()
+        g.exitToTitle()
+        g.waitForSaves()
+        let copies = g.db.getChunk(id, dim, cx, cz)?.entities.filter { $0["type"] as? String == "mob_from_the_future" }.count ?? 0
+        check("it stays one mob through more saves and a reopen", copies == 1, "\(copies) copies")
     } else {
         check("future-mob world loads", false)
     }
@@ -2801,17 +2926,19 @@ do {
     // stays at least 3 blocks away (it used to cover you looking diagonally)
     let w = World(dim: .overworld, seed: 1)
     let p = Player(world: w)
-    p.setPos(0.5, 80, 0.5)
     var covered: [String] = []
-    for (wid, len) in [(107, 107), (31, 80), (9, 9)] {
-        for deg in stride(from: 0, to: 360, by: 5) {
-            p.yaw = Double(deg) * .pi / 180
-            let (tx, tz) = placementAhead(p, width: wid, length: len)
-            // the footprint placePrefab makes around (tx, tz)
-            let x0 = tx - (wid - 1) / 2, z0 = tz - (len - 1) / 2
-            let gapX = max(Double(x0) - p.x, p.x - Double(x0 + wid))
-            let gapZ = max(Double(z0) - p.z, p.z - Double(z0 + len))
-            if max(gapX, gapZ) < 2 { covered.append("\(wid)x\(len)@\(deg)") }
+    for (px, pz) in [(0.5, 0.5), (0.05, 0.95), (0.95, 0.3)] {
+        p.setPos(px, 80, pz)
+        for (wid, len) in [(107, 107), (31, 80), (9, 9), (10, 4)] {
+            for deg in 0..<360 {
+                p.yaw = Double(deg) * .pi / 180
+                let (tx, tz) = placementAhead(p, width: wid, length: len)
+                // the footprint placePrefab makes around (tx, tz)
+                let x0 = tx - (wid - 1) / 2, z0 = tz - (len - 1) / 2
+                let gapX = max(Double(x0) - p.x, p.x - Double(x0 + wid))
+                let gapZ = max(Double(z0) - p.z, p.z - Double(z0 + len))
+                if max(gapX, gapZ) < 3 { covered.append("\(wid)x\(len)@\(deg) from \(px),\(pz)") }
+            }
         }
     }
     check("/place puts its footprint clear of you at every heading", covered.isEmpty, "\(covered.prefix(6))")
@@ -2874,12 +3001,18 @@ do {
 
     // pastes partly outside the world, into unloaded land, across dimensions
     let top = w.info.minY + w.info.height - 1
+    w.setBlock(1, 65, 1, glass)   // lands on the top layer
     p.selection = Selection(dim: w.dim, a: BlockPos(1, 64, 1), b: BlockPos(2, 67, 2))
     _ = try? copySelection(p, cut: false)
     let r = try? pasteClipboard(p, skipAir: false, at: BlockPos(1, top - 1, 1))
     check("a paste through the build limit reports what was left out, inside the world",
-          r?.outside == 8 && r?.hi.y == top && w.getBlock(1, top, 1) == 0, "\(String(describing: r))")
+          r?.outside == 8 && r?.hi.y == top && w.getBlock(1, top, 1) == glass && w.getBlock(1, top - 1, 1) == 0,
+          "\(String(describing: r))")
+    w.setBlock(1, 65, 1, 0)
     let before = editCounts().undo
+    var allOutside = false
+    do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(1, top + 5, 1)) } catch ClipboardError.outsideWorld { allOutside = true } catch {}
+    check("a paste wholly outside the world is refused and adds no undo step", allOutside && editCounts().undo == before)
     var unloaded = false
     do { _ = try pasteClipboard(p, skipAir: false, at: BlockPos(100, 64, 100)) } catch ClipboardError.unloaded { unloaded = true } catch {}
     check("a paste into unloaded land is refused and adds no undo step", unloaded && editCounts().undo == before)
@@ -2887,6 +3020,26 @@ do {
     var otherDim = false
     do { _ = try copySelection(p, cut: false) } catch ClipboardError.otherDimension { otherDim = true } catch {}
     check("a selection in another dimension can't be copied", otherDim)
+    clearEditHistory()
+
+    // the world's lowest and highest layers undo like any other
+    let bottom = w.info.minY
+    let was = (w.getBlock(2, bottom, 2), w.getBlock(2, top, 2))
+    let edge = beginEdit(w, "edges")
+    let both = edge.set(2, bottom, 2, glass) && edge.set(2, top, 2, glass)
+    _ = undoLastEdit()
+    check("edits at the bottom and top of the world undo", both && w.getBlock(2, bottom, 2) == was.0 && w.getBlock(2, top, 2) == was.1)
+    clearEditHistory()
+
+    // cells an edit can't reach are left alone, not remembered as air for undo
+    // to dig out later (y 2024 used to wrap around to y -24)
+    let stoneCell = w.getBlock(1, -24, 0)
+    let far = beginEdit(w, "unreachable")
+    let touchedNone = !far.set(100, 63, 100, glass) && !far.set(1, top + 1, 1, glass) && !far.set(0, 2024, 0, glass)
+    flat(6, 6)
+    _ = undoLastEdit()
+    check("an edit in unloaded land or outside the world records nothing, and its undo digs nothing",
+          touchedNone && far.count == 0 && w.getBlock(100, 63, 100) == stoneCell && w.getBlock(1, -24, 0) == stoneCell)
     clearEditHistory()
 }
 
@@ -2898,6 +3051,60 @@ do {
     dup.data.contents?[0]?.count = 1
     check("a copied lurker box has its own contents (a pasted chest can't share them)",
           box.data.contents?[0]?.count == 5 && dup.data.contents?.count == 2)
+
+    // creative keeps the held box, so two boxes placed from it must not share
+    // its stacks with each other or with the box still in your hand
+    let w = World(dim: .overworld, seed: 1)
+    let c = Chunk(cx: 0, cz: 0, minY: GEN_MIN_Y, height: WORLD_H)
+    var blocks = [UInt16](repeating: 0, count: 16 * 16 * WORLD_H)
+    for i in 0..<(256 * (64 - GEN_MIN_Y)) { blocks[i] = cell(B.stone) }
+    c.blocks = blocks
+    c.skyLight = [UInt8](repeating: 15, count: blocks.count)
+    c.blockLight = [UInt8](repeating: 0, count: blocks.count)
+    c.buildHeightmap(); c.scanSpecials(); c.status = .lit
+    w.setChunk(c)
+    let p = Player(world: w)
+    p.setPos(8.5, 64, 12.5)
+    w.addEntity(p)
+    let held = ItemStack(iid("lurker_box"), 1)
+    held.data.contents = [ItemStack(iid("diamond"), 64), nil]
+    let ctx = InteractCtx(world: w, player: p)
+    func onTop(_ x: Int) -> RaycastHit {
+        RaycastHit(x: x, y: 63, z: 4, face: 1, cell: w.getBlock(x, 63, 4), t: 0, px: Double(x) + 0.5, py: 64, pz: 4.5)
+    }
+    let bid = Int(itemDef(held.id).block!)
+    _ = placeBlock(ctx, onTop(2), bid, held)
+    _ = placeBlock(ctx, onTop(5), bid, held)
+    let first = w.getBlockEntity(2, 64, 4)?.items?[0]
+    first?.count -= 32
+    check("lurker boxes placed from one box keep their own stacks",
+          first?.count == 32 && w.getBlockEntity(5, 64, 4)?.items?[0]?.count == 64 && held.data.contents?[0]?.count == 64)
+}
+
+section("default texture pack install")
+do {
+    let fm = FileManager.default
+    let dir = URL(fileURLWithPath: NSTemporaryDirectory() + "pebsmoke-packs-\(getpid())")
+    try? fm.removeItem(at: dir)
+    try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? fm.removeItem(at: dir) }
+    let bundled = dir.appendingPathComponent("bundle.zip")
+    try? Data(repeating: 7, count: 3000).write(to: bundled)
+    let file = "Pack.zip", dest = dir.appendingPathComponent(file)
+    func install(_ release: String = "r2") -> PackInstall {
+        installBundledPack(bundled: bundled, into: dir, file: file, release: release)
+    }
+    func size() -> Int { ((try? fm.attributesOfItem(atPath: dest.path)[.size]) as? NSNumber)?.intValue ?? -1 }
+    let first = install(), again = install()
+    check("a missing pack is copied in, then left alone", first == .restored && again == .kept && size() == 3000,
+          "\(first) \(again)")
+    try? Data(repeating: 1, count: 1000).write(to: dest)   // an older build copies its own zip over it
+    check("a pack replaced behind the stamp is copied again", install() == .updated && size() == 3000)
+    try? fm.removeItem(at: dir.appendingPathComponent(".default-pack-size"))   // stamped by 1.6.8–1.6.18
+    check("a pack stamped before sizes were kept is stamped, not copied", install() == .stamped && install() == .kept)
+    check("a new release is copied once", install("r3") == .updated && install("r3") == .kept)
+    let names = (try? fm.contentsOfDirectory(atPath: dir.path)) ?? []
+    check("no partial copy is left behind", !names.contains { $0.hasSuffix(".partial") }, "\(names)")
 }
 
 section("baby animals grow up")
@@ -2926,12 +3133,29 @@ do {
         check("a baby from an older save grows up again", legacy?.baby == true && (legacy?.growUpAge ?? 0) > 0)
     } else { check("mochi_bunny spawns", false) }
     if let kid = spawnMob(w, "zombie", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
-        kid.growUpAge = 0
+        let startsAt = kid.growUpAge
         kid.ageUp(100_000)
         let back = loadEntity(w, kid.save()) as? Mob
         check("a baby zombie stays a baby, drawn small, across a reload",
-              kid.baby && kid.data.baby == true && back?.baby == true && back?.growUpAge == 0)
+              startsAt == 0 && kid.baby && kid.data.baby == true && back?.baby == true && back?.growUpAge == 0)
+        check("and keeps its baby speed", kid.speed > 0.1 && back?.speed == kid.speed, "\(kid.speed) → \(String(describing: back?.speed))")
     } else { check("zombie spawns", false) }
+    // the spawn roll makes about 1 zombie in 20 a baby, but a loaded zombie
+    // is whatever was saved, speed included
+    if let adult = spawnMob(w, "zombie", 0, 80, 0) as? Mob {
+        adult.baby = false
+        let save = adult.save()
+        var wrong = 0
+        for _ in 0..<200 {
+            if let z = loadEntity(w, save) as? Mob, z.baby || z.speed != adult.speed { wrong += 1 }
+        }
+        check("a reloaded adult zombie never comes back with a baby's speed", wrong == 0, "\(wrong) of 200")
+    } else { check("zombie spawns", false) }
+    if let d = spawnMob(w, "drowned", 0, 80, 0, SpawnOpts(baby: true)) as? Mob {
+        var old = d.save(); old["growUpAge"] = 24000   // saved by 1.6.16 or earlier
+        let back = loadEntity(w, old) as? Mob
+        check("a baby zombie that drowned stays a baby", d.growUpAge == 0 && back?.growUpAge == 0)
+    } else { check("drowned spawns", false) }
 }
 
 section("world spawn on dry land")

@@ -15,37 +15,58 @@ public let PREFAB_GROUND = 64
 /// of the footprint reaches back over them)
 public func placementAhead(_ p: Entity, width: Int, length: Int, margin: Double = 3) -> (Int, Int) {
     let fx = -detSin(p.yaw), fz = detCos(p.yaw)
-    let hx = Double(width) / 2 + margin, hz = Double(length) / 2 + margin
+    // one more block: rounding to a block, and centring an even size, each
+    // give back up to half of one
+    let hx = Double(width) / 2 + margin + 1, hz = Double(length) / 2 + margin + 1
     let rx = abs(fx) > 1e-9 ? hx / abs(fx) : .infinity
     let rz = abs(fz) > 1e-9 ? hz / abs(fz) : .infinity
     let reach = min(rx, rz)
     return (ifloor(p.x + fx * reach), ifloor(p.z + fz * reach))
 }
 
-/// an entity left inside solid blocks (a structure placed over it) moves up
-/// to the first spot where it fits, instead of staying stuck in the walls
-public func liftOutOfBlocks(_ e: Entity) {
-    let w = e.world
-    let hw = e.width / 2 - 0.001
-    func fits(_ y: Double) -> Bool {
-        for cx in [e.x - hw, e.x + hw] {
-            for cz in [e.z - hw, e.z + hw] {
-                var by = ifloor(y)
-                while Double(by) < y + e.height {
-                    if blockDefs[w.getBlockId(ifloor(cx), by, ifloor(cz))].solid { return false }
-                    by += 1
-                }
-            }
+/// the lowest height (≥ y) the first collision shape in the way would lift
+/// `e` and its riders to, or nil when they all fit at y. Shapes are the real
+/// collision boxes, so standing on a slab, a path or farmland isn't "inside"
+private func blockedUntil(_ e: Entity, _ y: Double) -> Double? {
+    var need: Double? = nil
+    func probe(_ who: Entity, _ off: Double) {
+        let hw = who.width / 2, eps = 1e-6
+        let box = AABB(who.x - hw + eps, y + off + eps, who.z - hw + eps,
+                       who.x + hw - eps, y + off + who.height - eps, who.z + hw - eps)
+        who.world.forEachCollisionBox(box) { b in
+            if b.intersects(box) { need = max(need ?? -.infinity, b.y1 - off) }
         }
-        return true
     }
-    if fits(e.y) { return }
-    let top = Double(w.info.minY + w.info.height)
-    var y = Double(ifloor(e.y)) + 1
-    while y < top && !fits(y) { y += 1 }
+    probe(e, 0)
+    for r in e.passengers { probe(r, riderOffset(e)) }
+    return need
+}
+
+/// where a rider sits on its vehicle (GameCore's player tick uses the same)
+@inline(__always) func riderOffset(_ v: Entity) -> Double { v.height * 0.6 }
+
+/// whether `e` is clear of every block's collision shape where it stands
+public func entityFits(_ e: Entity) -> Bool { blockedUntil(e, e.y) == nil }
+
+/// an entity left inside blocks (a structure placed over it, a box built at
+/// its feet, an undo closing a hole it stood in) climbs onto the first spot
+/// above where it fits, carrying its riders. Returns whether it moved
+@discardableResult
+public func liftOutOfBlocks(_ e: Entity) -> Bool {
+    let top = Double(e.world.info.minY + e.world.info.height)
+    var y = e.y, steps = 0
+    while y < top, steps < 4096, let need = blockedUntil(e, y) { y = need; steps += 1 }
+    if y == e.y { return false }
+    y = min(y, top)
     e.setPos(e.x, y, e.z)
     e.vy = 0
     e.fallDistance = 0
+    for r in e.passengers {
+        r.setPos(r.x, y + riderOffset(e), r.z)
+        r.vy = 0
+        r.fallDistance = 0
+    }
+    return true
 }
 
 /// ChunkSink over an unbounded sparse volume: stone below `ground`, air above,

@@ -42,7 +42,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
     /// "1e300" would otherwise trap in Int() here or ifloor() on the next tick
     func parseCoord(_ s: String, _ base: Double) -> Double {
         let v = s.hasPrefix("~") ? base + (s.count > 1 ? Double(s.dropFirst()) ?? 0 : 0) : Double(s) ?? 0
-        return v.isFinite ? max(-30_000_000, min(30_000_000, v)) : base
+        return v.isFinite ? max(-WORLD_COORD_LIMIT, min(WORLD_COORD_LIMIT, v)) : base
     }
     func arg(_ i: Int) -> String? { i < args.count ? args[i] : nil }
     /// an integer argument clamped to a range, so later arithmetic can't overflow
@@ -199,16 +199,26 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let (vxz, o1) = (abs(x1 - x0) + 1).multipliedReportingOverflow(by: abs(z1 - z0) + 1)
         let (vol, o2) = vxz.multipliedReportingOverflow(by: abs(y1 - y0) + 1)
         if o1 || o2 || vol > 32768 { return fail("Too many blocks (more than 32768)") }
+        if min(y0, y1) < world.info.minY || max(y0, y1) >= world.info.minY + world.info.height {
+            return fail("Can't fill outside the world (y \(world.info.minY) to \(world.info.minY + world.info.height - 1))")
+        }
+        for cz in floorDiv(min(z0, z1), 16)...floorDiv(max(z0, z1), 16) {
+            for cx in floorDiv(min(x0, x1), 16)...floorDiv(max(x0, x1), 16) where world.getChunk(cx, cz) == nil {
+                return fail("That area isn't loaded")
+            }
+        }
         var n = 0
         let batch = beginEdit(world, "fill")
+        batch.bulkLight = vol > BULK_LIGHT_CELLS
         for y in min(y0, y1)...max(y0, y1) {
             for z in min(z0, z1)...max(z0, z1) {
                 for x in min(x0, x1)...max(x0, x1) {
-                    batch.set(x, y, z, id == 0 ? 0 : Int(cell(id, 0)), SET_DEFAULT)
-                    n += 1
+                    if batch.set(x, y, z, id == 0 ? 0 : Int(cell(id, 0)), SET_DEFAULT) { n += 1 }
                 }
             }
         }
+        batch.finishLight()
+        batch.liftEntities()
         ok("Filled \(n) blocks")
     case "/pos1", "/pos2":
         // at your feet, or at typed coordinates
@@ -343,8 +353,8 @@ func runCommand(_ game: GameCore, _ raw: String) {
             } else {
                 // far enough ahead that you're at its foot, not inside it
                 let reach = MOUNTAIN_RADIUS * 1.25 + 8
-                tx = Int((p.x - sin(p.yaw) * reach).rounded(.down))
-                tz = Int((p.z + cos(p.yaw) * reach).rounded(.down))
+                tx = ifloor(p.x - detSin(p.yaw) * reach)
+                tz = ifloor(p.z + detCos(p.yaw) * reach)
             }
             let plan = game.placeMountain(tx, tz, variant: variant)
             if plan.keys.isEmpty { return fail("No room for a mountain at \(tx) \(tz) - the ground there is already higher") }

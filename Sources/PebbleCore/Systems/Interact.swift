@@ -1158,7 +1158,8 @@ private func attachPlacementBE(_ world: World, _ blockId: Int, _ x: Int, _ y: In
         world.setBlockEntity(makeContainerBE(x, y, z, 9))
     } else if blockDefs[blockId].name.hasSuffix("lurker_box") || blockId == Int(B.lurker_box) {
         let be = makeContainerBE(x, y, z, 27)
-        if let contents = held.data.contents { be.items = contents }
+        // its own copy: creative keeps the held box, and slots change stacks in place
+        if let contents = held.data.contents { be.items = contents.map(copyStack) }
         world.setBlockEntity(be)
     } else if shapeOf(blockId) == .sign || shapeOf(blockId) == .wallSign || shapeOf(blockId) == .hangingSign {
         world.setBlockEntity(makeSignBE(x, y, z))

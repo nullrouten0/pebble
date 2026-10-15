@@ -34,7 +34,7 @@ public struct DimState: Codable {
 /// overlay and save records all read this (Info.plist is bumped separately
 /// at packaging time). major.minor.revision: a new minor adds features, a
 /// new revision is a small feature or a fix.
-public let PEBBLE_VERSION = "1.6.12"
+public let PEBBLE_VERSION = "1.6.20"
 
 /// the commit this build came from: 8 hex digits, "+" when built with
 /// uncommitted changes. Stamped into the app's Info.plist at build time
@@ -136,6 +136,13 @@ public final class SaveDB {
     public private(set) var chunkBytesWritten = 0
     public private(set) var fullChunkWrites = 0
     public private(set) var stubChunkWrites = 0
+    /// records skipped because they matched what was last written
+    public private(set) var unchangedChunkSkips = 0
+    /// a hash of each chunk's record as last written (uncompressed), so saving
+    /// the same record again skips compressing and writing it: every save
+    /// offers each loaded chunk with mobs or block entities, changed or not
+    private var writtenHashes: [String: Int] = [:]
+    private let hashLock = NSLock()   // putChunks runs on the save queue, deleteWorld on main
     /// write chunks as zlib-compressed VCK2 (~50× smaller full records).
     /// Every build since 1.3 reads both formats (iOS wrote VCK2 from the
     /// start; the Mac since 1.4.1). Builds before 1.3 can't read VCK2: they'd
@@ -244,6 +251,7 @@ public final class SaveDB {
         // LAN guests' players are stored as "<world id>#guest:<name>"
         run("DELETE FROM player WHERE world LIKE ?", bind: { self.bindText($0, 1, id + "#guest:%") })
         exec("COMMIT")
+        hashLock.withLock { writtenHashes = writtenHashes.filter { !$0.key.hasPrefix(id + ":") } }
     }
 
     // ---- chunks ---------------------------------------------------------------
@@ -299,8 +307,15 @@ public final class SaveDB {
         guard !records.isEmpty else { return true }
         guard exec("BEGIN") else { return false }
         var ok = true
+        var hashes: [String: Int] = [:]
         for r in records {
-            guard let data = encodeChunk(r, compress: compressChunks) else { ok = false; continue }
+            guard let plain = encodeChunk(r) else { ok = false; continue }
+            var hasher = Hasher()
+            plain.withUnsafeBytes { hasher.combine(bytes: $0) }   // Data's own hash reads only 80 bytes
+            let h = hasher.finalize()
+            if hashLock.withLock({ writtenHashes[r.key] }) == h { unchangedChunkSkips += 1; continue }
+            hashes[r.key] = h
+            let data = compressChunks ? compressChunk(plain) : plain
             chunkBytesWritten += data.count
             if r.blocks != nil { fullChunkWrites += 1 } else { stubChunkWrites += 1 }
             let wrote = run("INSERT OR REPLACE INTO chunks(world, dim, cx, cz, data) VALUES(?,?,?,?,?)", bind: { stmt in
@@ -319,6 +334,7 @@ public final class SaveDB {
         } else {
             exec("ROLLBACK")
         }
+        if ok { hashLock.withLock { writtenHashes.merge(hashes) { $1 } } }
         return ok
     }
 
@@ -326,7 +342,10 @@ public final class SaveDB {
     // compressed:       "VCK2" | u32 bodyLen | zlib(the VCK1 container after its magic)
     func encodeChunk(_ r: ChunkRecord, compress: Bool) -> Data? {
         guard let plain = encodeChunk(r) else { return nil }
-        guard compress else { return plain }
+        return compress ? compressChunk(plain) : plain
+    }
+
+    private func compressChunk(_ plain: Data) -> Data {
         let body = plain.dropFirst(4)
         let cap = body.count + 4096
         let dst = UnsafeMutablePointer<UInt8>.allocate(capacity: cap)
@@ -367,7 +386,8 @@ public final class SaveDB {
            let obj = try? JSONSerialization.jsonObject(with: enc) {
             tail["blockEntities"] = obj
         }
-        guard let json = try? JSONSerialization.data(withJSONObject: tail) else { return nil }
+        // sorted keys: the same record always encodes to the same bytes (putChunks)
+        guard let json = try? JSONSerialization.data(withJSONObject: tail, options: .sortedKeys) else { return nil }
         putU32(json.count)
         data.append(json)
         return data

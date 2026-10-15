@@ -34,15 +34,20 @@ open class Monster: Mob {
 open class Zombie: Monster {
     open override var type: String { "zombie" }
     public var conversionTime = -1
+    /// babies run half as fast again; kept in step with `baby` however it's
+    /// set (spawn roll, load, conversion), not only at the spawn roll
+    static let walkSpeed = 0.095
+    public override var baby: Bool {
+        didSet { speed = Zombie.walkSpeed * (baby ? 1.5 : 1) }
+    }
     public override init(world: World) {
         super.init(world: world)
         width = 0.6; height = 1.95
         maxHealth = 20; health = 20
-        speed = 0.095
+        speed = Zombie.walkSpeed
         attackDamage = 3
         burnsInSun = true
         if gameRng.nextFloat() < 0.05 { baby = true }
-        if baby { speed *= 1.5 }
         addMonsterGoals()
         targetGoals.add(NearestTargetGoal(self, 3, { e in
             e.type == "villager" || e.type == "iron_golem" || e.type == "snow_golem"
@@ -57,6 +62,7 @@ open class Zombie: Monster {
                 conversionTime -= 1
                 if conversionTime <= 0 {
                     let d = spawnMobFn?(world, "drowned", x, y, z, SpawnOpts(baby: baby))
+                    (d as? Mob)?.baby = baby   // not the drowned's own spawn roll
                     if d != nil { remove() }
                 }
             }

@@ -92,7 +92,8 @@ public func spawnMob(_ world: World, _ type: String, _ x: Double, _ y: Double, _
     if let data {
         if data.baby, let mob = e as? Mob {
             mob.baby = true
-            mob.growUpAge = 24000
+            // baby monsters (a baby zombie that drowned) never grow up
+            mob.growUpAge = mob.category == .monster ? 0 : 24000
         }
         if let size = data.size, size != 0, let slime = e as? Slime { slime.setSize(size) }
         if data.persistent { e.persistent = true }

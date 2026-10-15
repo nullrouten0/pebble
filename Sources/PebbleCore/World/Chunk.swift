@@ -5,6 +5,9 @@
 import Foundation
 
 public let CHUNK_W = 16
+/// how far out x and z go: commands clamp to it and portals arrive inside it
+/// (undo's packing, EditBatch.pack, covers a little past it)
+public let WORLD_COORD_LIMIT = 30_000_000.0
 public let SECTION_H = 16
 
 public enum Dim: Int, Codable {

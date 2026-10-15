@@ -148,15 +148,12 @@ public func planMountain(_ w: World, cx: Int, cz: Int, baseY: Int, variant: Int)
 public final class MountainJob: DestroyJob {
     let batch: EditBatch
     let plan: MountainPlan
-    /// whoever might be standing in it (the host's player and LAN guests)
-    let players: () -> [Player]
     var idx = 0
     public var cancelled = false
 
-    init(_ batch: EditBatch, _ plan: MountainPlan, players: @escaping () -> [Player]) {
+    init(_ batch: EditBatch, _ plan: MountainPlan) {
         self.batch = batch
         self.plan = plan
-        self.players = players
     }
 
     public func step(_ budget: Int) -> Int {
@@ -174,35 +171,17 @@ public final class MountainJob: DestroyJob {
             if w.time % 3 == 0 {
                 w.hooks.addParticles("block", Double(x) + 0.5, Double(y) + 1, Double(z) + 0.5, 12, 3, Int(cell(B.stone)))
             }
-            liftPlayers(w)
+            batch.liftEntities()   // anyone the rock rises into climbs out on top
         }
         return end - start
     }
     public var done: Bool { cancelled || idx >= plan.keys.count }
-
-    /// anyone the rock has risen into climbs out on top of it
-    private func liftPlayers(_ w: World) {
-        for e in players() {
-            let bx = ifloor(e.x), bz = ifloor(e.z)
-            if bx < plan.x0 || bx > plan.x1 || bz < plan.z0 || bz > plan.z1 { continue }
-            var y = ifloor(e.y)
-            let start = y
-            while y < plan.peakY + 2, blockDefs[w.getBlockId(bx, y, bz)].solid || blockDefs[w.getBlockId(bx, y + 1, bz)].solid {
-                y += 1
-            }
-            if y != start {
-                e.setPos(e.x, Double(y), e.z)
-                e.vy = 0
-                e.fallDistance = 0
-            }
-        }
-    }
 }
 
 /// queue a planned mountain as one undoable edit
-public func startMountain(_ w: World, _ plan: MountainPlan, players: @escaping () -> [Player]) -> MountainJob {
+public func startMountain(_ w: World, _ plan: MountainPlan) -> MountainJob {
     let b = beginEdit(w, "place mountain")
-    let job = MountainJob(b, plan, players: players)
+    let job = MountainJob(b, plan)
     addJob(job, b)
     return job
 }

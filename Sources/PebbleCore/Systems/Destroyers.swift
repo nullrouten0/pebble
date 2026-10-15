@@ -107,6 +107,12 @@ func addJob(_ j: DestroyJob, _ b: EditBatch) {
     b.jobs.append(j)
 }
 
+/// cancel every running job, including ones whose batch was trimmed off the undo stack
+func stopAllJobs() {
+    for j in carveJobs { j.cancelled = true }
+    carveJobs.removeAll()
+}
+
 /// queue a carving blast and hit entities in range right away
 public func startCarve(_ w: World, _ x: Double, _ y: Double, _ z: Double, _ radius: Double,
                        rough: Double = 0.3, speed: Double = 1.0, source: Entity? = nil) {
@@ -313,6 +319,7 @@ public func startQuarry(_ w: World, _ x: Int, _ y: Int, _ z: Int, _ size: Int) {
 public let LASER_RANGE = 64.0
 /// one undo batch per continuous laser burst
 private var laserBatch = [ObjectIdentifier: (EditBatch, Int)]()
+func forgetLaserBursts() { laserBatch.removeAll() }
 
 /// one tick of beam: erase a round slab (radius 2.5 → 5 wide, or 4.5 → 9 wide)
 /// two blocks deep where the beam lands. Hold it to bore a tunnel.
