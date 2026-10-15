@@ -85,6 +85,42 @@ public func entityTypes() -> [String] { FACTORIES.map { $0.0 } }
 /// anime animals (placed only)
 public func summonableMobs() -> [String] { spawnableMobs() + ANIME_ANIMALS.map { $0.id } }
 
+/// named groups of creatures for /spawn: every anime animal at once, so far
+public let MOB_GROUPS: [(name: String, mobs: () -> [String])] = [
+    ("anime_zoo", { ANIME_ANIMALS.map { $0.id } }),
+]
+public func mobGroup(_ name: String) -> [String]? { MOB_GROUPS.first { $0.name == name }?.mobs() }
+
+/// spawn `mobs` in rows of five, 2 blocks apart, starting 4 blocks ahead of
+/// `p` (centred on their view), each standing on the ground there; returns
+/// what spawned
+@discardableResult
+public func spawnGroup(_ w: World, _ mobs: [String], ahead p: Entity) -> [Entity] {
+    let fx = -detSin(p.yaw), fz = detCos(p.yaw)   // forward; (fz, -fx) is to the side
+    let perRow = 5
+    var out: [Entity] = []
+    for (i, mob) in mobs.enumerated() {
+        let row = i / perRow, inRow = min(perRow, mobs.count - row * perRow)
+        let side = (Double(i % perRow) - Double(inRow - 1) / 2) * 2
+        let ahead = 4 + Double(row) * 2.5
+        let x = p.x + fx * ahead + fz * side, z = p.z + fz * ahead - fx * side
+        let bx = ifloor(x), bz = ifloor(z)
+        // the first floor within a few blocks of the player's height with room above it
+        func clear(_ y: Int) -> Bool { !blockDefs[w.getBlockId(bx, y, bz)].solid && !blockDefs[w.getBlockId(bx, y + 1, bz)].solid }
+        var y = Double(ifloor(p.y))
+        for gy in stride(from: ifloor(p.y) + 4, through: ifloor(p.y) - 12, by: -1)
+        where blockDefs[w.getBlockId(bx, gy - 1, bz)].solid && clear(gy) {
+            y = Double(gy)
+            break
+        }
+        if let e = spawnMob(w, mob, x, y, z, SpawnOpts(persistent: true)) {
+            e.yaw = p.yaw + .pi   // facing you
+            out.append(e)
+        }
+    }
+    return out
+}
+
 @discardableResult
 public func spawnMob(_ world: World, _ type: String, _ x: Double, _ y: Double, _ z: Double, _ data: SpawnOpts? = nil) -> Entity? {
     guard let e = createEntity(type, world) else { return nil }

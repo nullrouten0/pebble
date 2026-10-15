@@ -6,7 +6,7 @@ import PebbleCore
 
 /// commands that change the shared world — a LAN guest asks the host to run them
 let HOST_COMMANDS: Set<String> = [
-    "time", "weather", "summon", "setblock", "fill", "place", "undo", "redo", "/undo", "/redo", "difficulty", "gamerule",
+    "time", "weather", "summon", "spawn", "setblock", "fill", "place", "undo", "redo", "/undo", "/redo", "difficulty", "gamerule",
 ]
 
 /// run a LAN guest's command on the host as that guest's player; returns what it printed
@@ -52,7 +52,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
 
     switch cmd {
     case "help":
-        ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, effect, enchant, xp, setblock, fill, locate, place, undo, redo, chatsize, difficulty, gamerule, clear, spawnpoint, heal")
+        ok("Commands: give, tp, time, weather, gamemode, seed, kill, summon, spawn, effect, enchant, xp, setblock, fill, locate, place, undo, redo, chatsize, difficulty, gamerule, clear, spawnpoint, heal")
         ok("LAN: host [port], join <address[:port]>, leave, list, name <name>")
         ok("Selection: //pos1 [x y z], //pos2 [x y z], //desel (or use the selection_wand)")
         ok("Clipboard: //copy, //cut, //paste [-a to skip air], //undo, //redo")
@@ -146,6 +146,12 @@ func runCommand(_ game: GameCore, _ raw: String) {
         if spawnMob(world, mob, x, y, z, nil) != nil {
             ok("Summoned \(mob)")
         }
+    case "spawn":
+        let names = MOB_GROUPS.map { $0.name }.joined(separator: ", ")
+        guard let name = arg(0), args.count == 1 else { return fail("Usage: /spawn <group>  (groups: \(names))") }
+        guard let mobs = mobGroup(name) else { return fail("Unknown group: \(name). Groups: \(names)") }
+        let n = spawnGroup(world, mobs, ahead: p).count
+        ok("Spawned \(n) creatures (\(name))")
     case "effect":
         if arg(0) == "clear" {
             p.clearEffects()

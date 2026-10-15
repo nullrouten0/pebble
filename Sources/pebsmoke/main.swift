@@ -2750,6 +2750,21 @@ do {
         _ = undoLastEdit(); _ = undoLastEdit()
         clearEditHistory()
 
+        // /spawn anime_zoo: every anime animal, ahead of you, on the ground, apart
+        p.setPos(Double(mx) + 0.5, Double(w.surfaceY(mx, mz)), Double(mz) + 0.5)
+        p.yaw = 0
+        let zoo = spawnGroup(w, mobGroup("anime_zoo") ?? [], ahead: p)
+        let types = Set(zoo.map { $0.type })
+        var crowded = 0, near = 0
+        for (i, a) in zoo.enumerated() {
+            if hypot(a.x - p.x, a.z - p.z) < 3 { near += 1 }
+            for b in zoo[(i + 1)...] where hypot(a.x - b.x, a.z - b.z) < 1.5 { crowded += 1 }
+        }
+        check("/spawn anime_zoo brings every anime animal, ahead of you and apart",
+              zoo.count == ANIME_ANIMALS.count && types == Set(ANIME_ANIMALS.map { $0.id }) && crowded == 0 && near == 0
+              && zoo.allSatisfy { entityFits($0) && $0.persistent },
+              "\(zoo.count) spawned, \(crowded) crowded, \(near) too near")
+        for e in zoo { e.remove() }
         g.exitToTitle()
     } else {
         check("placement world loads", false)

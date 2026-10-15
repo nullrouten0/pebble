@@ -95,7 +95,7 @@ Block and item ids follow registration order, which may change between builds. E
 
 ## The test harness (pebsmoke)
 
-About 880 checks, run with `pebble test`:
+About 890 checks, run with `pebble test`:
 
 random/noise/math → block & item registries → biomes (all 63 defs + 2,000 biome selections) → terrain (full pipeline hashes on 2 seeds) → features (whole-chunk generation across all three dimensions) → atlas (pixel-identical tiles) → mesher (vertex/index hashes) → world sim (light, fluids over hundreds of ticks, RNG lockstep) → items (recipes/enchants/potions/loot rolls) → fdlibm (911 probes) → entities (55-mob zoo × 200 ticks, combat, scripted player physics, trades, pathfinding, spawning) → systems (crafting probes, BE timelines, a full sparkstone contraption, explosion crater, interactions, portals) → a suite that *independently derives* the physics constants instead of trusting goldens → and analog (stick/touch) movement checked against the keyboard path through a live headless `GameCore`.
 

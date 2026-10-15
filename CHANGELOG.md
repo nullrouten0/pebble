@@ -3,6 +3,14 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.22 — 2026-10-15 — /spawn anime_zoo
+
+- **`/spawn anime_zoo` brings all ten anime animals at once**, in rows of
+  five a few blocks ahead of you, each on the ground and facing you. They
+  stay until you remove them, like ones you summon. `/spawn` alone lists the
+  groups; this is the first, and the creative menus to come will use the
+  same groups. A LAN guest's `/spawn` runs on the host, in front of the guest.
+
 ## 1.6.21 — 2026-10-15 — round six fixes
 
 Fixes from a review of 1.6.13–1.6.20, several in those releases' own changes.
