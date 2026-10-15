@@ -437,8 +437,7 @@ final class PauseScreen: Screen {
         }
         buttons.append(Button(cx - 100, y, 200, 20, game.isGuest ? "Disconnect" : "Save & Quit to Title", { [weak game] in
             guard let game else { return }
-            game.saveAndFlush(synchronous: true)
-            game.exitToTitle()
+            game.exitToTitle()   // saves first
         }))
     }
     override func draw(_ ui: UIManager, _ game: GameCore) {

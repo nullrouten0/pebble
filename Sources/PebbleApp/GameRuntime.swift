@@ -330,11 +330,12 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     /// process exit: flush the world, and tell LAN peers we're leaving
     public func willTerminate() {
         if game.hasWorld() {
-            game.saveAndFlush(synchronous: true)
             if game.isNetworked {
-                // tell guests / the host we're gone, and let that reach the wire
+                // save, tell guests / the host we're gone, and let that reach the wire
                 game.exitToTitle()
                 RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            } else {
+                game.saveAndFlush(synchronous: true)
             }
         }
     }

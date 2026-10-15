@@ -2799,6 +2799,31 @@ do {
         check("reopen world loads", false)
     }
 
+    // saves: a save with nothing changed since the last one writes no chunk
+    // again (each one with a mob or a chest used to be rewritten every time),
+    // and the next change is still written
+    if let g = settled() {
+        let w = g.world, p = g.player!
+        _ = spawnMob(w, "pig", p.x + 3, p.y, p.z)
+        let bx = Int(floor(p.x)) - 2, by = Int(floor(p.y)), bz = Int(floor(p.z))
+        w.setBlock(bx, by, bz, Int(B.chest) << 4)
+        let be = BlockEntityData(type: "chest", x: bx, y: by, z: bz)
+        be.items = [ItemStack?](repeating: nil, count: 27)
+        w.setBlockEntity(be)
+        g.saveAndFlush(); g.waitForSaves()
+        let before = g.db.fullChunkWrites
+        g.saveAndFlush(); g.waitForSaves()
+        let idle = g.db.fullChunkWrites - before
+        be.items![0] = ItemStack(iid("diamond"), 5)
+        g.saveAndFlush(); g.waitForSaves()
+        let changed = g.db.fullChunkWrites - before - idle
+        check("saving again with nothing changed rewrites no chunks, and a change is still written",
+              idle == 0 && changed == 1, "idle \(idle) changed \(changed)")
+        g.exitToTitle()
+    } else {
+        check("idle-save world loads", false)
+    }
+
     // saves: a chunk left and revisited within a second, before its unload
     // record is written, comes back as it was left, not as it was last saved
     if let g = settled() {

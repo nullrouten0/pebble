@@ -3,6 +3,18 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.6.18 — 2026-10-14 — saving skips unchanged land
+
+- **Saving skips land that hasn't changed.** Since 1.6.1, every save
+  (including the one-minute autosave) wrote out every loaded chunk with an
+  animal or a chest in it, whether anything had changed or not: dozens of
+  chunks each time in a lived-in world. A chunk that would be saved exactly
+  as it was last time is now skipped.
+- **Save & Quit saves once.** It saved the world and then saved it again on
+  the way out; quitting the app did the same in a LAN game.
+- Saving also sorts creatures into their chunks once, rather than going
+  through every creature in the world for each chunk.
+
 ## 1.6.17 — 2026-10-14 — baby zombies stay put
 
 - **Zombies keep their speed across a save.** Every zombie, husk and drowned

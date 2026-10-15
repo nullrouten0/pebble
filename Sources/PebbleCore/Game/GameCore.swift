@@ -719,13 +719,16 @@ public final class GameCore {
         // same rule as unloading). Saving each generated chunk once means later
         // changes to world generation only reach land nobody has visited
         // (CONTRIBUTING).
+        // Chunks whose record comes out the same as last time are skipped by
+        // the database (SaveDB.writtenHashes).
         var records: [ChunkRecord] = []
         for (d, w) in worlds where !w.isRemote {
-            let occupied = chunksWithLiveEntities(w)
+            let byChunk = entitiesByChunk(w)
             for c in w.chunks.values {
                 let key = db.chunkKey(rec.id, d.rawValue, c.cx, c.cz)
-                if chunkNeedsSave(c, key, hasEntities: occupied.contains(chunkKey(c.cx, c.cz))) {
-                    records.append(chunkRecord(rec.id, d, w, c))
+                let here = byChunk[chunkKey(c.cx, c.cz)] ?? []
+                if chunkNeedsSave(c, key, hasEntities: !here.isEmpty) {
+                    records.append(chunkRecord(rec.id, d, c, here))
                 }
             }
         }
@@ -810,12 +813,11 @@ public final class GameCore {
         worldRec?.gameRules[rule] = value
     }
 
-    private func chunkRecord(_ worldId: String, _ d: Dim, _ w: World, _ c: Chunk) -> ChunkRecord {
-        // persist entities standing in this chunk (skip player + transient)
+    /// `here`: the live entities standing in the chunk (entitiesByChunk)
+    private func chunkRecord(_ worldId: String, _ d: Dim, _ c: Chunk, _ here: [Entity]) -> ChunkRecord {
+        // persist entities standing in this chunk (skip transient drops)
         var ents: [[String: Any]] = []
-        for e in w.entities {
-            guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
-            if floorDiv(ifloor(ent.x), 16) != c.cx || floorDiv(ifloor(ent.z), 16) != c.cz { continue }
+        for ent in here {
             if (ent.type == "item" || ent.type == "xp_orb") && ent.age > 4000 { continue }
             ents.append(ent.save())
         }
@@ -1450,28 +1452,26 @@ public final class GameCore {
     }
 
     /// chunk keys (chunkKey) that saved entities stand in
-    private func chunksWithLiveEntities(_ w: World) -> Set<Int64> {
-        var keys = Set<Int64>()
+    /// the live entities (not players) in each chunk, in world order
+    private func entitiesByChunk(_ w: World) -> [Int64: [Entity]] {
+        var out: [Int64: [Entity]] = [:]
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
-            keys.insert(chunkKey(floorDiv(ifloor(ent.x), 16), floorDiv(ifloor(ent.z), 16)))
+            out[chunkKey(floorDiv(ifloor(ent.x), 16), floorDiv(ifloor(ent.z), 16)), default: []].append(ent)
         }
-        return keys
+        return out
     }
 
     private func unloadChunk(_ w: World, _ c: Chunk) {
-        var hasEntities = false
+        var here: [Entity] = []
         for e in w.entities {
             guard let ent = e as? Entity, !ent.isPlayer, !ent.dead else { continue }
-            if floorDiv(ifloor(ent.x), 16) == c.cx && floorDiv(ifloor(ent.z), 16) == c.cz {
-                hasEntities = true
-                break
-            }
+            if floorDiv(ifloor(ent.x), 16) == c.cx && floorDiv(ifloor(ent.z), 16) == c.cz { here.append(ent) }
         }
         if let rec = worldRec, !w.isRemote {   // a LAN guest's chunks are the host's to keep
             let dbKey = db.chunkKey(rec.id, w.dim.rawValue, c.cx, c.cz)
-            if chunkNeedsSave(c, dbKey, hasEntities: hasEntities) {
-                let record = chunkRecord(rec.id, w.dim, w, c)
+            if chunkNeedsSave(c, dbKey, hasEntities: !here.isEmpty) {
+                let record = chunkRecord(rec.id, w.dim, c, here)
                 savedChunkKeys.insert(record.key)
                 pendingChunkSaves[record.key] = record
             }
