@@ -354,6 +354,104 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         fill(4, 3, 11, 10, bodyDk); fill(5, 4, 10, 9, body)
         fill(6, 5, 9, 8, lens); fill(7, 5, 8, 6, glow)
         return true
+    // the building and demolition tools (1.1.0, 1.2.0)
+    case "bazooka":
+        // an olive launch tube on the diagonal, a red warhead in its muzzle
+        let (ax, ay, bx, by) = (2.0, 14.0, 12.0, 4.0)
+        let len = hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len
+        for y in 0..<16 {
+            for x in 0..<16 {
+                let dx = Double(x) + 0.5 - ax, dy = Double(y) + 0.5 - ay
+                let t = (dx * ux + dy * uy) / len, side = dy * ux - dx * uy   // side < 0: upper left
+                if t >= 0 && t <= 1 && abs(side) <= 1.9 {
+                    let band = t < 0.1 || (t > 0.86 && t < 0.97)
+                    px(x, y, band ? 0x2a2a2e : side < -0.7 ? 0xa4b270 : side > 0.8 ? 0x3e4826 : 0x6b7a42)
+                } else if t > 1 && t < 1.4 && abs(side) <= 1.9 * (1.4 - t) / 0.4 {
+                    px(x, y, side < -0.3 ? 0xff8a6a : side > 0.4 ? 0x8a1e16 : 0xd83a2a)
+                }
+            }
+        }
+        px(8, 6, 0x2a2a2e); px(7, 5, 0x2a2a2e)                 // sight
+        fill(8, 10, 8, 12, 0x4a3424); fill(9, 10, 9, 11, 0x2a1e14)   // grip, trigger
+        return true
+    case "mining_laser":
+        // a ray gun facing right, its emitter and cell glowing, a short beam
+        let body = 0x8a8f99, bodyHi = 0xc4cad4, bodyDk = 0x50545e, rear = 0x464a56, glow = 0xff4a32, hot = 0xffd0b0
+        fill(2, 5, 6, 10, rear); fill(3, 5, 6, 5, 0x6a6e7a)
+        fill(5, 6, 11, 8, body); fill(5, 6, 11, 6, bodyHi); fill(5, 8, 11, 8, bodyDk)
+        fill(12, 5, 12, 9, bodyDk); fill(13, 6, 13, 8, glow); px(13, 7, hot)
+        px(14, 7, glow); px(15, 7, 0xff8a6a)
+        fill(8, 9, 9, 9, glow); px(8, 9, hot)              // power cell
+        fill(3, 11, 4, 14, 0x3a3030); fill(4, 11, 5, 12, 0x3a3030)   // grip
+        return true
+    case "void_bomb":
+        // a dark orb with a violet rim and a fuse cap sparking on top
+        for y in 0..<16 {
+            for x in 0..<16 {
+                let d = hypot(Double(x) - 7.5, Double(y) - 9)
+                guard d <= 5.9 else { continue }
+                px(x, y, d > 4.7 ? 0xa04ae8 : d > 2 && d < 3 && x < 8 ? 0x4a1c80 : 0x1c1030)
+            }
+        }
+        px(5, 7, 0xe0b8ff); px(6, 7, 0xb880f0); px(5, 8, 0xb880f0)   // shine
+        fill(6, 2, 9, 3, 0x5a5a64); fill(6, 2, 9, 2, 0x9a9aa4)       // fuse cap
+        px(10, 1, 0xffe070); px(11, 0, 0xfff8c0); px(11, 1, 0xff9a30)
+        return true
+    case "quarry_charge":
+        // a red charge with a pale band, over a threaded drill bit
+        fill(3, 1, 12, 7, 0xb8322a); fill(3, 1, 12, 1, 0xe05a48); fill(3, 7, 12, 7, 0x7a1e1a)
+        fill(3, 4, 12, 4, 0xe8e0c8); px(5, 4, 0x3a2a2a); px(7, 4, 0x3a2a2a); px(8, 4, 0x3a2a2a); px(10, 4, 0x3a2a2a)
+        for y in 8...15 {
+            let half = max(0, 3 - (y - 8) / 2)
+            guard y < 15 || half == 0 else { continue }
+            for x in (7 - half)...(8 + half) where y < 15 || x == 7 {
+                px(x, y, (x + y) % 3 == 0 ? 0x5e626c : 0xb8bcc6)
+            }
+        }
+        return true
+    case "wall_builder":
+        // a brick wall with a gold arrow rising from it
+        let mortar = 0xc8beb0, brick = 0xa8503a, brickDk = 0x86382a
+        fill(1, 7, 14, 15, mortar)
+        for (r, y) in [7, 10, 13].enumerated() {
+            for x in 1...14 where (x + (r % 2 == 0 ? 0 : 2)) % 4 != 0 {
+                px(x, y, brick); px(x, y + 1, brickDk)
+            }
+        }
+        let gold = 0xf0c040, goldDk = 0xb08420
+        for r in 0...3 { fill(7 - r, r, 8 + r, r, r == 0 ? 0xfff0a0 : gold) }
+        fill(6, 4, 9, 6, gold); fill(8, 4, 9, 6, goldDk)
+        return true
+    case "box_builder":
+        // an open-topped stone box: two outer walls, the hollow inside
+        for y in 0..<16 {
+            for x in 0..<16 {
+                let xc = Double(x) + 0.5, yc = Double(y) + 0.5
+                let top = abs(xc - 8) / 7 + abs(yc - 4.5) / 3.5
+                if top <= 1 {
+                    px(x, y, top > 0.7 ? 0xc8c8cc : yc < 4.5 ? 0x5a5a62 : 0x34343a)
+                } else if xc >= 1, xc < 8, yc >= 4.5 + (xc - 1) * 0.5, yc < 11.5 + (xc - 1) * 0.5 {
+                    px(x, y, abs(yc - (8 + (xc - 1) * 0.5)) < 0.5 ? 0x6a6a70 : 0x96969c)
+                } else if xc >= 8, xc < 15, yc >= 8 - (xc - 8) * 0.5, yc < 15 - (xc - 8) * 0.5 {
+                    px(x, y, abs(yc - (11.5 - (xc - 8) * 0.5)) < 0.5 ? 0x4a4a50 : 0x74747a)
+                }
+            }
+        }
+        return true
+    case "infinity_wipe":
+        // a glowing infinity sign (a lemniscate) in an ember halo
+        let a2 = 6.4 * 6.4
+        for y in 0..<16 {
+            for x in 0..<16 {
+                let X = Double(x) + 0.5 - 8, Y = (Double(y) + 0.5 - 8) / 1.7
+                let r2 = X * X + Y * Y, f = r2 * r2 - a2 * (X * X - Y * Y)
+                let gx = 4 * X * r2 - 2 * a2 * X, gy = (4 * Y * r2 + 2 * a2 * Y) / 1.7
+                let g = hypot(gx, gy), d = g < 1e-6 ? 0 : abs(f) / g
+                if d < 0.75 { px(x, y, X < 0 ? 0xfff2c0 : 0xffe48a) }
+                else if d < 1.35 { px(x, y, 0xd8502a) }
+            }
+        }
+        return true
     case "selection_wand":
         // a dark rod with a glowing gold tip, the same diagonal as a stick
         let rod = 0x2e2a36, rodHi = 0x4a4458, tip = 0xf0c040, glow = 0xfff4c0

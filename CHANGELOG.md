@@ -3,6 +3,21 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.7.1 — 2026-10-15 — tool icons
+
+- **The seven building and demolition tools have real icons** in place of
+  the coloured blobs they've shown since 1.1.0. They appear in the
+  inventory, the hotbar, your hand and the Tools menu:
+  - **Bazooka:** an olive launch tube with a red warhead.
+  - **Mining laser:** a ray gun with a red-hot emitter.
+  - **Void bomb:** a dark orb with a violet rim and a sparking fuse.
+  - **Quarry charge:** a red charge over a drill bit.
+  - **Wall builder:** a brick wall with a gold arrow rising from it.
+  - **Box builder:** an open-topped stone box.
+  - **Infinity Wipe:** a glowing infinity sign.
+- **A thrown void bomb now looks like the void bomb** in flight, not a
+  heart of the sea.
+
 ## 1.7.0 — 2026-10-15 — Creative Tools menu
 
 ### Creative Tools menu
