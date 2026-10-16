@@ -25,6 +25,7 @@ final class HostBridge: GameHost {
         switch kind {
         case "crafting": ui.open(CraftingScreen(), game)
         case "inventory": ui.open(InventoryScreen(), game)
+        case "tools": ui.open(ToolsScreen(), game)
         case "creative":
             // back to the tab you left: the item picker, or the inventory
             ui.open(CreativeScreen.lastTab == CREATIVE_INVENTORY_TAB ? InventoryScreen(creativeTabs: true) : CreativeScreen(), game)
@@ -705,6 +706,16 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                             if c.hasPrefix("#tdown") { touch.began(id: id, x: x, y: y) }
                             else if c.hasPrefix("#tmove") { touch.moved(id: id, x: x, y: y) }
                             else { touch.ended(id: id, x: x, y: y) }
+                        }
+                        continue
+                    }
+                    // "#click X Y" clicks the open screen at UI units X Y
+                    if c.hasPrefix("#click ") {
+                        let a = c.split(separator: " ").compactMap { Double($0) }
+                        if a.count == 2, let scr = ui.current() {
+                            ui.mouseX = a[0]; ui.mouseY = a[1]
+                            _ = scr.onMouseDown(ui, game, a[0], a[1], 0)
+                            scr.onMouseUp(ui, game, a[0], a[1])
                         }
                         continue
                     }

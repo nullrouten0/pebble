@@ -25,7 +25,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-> **Pebble 1.6 is a beta.** The engine is covered by 892 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.7 is a beta.** The engine is covered by 898 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
@@ -39,7 +39,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 110 (65+ mobs with full AI, including 10 anime-style animals; vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 892, all green (`pebble test`) |
+| Regression checks | 898, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by Faithful (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -62,6 +62,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full.
 
+- **1.7.0** (Oct 15, 2026): a [Creative Tools menu](#creative-tools) (G, or the toolbox button on touch screens) that gives every tool, places every structure, spawns every creature and runs undo, redo and the clipboard, without typing.
 - **1.6.0** (Oct 13, 2026): ten [anime-style animals](#creative-tools) you place with spawn eggs or `/summon`, each with its own body, voice and favourite food; the built-in Faithful 32x pack is updated to Faithful's September 2026 release, under the Faithful License v4.
 - **1.5.3–1.5.5** (Oct 13, 2026): world-editing tools: a selection wand, then `//copy`, `//cut` and `//paste` (pasting where you look), each one undo step and keeping chest contents.
 - **1.5.0–1.5.2** (Oct 13, 2026): worlds that survive updates (every visited chunk is saved, and each world remembers what its block and item ids mean); Pebble's own names for its creatures, blocks and items; texture credits linking to faithfulpack.net.
@@ -86,7 +87,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the test suite (892 checks)
+pebble test         run the test suite (898 checks)
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -108,9 +109,9 @@ For LAN play, everyone needs the same Pebble version.
 
 ## Controls
 
-**Mac:** WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shift to sneak, Ctrl (or double-tap forward) to sprint, E for inventory, Q to drop, F to swap hands, T to chat, `/` for a command, F5 to change perspective, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen. Cmd+Z / Cmd+Shift+Z undo and redo large edits. Game keys are rebindable in Options → Controls.
+**Mac:** WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shift to sneak, Ctrl (or double-tap forward) to sprint, E for inventory, Q to drop, F to swap hands, T to chat, `/` for a command, F5 to change perspective, G for the Creative Tools menu, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen. Cmd+Z / Cmd+Shift+Z undo and redo large edits. Game keys are rebindable in Options → Controls.
 
-**iPad and iPhone:** a move stick, drag to look, tap to place, hold to dig. A hardware keyboard and mouse or a game controller also work.
+**iPad and iPhone:** a move stick, drag to look, tap to place, hold to dig. In creative, the toolbox button (marked G) at the top opens the Creative Tools menu. A hardware keyboard and mouse or a game controller also work.
 
 ## Multiplayer (LAN)
 
@@ -142,7 +143,9 @@ Good to know:
 
 ## Creative tools
 
-Fast building and demolition for creative play, for LAN guests too. Get a tool with `/give <id>`; sneak while using it for the alternate size.
+Fast building and demolition for creative play, for LAN guests too. Sneak while using a tool for the alternate size.
+
+**The Creative Tools menu** (G on a keyboard, or the toolbox button on touch screens; creative mode only) does all of this without typing. Its four tabs are: **Tools** (puts a tool in your hand), **Structures** (places one in front of you, with a choice of layout), **Creatures** (every creature, or all ten anime animals at once, in front of you) and **Edit** (undo, redo, selection corners, copy, cut and paste). Each entry runs the command shown in its tooltip, and what that command reports shows at the bottom of the menu. Typing works as before: get a tool with `/give <id>`.
 
 | Tool / command | What it does | Sneak |
 |---|---|---|
@@ -175,7 +178,7 @@ For `city`, `mountain` and worldgen structures, a different `variant` number giv
 
 **Undo** covers every tool above except the Infinity Wipe, plus `/fill`, and restores chest contents. It keeps your last 64 edits until you quit. Blocks you mine or place by hand aren't tracked, and killed mobs and dropped items don't come back.
 
-**Anime-style animals.** Ten chibi critters with big heads, sparkly eyes and blush: `mochi_bunny`, `kitsune_kit`, `bell_neko`, `leaf_tanuki`, `bao_panda`, `puff_shiba`, `scarf_penguin`, `hamu_hamster`, `momiji_red_panda` and `piyo_chick`. They never spawn on their own: place one with its spawn egg (`/give mochi_bunny_spawn_egg`, or the Spawn Eggs tab in creative) or `/summon mochi_bunny`, or bring all ten at once with `/spawn anime_zoo`. Each has a favourite food that it follows you for and breeds with (carrots for the bunny, berries for the kitsune, fish for the neko and penguin, bamboo for the pandas, seeds for the hamster and chick, apples for the tanuki, bones for the shiba).
+**Anime-style animals.** Ten chibi critters with big heads, sparkly eyes and blush: `mochi_bunny`, `kitsune_kit`, `bell_neko`, `leaf_tanuki`, `bao_panda`, `puff_shiba`, `scarf_penguin`, `hamu_hamster`, `momiji_red_panda` and `piyo_chick`. They never spawn on their own: place one with its spawn egg (`/give mochi_bunny_spawn_egg`, or the Spawn Eggs tab in creative) or `/summon mochi_bunny`, or bring all ten at once with `/spawn anime_zoo`. `/spawn <creature>` brings one, in front of you. Each has a favourite food that it follows you for and breeds with (carrots for the bunny, berries for the kitsune, fish for the neko and penguin, bamboo for the pandas, seeds for the hamster and chick, apples for the tanuki, bones for the shiba).
 
 ## Where things live
 
@@ -208,7 +211,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     test harness (892 checks; snapshots in goldens/*.json)
+Sources/pebsmoke/     test harness (898 checks; snapshots in goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              snapshot files the harness compares against
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -223,7 +226,7 @@ Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (p
 
 Your worlds are safe across updates. Every chunk you've visited is saved, so a change to world generation only affects land nobody has seen yet. Worlds also record the names behind their block and item ids, so a build that adds, moves or removes blocks opens them correctly. Worlds created before 1.5 keep their original generator.
 
-`pebble test` runs 892 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
+`pebble test` runs 898 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -238,7 +241,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `892 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `898 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

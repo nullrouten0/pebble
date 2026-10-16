@@ -2765,9 +2765,71 @@ do {
               && zoo.allSatisfy { entityFits($0) && $0.persistent },
               "\(zoo.count) spawned, \(crowded) crowded, \(near) too near")
         for e in zoo { e.remove() }
+
+        // /spawn <creature>: one, ahead of you on the ground, there to stay
+        let one = spawnGroup(w, ["mochi_bunny"], ahead: p)
+        check("/spawn of one creature puts it ahead of you, on the ground",
+              one.count == 1 && one.allSatisfy { $0.type == "mochi_bunny" && entityFits($0) && $0.persistent && hypot($0.x - p.x, $0.z - p.z) >= 3 },
+              "\(one.map { "\($0.type) at \(hypot($0.x - p.x, $0.z - p.z))" })")
+        for e in one { e.remove() }
+
+        // clicking every creature in the Tools menu without moving: each lands
+        // on the same spot, and the Blight hovering over them (charged, so it
+        // hunts) must not divide by its zero distance to them and vanish (1.7.2)
+        nonFiniteMoves = 0
+        var herd: [Entity] = []
+        for m in toolEntries(.creatures).dropFirst(MOB_GROUPS.count).map({ String($0.command.dropFirst(7)) }) {
+            herd += spawnGroup(w, [m], ahead: p)
+        }
+        (herd.first { $0 is BlightBoss } as? BlightBoss)?.chargeTime = 0
+        for _ in 0..<60 { for e in herd where !e.dead { e.tick() } }
+        let lost = herd.filter { !($0.x.isFinite && $0.y.isFinite && $0.z.isFinite) }
+        let bad = nonFiniteMoves
+        let stray = Entity(world: w)
+        stray.setPos(p.x, p.y, p.z)
+        stray.move(.nan, 0, .infinity)
+        check("every creature on one spot, the Blight among them: none moves to nowhere, and a NaN step is refused",
+              herd.contains { $0 is BlightBoss } && lost.isEmpty && bad == 0
+              && stray.x == p.x && stray.z == p.z && nonFiniteMoves == 1,
+              "\(herd.count) spawned, lost \(lost.map { $0.type }), \(bad) bad moves")
+        for e in herd { e.remove() }
         g.exitToTitle()
     } else {
         check("placement world loads", false)
+    }
+
+    // the creative Tools menu: every entry is something its command can do
+    do {
+        func arg(_ e: ToolEntry, _ i: Int) -> String {
+            let a = e.command.split(separator: " ").map(String.init)
+            return i < a.count ? a[i] : ""
+        }
+        let tools = toolEntries(.tools), structures = toolEntries(.structures)
+        let creatures = toolEntries(.creatures), edit = toolEntries(.edit)
+        // every special tool (the rare ones in the tools tab) is offered, in a stack that fits
+        let special = Set(itemDefs.filter { $0.category == "tools" && $0.rarity == 3 }.map { $0.name })
+        let offered = Set(tools.map { arg($0, 1) })
+        let badCount = tools.filter { e in iidOpt(arg(e, 1)).map { Int(arg(e, 2)) ?? 0 > itemDefs[$0].maxStack } ?? true }
+        check("the Tools menu offers every special tool, each a stack that fits",
+              special.isSubset(of: offered) && offered.contains("headlamp") && badCount.isEmpty && tools.allSatisfy { $0.command.hasPrefix("/give ") },
+              "missing \(special.subtracting(offered).sorted()) bad \(badCount.map(\.title))")
+        let placeable = Set(placeableStructureIds() + ["mountain"])
+        let placed = structures.map { arg($0, 1) }
+        let layout3 = toolEntries(.structures, layout: 3)
+        check("the Tools menu offers every /place structure, and its layouts",
+              Set(placed) == placeable && placed.count == placeable.count && structures.allSatisfy { $0.command.split(separator: " ").count == 2 }
+              && layout3.allSatisfy { $0.command.hasSuffix(" 3") },
+              "\(placed.count) of \(placeable.count)")
+        let summonable = Set(summonableMobs())
+        let names = creatures.map { arg($0, 1) }
+        let unknown = names.filter { mobGroup($0) == nil && !summonable.contains($0) }
+        check("the Tools menu offers the creature groups and every creature",
+              unknown.isEmpty && Set(MOB_GROUPS.map { $0.name }).isSubset(of: Set(names))
+              && Set(ANIME_ANIMALS.map { $0.id }).isSubset(of: Set(names)) && names.contains("zombie") && !names.contains("boat")
+              && Set(names).count == names.count && creatures.allSatisfy { $0.command.hasPrefix("/spawn ") },
+              "unknown \(unknown)")
+        check("the Tools menu's Edit tab has undo, redo and the clipboard",
+              ["/undo", "/redo", "//copy", "//cut", "//paste", "//paste -a", "//pos1", "//pos2", "//desel"].allSatisfy { c in edit.contains { $0.command == c } })
     }
 
     // anime-style animals: placed by egg or /summon, never spawned naturally

@@ -147,11 +147,15 @@ func runCommand(_ game: GameCore, _ raw: String) {
             ok("Summoned \(mob)")
         }
     case "spawn":
+        // a group, or one creature: in front of you, on the ground, facing you
         let names = MOB_GROUPS.map { $0.name }.joined(separator: ", ")
-        guard let name = arg(0), args.count == 1 else { return fail("Usage: /spawn <group>  (groups: \(names))") }
-        guard let mobs = mobGroup(name) else { return fail("Unknown group: \(name). Groups: \(names)") }
+        guard let name = arg(0), args.count == 1 else { return fail("Usage: /spawn <group or creature>  (groups: \(names))") }
+        guard let mobs = mobGroup(name) ?? (summonableMobs().contains(name) ? [name] : nil) else {
+            return fail("Unknown group or creature: \(name). Groups: \(names)")
+        }
         let n = spawnGroup(world, mobs, ahead: p).count
-        ok("Spawned \(n) creatures (\(name))")
+        if n == 0 { return fail("Couldn't spawn \(name) here") }
+        ok(mobs.count == 1 ? "Spawned \(prettify(name))" : "Spawned \(n) creatures (\(name))")
     case "effect":
         if arg(0) == "clear" {
             p.clearEffects()

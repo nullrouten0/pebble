@@ -237,7 +237,7 @@ private let SPRITE_ITEMS: [String: String] = [
     "thrown_potion": "splash_potion", "firework": "firework_rocket", "rift_eye": "rift_eye",
     "fishing_bobber": "string", "blight_skull": "blight_skeleton_skull_item", "dragon_fireball": "fire_charge",
     "fireball": "fire_charge", "lurker_bullet": "lurker_shell", "llama_spit": "snowball",
-    "rocket": "firework_rocket", "void_bomb": "heart_of_the_sea",
+    "rocket": "firework_rocket", "void_bomb": "void_bomb",
 ]
 
 final class WorldRenderer {

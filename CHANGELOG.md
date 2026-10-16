@@ -3,6 +3,76 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.7.2 — 2026-10-15 — spawn crash fix
+
+- **Fixed a crash when spawning lots of creatures with the Blight among
+  them.** Clicking creatures in the Tools menu without moving puts each one
+  on the same spot. Once the Blight finished charging and went after a
+  creature directly below it, it divided by its zero distance to that
+  creature, flew off to nowhere and took the game down. It now just hovers.
+- **An XP orb exactly at your eye no longer has the same problem.**
+- **A safety net:** a creature asked to move by an impossible amount (from
+  any bug like this) now stands still instead of crashing the game.
+
+## 1.7.1 — 2026-10-15 — tool icons
+
+- **The seven building and demolition tools have real icons** in place of
+  the coloured blobs they've shown since 1.1.0. They appear in the
+  inventory, the hotbar, your hand and the Tools menu:
+  - **Bazooka:** an olive launch tube with a red warhead.
+  - **Mining laser:** a ray gun with a red-hot emitter.
+  - **Void bomb:** a dark orb with a violet rim and a sparking fuse.
+  - **Quarry charge:** a red charge over a drill bit.
+  - **Wall builder:** a brick wall with a gold arrow rising from it.
+  - **Box builder:** an open-topped stone box.
+  - **Infinity Wipe:** a glowing infinity sign.
+- **A thrown void bomb now looks like the void bomb** in flight, not a
+  heart of the sea.
+
+## 1.7.0 — 2026-10-15 — Creative Tools menu
+
+### Creative Tools menu
+- **Everything the building and demolition releases added, without typing.**
+  Press **G** (rebindable in Options → Controls) or tap the new toolbox
+  button, marked G, at the top of a touch screen. It's for creative mode
+  only. In survival, G just says so, and the button is hidden.
+- **Four tabs:**
+  - **Tools** puts a tool in your hand. It has the bazooka, mining laser,
+    void bomb, quarry charge, wall and box builders, Infinity Wipe, selection
+    wand and headlamp.
+  - **Structures** has every `/place` structure, the mountain included, and
+    places it in front of you. **Layout** picks one of ten layouts, the same
+    as `/place`'s variant number.
+  - **Creatures** spawns one creature in front of you, or all ten anime
+    animals at once. Each spawn egg shows beside its name.
+  - **Edit** has undo, redo, selection corners at your feet, copy, cut,
+    paste, paste skipping air, and clear selection. Undo and redo are now one
+    tap away on iPad and iPhone.
+- **What happened shows at the bottom of the menu**, such as where a
+  structure landed or why a paste didn't. Hovering an entry shows the command
+  it runs, so you can learn the typed form.
+- **The menu stays open**, so you can place, spawn and undo in a row. G again,
+  Esc or Done closes it.
+- **It works for LAN guests.** Every entry runs its chat command, so a
+  guest's structures, creatures and undo still run on the host, the same as
+  typing them.
+
+### Also
+- **`/spawn <creature>`** brings one creature in front of you, on the
+  ground and facing you, like `/spawn anime_zoo` does for a group.
+
+### Development
+- **`#click X Y` in `PEBBLE_CMD`** clicks the open screen at UI units X, Y,
+  for scripted menu checks.
+- **Five new checks (897).**
+  - The menu offers every special tool and every `/place` structure, and each
+    structure's layouts.
+  - It offers every creature group and creature.
+  - The Edit tab has undo, redo and the clipboard.
+  - A single `/spawn` lands ahead of you on the ground.
+  - A tool added later without a menu entry fails the first check. I tested
+    this by leaving one out.
+
 ## 1.6.22 — 2026-10-15 — /spawn anime_zoo
 
 - **`/spawn anime_zoo` brings all ten anime animals at once**, in rows of

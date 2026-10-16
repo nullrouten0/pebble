@@ -393,7 +393,8 @@ public final class BlightBoss: Monster {
             if dh > 10 {
                 vx += dx / dh * 0.02
                 vz += dz / dh * 0.02
-            } else if dh < 5 {
+            } else if dh < 5 && dh > 1e-6 {
+                // (right above its target there's no way to back off: dh is 0)
                 vx -= dx / dh * 0.02
                 vz -= dz / dh * 0.02
             }
