@@ -719,6 +719,12 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                         }
                         continue
                     }
+                    // "#hover X Y" puts the pointer at UI units X Y (tooltip checks)
+                    if c.hasPrefix("#hover ") {
+                        let a = c.split(separator: " ").compactMap { Double($0) }
+                        if a.count == 2 { ui.mouseX = a[0]; ui.mouseY = a[1] }
+                        continue
+                    }
                     // "#pos" prints the player's position and look (scripted movement tests)
                     // "#mem" prints the process footprint and mesh arena size
                     if c == "#mem" {

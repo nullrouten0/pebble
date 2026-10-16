@@ -189,6 +189,7 @@ final class ToolsScreen: Screen {
                 cv.drawText(fit(e.title, x + cw - 3 - tx), tx, y + ((rowH - 9) / 2).rounded(.down), 1)
                 if i == hovered {
                     ui.tooltipLines = [e.title] + (e.detail.map { ["§7" + $0] } ?? []) + ["§8" + e.command]
+                    ui.tooltipAvoid = (x, y, cw, rowH)
                 }
             }
         }

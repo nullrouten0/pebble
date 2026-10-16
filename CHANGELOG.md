@@ -3,6 +3,13 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.7.3 — 2026-10-15 — Tools menu tooltips
+
+- **The Tools menu's tooltips no longer cover what you're pointing at.**
+  The description used to pop up right at the pointer, on top of the entry
+  and its neighbours. It now appears just below the entry (above it near the
+  bottom of the screen), so the name stays readable.
+
 ## 1.7.2 — 2026-10-15 — spawn crash fix
 
 - **Fixed a crash when spawning lots of creatures with the Blight among

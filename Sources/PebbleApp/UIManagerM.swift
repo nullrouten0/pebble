@@ -198,6 +198,10 @@ final class UIManager {
     var keyboardInset = 0.0
     private var stack: [Screen] = []
     var tooltipLines: [String]?
+    /// what the tooltip describes, when it's bigger than a slot (list rows):
+    /// the box goes below it, or above when there's no room, so it doesn't
+    /// cover what the pointer is on
+    var tooltipAvoid: (x: Double, y: Double, w: Double, h: Double)?
 
     init(cv: UICanvas) {
         self.cv = cv
@@ -276,6 +280,7 @@ final class UIManager {
         cv.begin(width * scale, height * scale)
         cv.scale(scale, scale)
         tooltipLines = nil
+        tooltipAvoid = nil
     }
     func endFrame() {
         let lift = touchMode ? 20.0 : 0
@@ -283,7 +288,13 @@ final class UIManager {
             drawItemStack(c, mouseX - 8, mouseY - 8 - lift)
         }
         if let lines = tooltipLines, !lines.isEmpty {
-            drawTooltipBox(lines, mouseX + 6, mouseY - 6 - lift * 1.5)
+            if let r = tooltipAvoid {
+                let h = Double(lines.count) * 10 + 6
+                let below = r.y + r.h + 2
+                drawTooltipBox(lines, mouseX + 6, below + h + 4 <= height ? below : r.y - h - 2)
+            } else {
+                drawTooltipBox(lines, mouseX + 6, mouseY - 6 - lift * 1.5)
+            }
         }
     }
 
