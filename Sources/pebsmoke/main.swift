@@ -2772,6 +2772,27 @@ do {
               one.count == 1 && one.allSatisfy { $0.type == "mochi_bunny" && entityFits($0) && $0.persistent && hypot($0.x - p.x, $0.z - p.z) >= 3 },
               "\(one.map { "\($0.type) at \(hypot($0.x - p.x, $0.z - p.z))" })")
         for e in one { e.remove() }
+
+        // clicking every creature in the Tools menu without moving: each lands
+        // on the same spot, and the Blight hovering over them (charged, so it
+        // hunts) must not divide by its zero distance to them and vanish (1.7.2)
+        nonFiniteMoves = 0
+        var herd: [Entity] = []
+        for m in toolEntries(.creatures).dropFirst(MOB_GROUPS.count).map({ String($0.command.dropFirst(7)) }) {
+            herd += spawnGroup(w, [m], ahead: p)
+        }
+        (herd.first { $0 is BlightBoss } as? BlightBoss)?.chargeTime = 0
+        for _ in 0..<60 { for e in herd where !e.dead { e.tick() } }
+        let lost = herd.filter { !($0.x.isFinite && $0.y.isFinite && $0.z.isFinite) }
+        let bad = nonFiniteMoves
+        let stray = Entity(world: w)
+        stray.setPos(p.x, p.y, p.z)
+        stray.move(.nan, 0, .infinity)
+        check("every creature on one spot, the Blight among them: none moves to nowhere, and a NaN step is refused",
+              herd.contains { $0 is BlightBoss } && lost.isEmpty && bad == 0
+              && stray.x == p.x && stray.z == p.z && nonFiniteMoves == 1,
+              "\(herd.count) spawned, lost \(lost.map { $0.type }), \(bad) bad moves")
+        for e in herd { e.remove() }
         g.exitToTitle()
     } else {
         check("placement world loads", false)

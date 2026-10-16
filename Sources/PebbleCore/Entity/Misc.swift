@@ -121,7 +121,7 @@ public final class XPOrb: Entity {
             let dy = t.eyeY() - 0.5 - y
             let dz = t.z - z
             let d = (dx * dx + dy * dy + dz * dz).squareRoot()
-            if d < 8 {
+            if d < 8 && d > 1e-6 {
                 let f = (1 - d / 8) * 0.1
                 vx += dx / d * f
                 vy += dy / d * f

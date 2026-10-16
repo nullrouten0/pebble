@@ -10,6 +10,8 @@ private var nextEntityId = 1
 /// depend on which worlds were opened earlier in the session
 public func resetEntityIds(_ start: Int) { nextEntityId = start }
 public func peekNextEntityId() -> Int { nextEntityId }
+/// moves refused for being NaN or infinite (a bug upstream; tests expect 0)
+public var nonFiniteMoves = 0
 
 /// generic per-entity data bag (variant, color, tame owner id, …) — closed
 /// field set surveyed from the baseline `data: Record<string, any>` usage.
@@ -203,6 +205,13 @@ open class Entity: EntityRef {
 
     /// swept AABB move with auto-step
     public func move(_ dxIn: Double, _ dyIn: Double, _ dzIn: Double) {
+        // a NaN or infinite step (a divide by a zero distance somewhere) would
+        // put the entity nowhere and crash the next block lookup: stand still
+        guard dxIn.isFinite && dyIn.isFinite && dzIn.isFinite else {
+            nonFiniteMoves += 1
+            vx = 0; vy = 0; vz = 0
+            return
+        }
         var dx = dxIn, dy = dyIn, dz = dzIn
         if noClip {
             x += dx; y += dy; z += dz

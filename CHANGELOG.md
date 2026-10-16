@@ -3,6 +3,17 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.7.2 — 2026-10-15 — spawn crash fix
+
+- **Fixed a crash when spawning lots of creatures with the Blight among
+  them.** Clicking creatures in the Tools menu without moving puts each one
+  on the same spot. Once the Blight finished charging and went after a
+  creature directly below it, it divided by its zero distance to that
+  creature, flew off to nowhere and took the game down. It now just hovers.
+- **An XP orb exactly at your eye no longer has the same problem.**
+- **A safety net:** a creature asked to move by an impossible amount (from
+  any bug like this) now stands still instead of crashing the game.
+
 ## 1.7.1 — 2026-10-15 — tool icons
 
 - **The seven building and demolition tools have real icons** in place of
