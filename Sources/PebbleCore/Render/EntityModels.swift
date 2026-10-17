@@ -322,6 +322,8 @@ private let ensureModelsOnce: Void = {
     registerAllModels()
     // anime-style animals (AnimeModels.swift)
     for s in ANIME_ANIMALS { MODELS[s.id] = buildAnimeModel(s) }
+    // flying mounts and their saddles (MountModels.swift)
+    registerMountModels()
 }()
 public func ensureModels() { _ = ensureModelsOnce }
 

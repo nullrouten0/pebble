@@ -381,8 +381,9 @@ public final class TouchControls {
         switch b {
         case .jump: keyDown(key("jump"))
         case .sneak:
-            if game.player?.flying == true {
-                // flying: hold to descend. A sneak toggled on the ground
+            if game.player?.flying == true || game.player?.vehicle != nil {
+                // flying or riding: hold to descend (or tap to get off a
+                // mount on the ground). A sneak toggled on the ground
                 // becomes this press, so letting go releases it
                 if sneakToggled { sneakToggled = false } else { keyDown(key("sneak")) }
             } else {

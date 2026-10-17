@@ -953,6 +953,32 @@ private func buildRecipes() {
         s.noiseBurst(dur: 0.15, freq: 500, q: 0.6, vol: 0.5)
     }
     mobVoice("entity.horse.ambient", "friendly", "Horse neighs", 400, .sawtooth, 0.6, 1.3, 10)
+    // flying mounts (FlyingMounts.swift)
+    mobVoice("entity.pegasus.ambient", "friendly", "Pegasus whinnies", 560, .sawtooth, 0.55, 1.35, 12)
+    mobVoice("entity.pegasus.angry", "friendly", "Pegasus snorts", 480, .sawtooth, 0.4, 0.8, 14)
+    mobVoice("entity.pegasus.hurt", "friendly", "Pegasus hurts", 620, .sawtooth, 0.25, 0.7, 10)
+    mobVoice("entity.pegasus.death", "friendly", "Pegasus dies", 520, .sawtooth, 0.9, 0.4, 8)
+    R("entity.pegasus.flap", "friendly", "Wings flap") { s, pitch, _ in
+        s.noiseBurst(dur: 0.2, freq: 700, q: 0.5, vol: 0.3, pitch: pitch)
+    }
+    R("entity.dragon.ambient", "friendly", "Dragon rumbles") { s, pitch, _ in
+        s.tone(freq: 140 * pitch, endFreq: 100 * pitch, dur: 0.9, type: .sawtooth, vol: 0.45, vibrato: 7)
+        s.noiseBurst(dur: 0.7, freq: 300, q: 0.5, vol: 0.2, pitch: pitch)
+    }
+    R("entity.dragon.angry", "friendly", "Dragon snarls") { s, pitch, _ in
+        s.tone(freq: 200 * pitch, endFreq: 120 * pitch, dur: 0.5, type: .sawtooth, vol: 0.5, vibrato: 12)
+    }
+    mobVoice("entity.dragon.hurt", "friendly", "Dragon hurts", 240, .sawtooth, 0.4, 0.6, 8)
+    R("entity.dragon.death", "friendly", "Dragon dies") { s, _, _ in
+        s.tone(freq: 220, endFreq: 50, dur: 2.0, type: .sawtooth, vol: 0.6, vibrato: 5)
+    }
+    R("entity.dragon.flap", "friendly", "Wings flap") { s, pitch, _ in
+        s.noiseBurst(dur: 0.32, freq: 380, q: 0.5, vol: 0.4, pitch: pitch)
+    }
+    R("entity.dragon.breath", "friendly", "Dragon breathes fire") { s, pitch, _ in
+        s.noiseBurst(dur: 0.45, freq: 900, q: 0.4, vol: 0.45, pitch: pitch)
+        s.noiseBurst(dur: 0.4, freq: 250, q: 0.5, vol: 0.3, pitch: pitch)
+    }
     mobVoice("entity.parrot.ambient", "friendly", "Parrot talks", 1200, .square, 0.2, 1.4, 8)
     mobVoice("entity.dolphin.ambient", "friendly", "Dolphin chirps", 1800, .sine, 0.2, 1.6, 12)
     mobVoice("entity.axolotl.ambient", "friendly", "Axolotl chirps", 900, .sine, 0.12, 1.3)

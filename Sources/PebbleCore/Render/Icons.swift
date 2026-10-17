@@ -677,6 +677,10 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
             // the animal's own colours, spotted with its accent
             c1 = a.fur
             c2 = a.accent == a.fur ? a.dark : a.accent
+        } else if name == "pegasus_spawn_egg" {
+            c1 = 0xf2f0ea; c2 = 0xe6c15a
+        } else if name == "dragon_spawn_egg" {
+            c1 = 0x2e8a4c; c2 = 0xe4d29a
         }
         for y in 3..<13 {
             for x in 4..<12 {

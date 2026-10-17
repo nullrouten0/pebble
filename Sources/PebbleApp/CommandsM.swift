@@ -143,7 +143,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let x = arg(1).map { parseCoord($0, p.x) } ?? p.x
         let y = arg(2).map { parseCoord($0, p.y) } ?? p.y
         let z = arg(3).map { parseCoord($0, p.z) } ?? p.z
-        if spawnMob(world, mob, x, y, z, nil) != nil {
+        if spawnMob(world, mob, x, y, z, SpawnOpts(ready: true)) != nil {
             ok("Summoned \(mob)")
         }
     case "spawn":

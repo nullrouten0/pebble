@@ -725,6 +725,17 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                         if a.count == 2 { ui.mouseX = a[0]; ui.mouseY = a[1] }
                         continue
                     }
+                    // "#col X Z Y0 Y1" prints the blocks in a column, top down (save checks)
+                    if c.hasPrefix("#col ") {
+                        let a = c.split(separator: " ").compactMap { Int($0) }
+                        if a.count == 4 {
+                            let names = stride(from: a[3], through: a[2], by: -1).map { y in
+                                "\(y):\(blockDefs[game.world.getBlockId(a[0], y, a[1])].name)"
+                            }
+                            print("[col] \(a[0]) \(a[1]) " + names.joined(separator: " "))
+                        }
+                        continue
+                    }
                     // "#pos" prints the player's position and look (scripted movement tests)
                     // "#mem" prints the process footprint and mesh arena size
                     if c == "#mem" {
@@ -738,6 +749,34 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                         if let b = game.targetedBlock {
                             print("[pos] target \(blockDefs[b.cell >> 4].name) at \(b.x) \(b.y) \(b.z), breaking \(p.breakingProgress)")
                         }
+                        if let v = p.vehicle {
+                            print(String(format: "[pos] riding %@ at %.3f %.3f %.3f%@%@, input fwd %.2f jump %d sneak %d",
+                                         v.type, v.x, v.y, v.z, (v as? FlyingMount)?.flying == true ? " flying" : "",
+                                         v.data.breathing == true ? " breathing" : "",
+                                         p.moveForward, p.jumping ? 1 : 0, p.sneaking ? 1 : 0))
+                            print("[pos] particles \(renderer.particles.count)")
+                        }
+                        continue
+                    }
+                    // "#face TYPE" turns to look at the nearest entity of that type
+                    // (so a scripted click lands on a creature that wanders)
+                    if c.hasPrefix("#face ") {
+                        let want = String(c.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+                        let ey = p.eyeY()
+                        let near = game.world.entities.compactMap { $0 as? Entity }
+                            .filter { $0.type == want && !$0.dead && $0 !== p }
+                            .min { hypot($0.x - p.x, $0.z - p.z) < hypot($1.x - p.x, $1.z - p.z) }
+                        if let e = near {
+                            let dx = e.x - p.x, dy = e.y + e.height / 2 - ey, dz = e.z - p.z
+                            p.yaw = atan2(-dx, dz)
+                            p.pitch = -atan2(dy, hypot(dx, dz))
+                        }
+                        continue
+                    }
+                    // "#keydown Code" / "#keyup Code" hold a game key across frames
+                    if c.hasPrefix("#keydown ") || c.hasPrefix("#keyup ") {
+                        let code = String(c.split(separator: " ").last ?? "")
+                        if c.hasPrefix("#keydown") { game.keyDown(code, now: CACurrentMediaTime() * 1000) } else { game.keyUp(code) }
                         continue
                     }
                     if c.hasPrefix("#key") {

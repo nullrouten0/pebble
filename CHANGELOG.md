@@ -3,6 +3,39 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.8.0 — 2026-10-17 — flying mounts
+
+- **Ride a pegasus or a dragon through the sky.** Both are new creatures you
+  saddle and fly. Climb on with an empty hand, then fly the way creative
+  flight works: W flies where you're looking, Space takes off and climbs,
+  Shift descends, and sprint flies faster. On the ground they walk like a
+  horse. On iPad and iPhone the jump and sneak buttons do the same.
+- **Getting one.** From the Tools menu's Creatures tab (they're at the top),
+  a spawn egg, `/summon` or `/spawn`, a pegasus or dragon arrives tamed and
+  saddled, ready to ride. Wild pegasi live in meadows and cherry groves, and
+  wild dragons on mountain peaks; they take short flights of their own and fly
+  off when hit. Tame a wild one by feeding it (golden carrots or golden apples
+  for a pegasus, raw meat or fish for a dragon — each try has a one-in-three
+  chance), then put a saddle on it. Tamed ones heal and breed on the same food.
+- **The dragon breathes fire.** Hold attack while riding one: everything
+  living in a cone ahead of it, up to 10 blocks, catches fire, except you and
+  your tamed pets. It doesn't set blocks alight, so builds are safe. Fire and
+  lava can't hurt a dragon.
+- **Shift gets you off any mount.** There was no way to get off a horse,
+  pig, strider or camel yourself; a fresh Shift press on the ground now steps
+  you off beside it. On a flying mount Shift descends instead, so land, let
+  go and press it again.
+- **Riding is smooth.** The camera used to jump along with the mount 20 times
+  a second; it now glides with it. In third person (F5) it sits further back
+  on a big mount, so the dragon's wings and head stay in view.
+- **LAN guests can ride, fly and breathe fire** too.
+- **Fixed: many particles were invisible.** Flames, smoke, hearts, crits,
+  rain and snow splashes, petals and notes drew only an empty corner of their
+  picture. They all show now.
+- Snapshots moved: the biome spot checks (the new spawns) and the item
+  snapshot's enchantment `applies` and enchantability hashes (two new spawn
+  eggs lengthen the item list). Nothing else changed.
+
 ## 1.7.3 — 2026-10-15 — Tools menu tooltips
 
 - **The Tools menu's tooltips no longer cover what you're pointing at.**

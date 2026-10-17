@@ -226,10 +226,10 @@ private let registerAllBiomesOnce: Void = {
     // mountain
     biome(.meadow, "meadow", temperature: 0.5, downfall: 0.8, grassColor: 0x83bb6d, foliageColor: 0x63a948,
           features: ["flowers:meadow:30", "patch:tall_grass:20", TREES("oak_bee", 0, 0.02)],
-          creatures: [("sheep", 12, 2, 4), ("donkey", 1, 1, 2), ("rabbit", 2, 2, 6)])
+          creatures: [("sheep", 12, 2, 4), ("donkey", 1, 1, 2), ("rabbit", 2, 2, 6), ("pegasus", 1, 1, 2)])
     biome(.cherryGrove, "cherry_grove", temperature: 0.5, downfall: 0.8, grassColor: 0xb6db61, foliageColor: 0xb6db61, waterColor: 0x5db7ef,
           features: [TREES("cherry", 4), "patch:pink_petals:30", "flowers:cherry:6", RETIRED("bee_nest:cherry:40")],
-          creatures: [("sheep", 12, 2, 4), ("rabbit", 2, 2, 6), ("pig", 10, 4, 4)])
+          creatures: [("sheep", 12, 2, 4), ("rabbit", 2, 2, 6), ("pig", 10, 4, 4), ("pegasus", 2, 1, 2)])
     biome(.grove, "grove", temperature: -0.2, downfall: 0.8, top: cell(B.snow_block), under: cell(B.dirt),
           features: [TREES("spruce", 10)],
           creatures: [("wolf", 8, 4, 4), ("rabbit", 4, 2, 3), ("fox", 8, 2, 4)])
@@ -237,11 +237,12 @@ private let registerAllBiomesOnce: Void = {
           features: ["powder_snow:2"],
           creatures: [("rabbit", 4, 2, 3), ("goat", 5, 1, 3)])
     biome(.jaggedPeaks, "jagged_peaks", temperature: -0.7, downfall: 0.9, top: cell(B.snow_block), under: cell(B.stone),
-          creatures: [("goat", 5, 1, 3)])
+          creatures: [("goat", 5, 1, 3), ("dragon", 1, 1, 1)])
     biome(.frozenPeaks, "frozen_peaks", temperature: -0.7, downfall: 0.9, top: cell(B.snow_block), under: cell(B.packed_ice),
           features: ["ice_patch:2"],
           creatures: [("goat", 5, 1, 3)])
-    biome(.stonyPeaks, "stony_peaks", temperature: 1.0, downfall: 0.3, top: cell(B.stone), under: cell(B.stone), creatures: [])
+    biome(.stonyPeaks, "stony_peaks", temperature: 1.0, downfall: 0.3, top: cell(B.stone), under: cell(B.stone),
+          creatures: [("dragon", 1, 1, 1)])
     biome(.mushroomFields, "mushroom_fields", temperature: 0.9, downfall: 1, grassColor: 0x55c93f, foliageColor: 0x2bbb0f,
           top: cell(B.mycelium), under: cell(B.dirt),
           features: ["huge_mushroom:3", "patch:red_mushroom:8", "patch:brown_mushroom:8"],

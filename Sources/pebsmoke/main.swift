@@ -3745,5 +3745,159 @@ do {
           db.migratePalette("prepalette") != nil && db.getPalette("prepalette") == Palette.current())
 }
 
+section("flying mounts (pegasus, dragon)")
+do {
+    // flat stone, ground at y 64 (feet at 65)
+    let w = World(dim: .overworld, seed: 3)
+    for cz in -3...3 {
+        for cx in -3...3 {
+            let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
+            var blocks = [UInt16](repeating: 0, count: 16 * 16 * WORLD_H)
+            for y in 0...(64 - GEN_MIN_Y) { for i in 0..<256 { blocks[y * 256 + i] = cell(B.stone) } }
+            c.blocks = blocks
+            c.skyLight = [UInt8](repeating: 15, count: blocks.count)
+            c.blockLight = [UInt8](repeating: 0, count: blocks.count)
+            c.buildHeightmap()
+            c.scanSpecials()
+            c.status = .lit
+            w.setChunk(c)
+        }
+    }
+    let gy = 65.0
+    let p = Player(world: w)
+    p.setPos(0.5, gy, 0.5)
+    w.addEntity(p)
+    var told: [String] = []
+    w.hooks.tellPlayer = { _, m in told.append(m) }
+
+    let placed = spawnMob(w, "pegasus", 0.5, gy, 4.5, SpawnOpts(persistent: true, ready: true)) as? Pegasus
+    let wildOpt = spawnMob(w, "pegasus", 8.5, gy, 4.5, SpawnOpts()) as? Pegasus
+    check("a placed pegasus comes tamed and saddled; a wild one is neither",
+          placed?.tamed == true && placed?.saddled == true && placed?.persistent == true
+          && wildOpt?.tamed == false && wildOpt?.saddled == false)
+    check("each flying mount has a spawn egg, and they lead the Tools menu's creatures",
+          FLYING_MOUNTS.allSatisfy { iidOpt("\($0)_spawn_egg") != nil }
+          && toolEntries(.creatures).dropFirst(MOB_GROUPS.count).prefix(2).map { $0.command } == ["/spawn pegasus", "/spawn dragon"])
+    check("wild pegasi live in meadows and cherry groves, dragons on the peaks",
+          [Biome.meadow, .cherryGrove].allSatisfy { BIOMES[Int($0.rawValue)]?.creatures.contains { $0.mob == "pegasus" } == true }
+          && [Biome.jaggedPeaks, .stonyPeaks].allSatisfy { BIOMES[Int($0.rawValue)]?.creatures.contains { $0.mob == "dragon" } == true })
+
+    if let wild = wildOpt, let peg = placed {
+        // a wild one won't carry you; golden carrots tame it, then it needs a saddle
+        _ = wild.interact(p, nil)
+        check("a wild pegasus won't let you on, and says how to tame it",
+              p.vehicle == nil && told.last?.contains("golden carrot") == true, "\(told)")
+        p.inventory[0] = ItemStack(iid("wheat"), 5)
+        let wheat = wild.interact(p, p.mainHand)
+        p.inventory[0] = ItemStack(iid("golden_carrot"), 64)
+        var fed = 0
+        while !wild.tamed && fed < 40 { _ = wild.interact(p, p.mainHand); fed += 1 }
+        check("golden carrots tame it in a few tries, each one eaten (wheat does nothing)",
+              !wheat && wild.tamed && wild.persistent && p.mainHand?.count == 64 - fed, "\(fed) carrots")
+        p.inventory[0] = nil
+        _ = wild.interact(p, nil)
+        check("tamed but bare, it still won't carry you: it needs a saddle",
+              p.vehicle == nil && told.last?.contains("saddle") == true)
+        p.inventory[0] = ItemStack(iid("saddle"), 1)
+        _ = wild.interact(p, p.mainHand)
+        check("a saddle goes on, and is used up", wild.saddled && p.mainHand == nil)
+        let back = loadEntity(w, wild.save()) as? Pegasus
+        check("tamed and saddled survive a reload", back?.tamed == true && back?.saddled == true && back?.data.saddled == true)
+        back?.remove()
+
+        // a wild one in trouble takes to the air, then comes back down unhurt
+        let shy = spawnMob(w, "pegasus", -8.5, gy, -8.5, SpawnOpts()) as? Pegasus
+        _ = shy?.hurt(1, .player, p)
+        var rose = 0.0, flew = false
+        for _ in 0..<1200 {
+            shy?.tick()
+            if shy?.flying == true { flew = true; rose = max(rose, (shy?.y ?? gy) - gy) }
+            if flew && shy?.flying == false { break }
+        }
+        check("a wild pegasus that's hit flies off, then lands with no fall damage",
+              flew && rose > 4 && shy?.flying == false && shy?.onGround == true && shy?.health == (shy?.maxHealth ?? 0) - 1,
+              "rose \(rose), health \(String(describing: shy?.health))")
+        shy?.remove()
+        wild.remove()
+
+        // riding: the rider's input flies it like creative flight
+        p.inventory[0] = nil
+        p.yaw = 0; p.pitch = 0
+        _ = peg.interact(p, nil)
+        check("an empty hand gets on a ready pegasus", p.vehicle === peg)
+        func ride(_ n: Int, fwd: Double = 0, jump: Bool = false, sneak: Bool = false, sprint: Bool = false) {
+            for _ in 0..<n {
+                p.moveForward = fwd; p.jumping = jump; p.sneaking = sneak; p.sprinting = sprint
+                peg.tick()
+            }
+        }
+        ride(10)
+        check("left alone it stands on the ground", !peg.flying && peg.onGround && abs(peg.y - gy) < 0.01)
+        ride(20, jump: true)
+        check("jump takes off and climbs", peg.flying && peg.y - gy > 4, "climbed \(peg.y - gy)")
+        ride(20, fwd: 1)   // (the climb carries on a moment after jump is let go)
+        let hold = peg.y
+        ride(40, fwd: 1)
+        let z0 = peg.z
+        ride(1, fwd: 1)
+        let cruise = peg.z - z0
+        check("forward flies where the rider faces, at its cruising speed, holding height",
+              abs(cruise - peg.flyThrust / (1 - MOUNT_DRAG)) < 0.03 && abs(peg.y - hold) < 0.05 && abs(peg.x - 0.5) < 0.01,
+              "speed \(cruise), height change \(peg.y - hold)")
+        ride(40, fwd: 1, sprint: true)
+        let z1 = peg.z
+        ride(1, fwd: 1, sprint: true)
+        check("sprinting flies faster", peg.z - z1 > cruise * 1.5, "\(peg.z - z1) vs \(cruise)")
+        // (back over the middle of the test land: it's only 112 blocks across)
+        peg.setPos(0.5, peg.y, 0.5)
+        p.yaw = .pi / 2
+        ride(30, fwd: 1)
+        let x1 = peg.x
+        ride(1, fwd: 1)
+        check("it turns with the rider's view", peg.x < x1 && abs(peg.yaw - .pi / 2) < 1e-9)
+        peg.setPos(0.5, peg.y, 0.5)
+        var landed = false
+        for _ in 0..<400 where !landed {
+            ride(1, sneak: true)
+            landed = !peg.flying
+        }
+        check("sneak descends, and it lands on the ground and walks again, unhurt",
+              landed && peg.onGround && abs(peg.y - gy) < 0.01 && peg.health == peg.maxHealth)
+        ride(20, jump: true)
+        peg.setPos(0.5, peg.y, 0.5)
+        let aloft = peg.save()
+        p.dismount()
+        var glided = 0
+        while peg.flying && glided < 600 { peg.tick(); glided += 1 }
+        check("with no rider in the air it glides down and lands, unhurt",
+              !peg.flying && peg.onGround && peg.health == peg.maxHealth, "\(glided) ticks")
+        check("a mount saved in the air loads still flying", (loadEntity(w, aloft) as? Pegasus)?.flying == true)
+    } else { check("pegasus spawns", false) }
+
+    // the dragon: fire in a cone ahead while the rider holds attack
+    if let dragon = spawnMob(w, "dragon", 20.5, gy, 0.5, SpawnOpts(ready: true)) as? Dragon,
+       let ahead = spawnMob(w, "pig", 20.5, gy, 7.5) as? LivingEntity,
+       let behind = spawnMob(w, "pig", 20.5, gy, -7.5) as? LivingEntity,
+       let pet = spawnMob(w, "wolf", 21.5, gy, 6.5) as? Mob {
+        pet.ownerId = p.id
+        p.setPos(20.5, gy, 0.5)
+        p.yaw = 0; p.pitch = 0
+        p.mount(dragon)
+        p.breathHeld = true
+        for _ in 0..<20 { p.moveForward = 0; dragon.tick() }
+        check("held attack on a dragon sets what's ahead on fire",
+              dragon.data.breathing == true && ahead.fireTicks > 0 && ahead.health < ahead.maxHealth,
+              "fire \(ahead.fireTicks) health \(ahead.health)")
+        check("but not what's behind, its rider, or the rider's pets",
+              behind.fireTicks == 0 && p.fireTicks == 0 && pet.fireTicks == 0 && pet.health == pet.maxHealth)
+        p.breathHeld = false
+        dragon.tick()
+        check("letting go stops the fire", dragon.data.breathing == nil)
+        let hp = dragon.health
+        check("fire can't hurt a dragon", dragon.hurt(5, .fire) == false && dragon.hurt(5, .lava) == false && dragon.health == hp)
+        p.dismount()
+    } else { check("dragon and targets spawn", false) }
+}
+
 print("\n\(passed) passed, \(failed) failed")
 exit(failed > 0 ? 1 : 0)

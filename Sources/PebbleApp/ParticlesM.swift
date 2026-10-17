@@ -13,7 +13,9 @@ private struct Particle {
     var gravity = 0.04
     var drag = 0.98
     var tile = 0
-    var u0 = 0.0, v0 = 0.0, u1 = 0.25, v1 = 0.25
+    /// the part of the tile drawn: sprites fill their whole tile (they're
+    /// painted centred in it); block chips pick a quarter of the block's face
+    var u0 = 0.0, v0 = 0.0, u1 = 1.0, v1 = 1.0
     var r = 1.0, g = 1.0, b = 1.0
     var light = 1.0
     var collide = false
@@ -108,6 +110,15 @@ final class ParticleSystemM {
                 p.maxLife = 16 + rand() * 10
                 p.light = 1
                 p.size = 0.07
+            case "dragon_fire":
+                // a ridden dragon's breath (FlyingMounts.swift): big, bright, brief
+                p.tile = tileId("flame_particle")
+                p.gravity = -0.004
+                p.vx *= 0.5; p.vy = 0.02; p.vz *= 0.5
+                p.r = 1; p.g = 0.55 + rand() * 0.35; p.b = 0.15 + rand() * 0.15
+                p.maxLife = 8 + rand() * 7
+                p.light = 1
+                p.size = 0.2 + rand() * 0.22
             case "soul_flame":
                 p.tile = tileId("flame_particle")
                 p.r = 0.2; p.g = 0.85; p.b = 0.9

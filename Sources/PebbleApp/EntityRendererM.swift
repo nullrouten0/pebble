@@ -30,6 +30,9 @@ struct EntityPose {
     var open = 0.0
     var sitting = false
     var wingsuitFlying = false
+    /// flying mounts: wings 0 folded … 1 spread, and the dragon breathing fire
+    var wings = 0.0
+    var breathing = false
 }
 
 struct EntityUniforms {
@@ -400,6 +403,36 @@ final class EntityRendererM {
                     m = mRotateY(m, Float(spread))
                     m = mRotateX(m, Float(pitch))
                     m = mRotateZ(m, Float(p.wingsuitFlying ? -0.08 : -0.18))
+                }
+            case "pegasus", "mount_dragon":
+                let dragon = anim == "mount_dragon"
+                let w = p.wings
+                if n == "head" || n == "jaw" {
+                    m = mRotateY(m, Float(p.headYaw * (dragon ? 0.5 : 0.6)))
+                    m = mRotateX(m, Float(-(p.pitch * (dragon ? 0.5 : 0.6)) - (p.grazing ? 0.9 : 0)))
+                    if n == "jaw" {
+                        let chew = max(0, Foundation.sin(time * 0.9 + p.x)) * 0.06
+                        m = mRotateX(m, Float(-(p.breathing ? 0.6 : 0.04 + chew)))
+                    }
+                } else if n.hasPrefix("leg") {
+                    // walking strides on the ground; in the air the legs tuck
+                    // (a pegasus folds its forelegs forward, a dragon trails all four)
+                    let walk = (n == "legFR" || n == "legBL") ? walkA : walkB
+                    let tuck = dragon ? -1.0 : (n.hasPrefix("legF") ? 0.9 : -0.9)
+                    m = mRotateX(m, Float(walk * (1 - w) + tuck * w))
+                } else if n == "tail" {
+                    m = mRotateX(m, Float(-0.6 - 0.7 * w - Foundation.sin(time * 3) * 0.15 * (1 + amp * 2)))
+                } else if n.hasPrefix("tail") {
+                    let ti = Double(Int(n.dropFirst(4)) ?? 0)
+                    m = mRotateY(m, Float(Foundation.sin(time * 1.6 - ti * 0.7) * (0.1 + 0.06 * ti)))
+                } else if n == "wingR" || n == "wingL" {
+                    // folded: swept back along the flank with the panel hanging
+                    // down; spread: straight out, flapping
+                    let side = n == "wingR" ? 1.0 : -1.0
+                    let flap = Foundation.sin(time * (dragon ? 5.5 : 9) + p.x) * (dragon ? 0.65 : 0.75)
+                    m = mRotateY(m, Float(side * 1.5 * (1 - w)))
+                    m = mRotateX(m, Float(1.3 * (1 - w)))
+                    m = mRotateZ(m, Float(side * (flap * w + 0.08)))
                 }
             case "rabbit", "frog":
                 let hop = min(1, max(0, Foundation.sin(swing * 1.2) * amp * 2))

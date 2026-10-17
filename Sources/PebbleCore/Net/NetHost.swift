@@ -24,7 +24,7 @@ struct GuestState {
     var attackTicker = 100.0
 
     static let ON_GROUND = 1, SNEAKING = 2, SPRINTING = 4, FLYING = 8, WINGSUIT = 16
-    static let USING = 32, JUMPING = 64, DEAD = 128
+    static let USING = 32, JUMPING = 64, DEAD = 128, BREATH = 256
 
     func has(_ f: Int) -> Bool { flags & f != 0 }
 }
@@ -651,6 +651,7 @@ public final class NetHost {
                 p.wingsuitFlying = s.has(GuestState.WINGSUIT)
                 p.usingItem = s.has(GuestState.USING)
                 p.jumping = s.has(GuestState.JUMPING)
+                p.breathHeld = s.has(GuestState.BREATH)
                 p.limbSwing = s.limbSwing; p.limbAmp = s.limbAmp; p.attackAnim = s.attackAnim
                 p.deathTime = s.deathTime
                 p.health = s.health
