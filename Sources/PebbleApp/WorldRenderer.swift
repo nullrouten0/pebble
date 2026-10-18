@@ -1424,6 +1424,8 @@ final class WorldRenderer {
             pose.hanging = ent.type == "bat" && (ent.data.hanging ?? false)
             pose.alpha = deathFlip > 0 ? 1 - deathFlip * 0.6 : 1
             pose.wingsuitFlying = (ent as? Player)?.wingsuitFlying ?? false
+            pose.wings = ent.data.wings ?? 0
+            pose.breathing = ent.data.breathing ?? false
             // blob shadow under living entities (incl. the player in 3rd person);
             // fade out as the entity rises above the ground beneath it.
             if liv != nil, let gy = groundYUnder(ix, iy, iz), iy - gy <= 6 {
@@ -1437,6 +1439,14 @@ final class WorldRenderer {
                                 time: timeSec, dayLight: dayLight,
                                 fog: (fog.0, fog.1, fog.2),
                                 gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            // a saddled mount wears its saddle (pegasus_saddle, dragon_saddle)
+            if ent.data.saddled == true, hasModel("\(name)_saddle") {
+                entityRenderer.draw(enc, pipeline: entityPipeline, sampler: atlasSampler,
+                                    viewProj: viewProj, camPos: camPos, name: "\(name)_saddle", p: pose,
+                                    time: timeSec, dayLight: dayLight,
+                                    fog: (fog.0, fog.1, fog.2),
+                                    gamma: game.settings.gamma, ambient: Double(w.info.ambientLight) / 15)
+            }
             if let player = ent as? Player, player.headlampOn {
                 var lit = pose
                 lit.block = 15   // a lit lamp glows, day or night

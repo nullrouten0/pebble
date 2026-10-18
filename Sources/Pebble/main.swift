@@ -4,6 +4,7 @@
 
 import AppKit
 import MetalKit
+import UniformTypeIdentifiers
 import PebbleApp
 
 // ---------------------------------------------------------------------------
@@ -97,6 +98,60 @@ final class MacPlatform: PlatformHooks {
         if !unlimited {
             view.preferredFramesPerSecond = max(30, maxFps)
         }
+    }
+
+    // ---- sharing worlds: the share picker (AirDrop, Messages, Mail…, plus
+    // Save to File…) and an open panel for Import ----
+    private let shareDelegate = ShareDelegate()
+    var canShareFiles: Bool { true }
+
+    func shareFile(_ path: String, from rect: (x: Double, y: Double, w: Double, h: Double)) {
+        guard let view else { return }
+        shareDelegate.window = window
+        let picker = NSSharingServicePicker(items: [URL(fileURLWithPath: path)])
+        picker.delegate = shareDelegate
+        // drawable pixels, top-left origin → the view's points, bottom-left origin
+        let bsf = Double(window?.backingScaleFactor ?? 1)
+        let r = NSRect(x: rect.x / bsf, y: Double(view.bounds.height) - (rect.y + rect.h) / bsf,
+                       width: rect.w / bsf, height: rect.h / bsf)
+        picker.show(relativeTo: r, of: view, preferredEdge: .minY)
+    }
+
+    func pickFile(extensions: [String], _ done: @escaping (String?) -> Void) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = extensions.compactMap { UTType(filenameExtension: $0) }
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Choose a Pebble world to add"
+        let finish: (NSApplication.ModalResponse) -> Void = { r in done(r == .OK ? panel.url?.path : nil) }
+        if let window { panel.beginSheetModal(for: window, completionHandler: finish) } else { finish(panel.runModal()) }
+    }
+}
+
+/// adds "Save to File…" to the share picker's list
+final class ShareDelegate: NSObject, NSSharingServicePickerDelegate {
+    weak var window: NSWindow?
+
+    func sharingServicePicker(_ picker: NSSharingServicePicker, sharingServicesForItems items: [Any],
+                              proposedSharingServices proposed: [NSSharingService]) -> [NSSharingService] {
+        guard let url = items.first as? URL else { return proposed }
+        let icon = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: nil) ?? NSImage()
+        let save = NSSharingService(title: "Save to File…", image: icon, alternateImage: nil) { [weak self] in
+            self?.save(url)
+        }
+        return [save] + proposed
+    }
+
+    private func save(_ url: URL) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = url.lastPathComponent
+        if let t = UTType(filenameExtension: url.pathExtension) { panel.allowedContentTypes = [t] }
+        let finish: (NSApplication.ModalResponse) -> Void = { r in
+            guard r == .OK, let dest = panel.url else { return }
+            try? FileManager.default.removeItem(at: dest)
+            try? FileManager.default.copyItem(at: url, to: dest)
+        }
+        if let window { panel.beginSheetModal(for: window, completionHandler: finish) } else { finish(panel.runModal()) }
     }
 }
 
@@ -235,6 +290,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         RunLoop.main.add(bg, forMode: .common)
 
         runtime.start(drawableSize: gameView.drawableSize)
+        for path in pendingFiles { runtime.openFile(path) }
+        pendingFiles.removeAll()
+    }
+
+    /// a .pebbleworld opened from Finder (double-click, Open With, a drop on
+    /// the Dock icon); ones that arrive before the game is up wait for it
+    private var pendingFiles: [String] = []
+    func application(_ sender: NSApplication, open urls: [URL]) {
+        for url in urls where url.isFileURL {
+            if runtime != nil { runtime.openFile(url.path) } else { pendingFiles.append(url.path) }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

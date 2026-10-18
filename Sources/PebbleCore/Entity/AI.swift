@@ -325,8 +325,26 @@ open class Mob: LivingEntity {
     public var leashFence: (Int, Int, Int)? = nil
     public var ownerId: Int? = nil
     public var sitting = false
+    /// scared (a griffin's screech): drops its target and runs from (scaredX, scaredZ)
+    public var scaredTicks = 0
+    var scaredX = 0.0, scaredZ = 0.0
 
     open override func tick() { mobTick() }
+
+    /// run from a fright at (fx, fz) for `ticks`, forgetting any target
+    public func scare(from fx: Double, _ fz: Double, ticks: Int) {
+        scaredX = fx; scaredZ = fz
+        scaredTicks = max(scaredTicks, ticks)
+        target = nil
+        flee()
+    }
+
+    private func flee() {
+        var dx = x - scaredX, dz = z - scaredZ
+        let d = detHyp(dx, dz)
+        if d < 0.01 { let a = rng.nextFloat() * .pi * 2; dx = detSin(a); dz = detCos(a) } else { dx /= d; dz /= d }
+        nav.moveTo(x + dx * 12, y, z + dz * 12, 1.4)
+    }
 
     /// the Mob-level tick body — exposed so SnouterBrute/Ghoultusk can mimic the
     /// baseline `Monster.prototype.tick.call(this)` grandparent dispatch
@@ -361,9 +379,15 @@ open class Mob: LivingEntity {
         }
         if breedCooldown > 0 { breedCooldown -= 1 }
 
-        // AI
-        targetGoals.tick(2, age)
-        goals.tick(2, age)
+        // AI (a scare overrides it: no target, just run)
+        if scaredTicks > 0 {
+            scaredTicks -= 1
+            target = nil
+            if scaredTicks % 20 == 19 || nav.isDone() { flee() }
+        } else {
+            targetGoals.tick(2, age)
+            goals.tick(2, age)
+        }
         nav.tick()
 
         // look control

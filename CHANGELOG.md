@@ -3,6 +3,134 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.11.0 — 2026-10-17 — blueprints
+
+- **Save a build as a blueprint and use it again anywhere.** `//copy` it (or
+  just mark a selection), then `//save castle`. In any world, `//load castle`
+  puts it on your clipboard and `//paste` places it, as many times as you
+  like. Chests keep their contents and signs their text.
+- **`//blueprints`** lists them; `//blueprints delete castle` removes one.
+- **Share one:** `//blueprints share castle` opens the share sheet (AirDrop,
+  Messages, Mail, Save to File). Opening a `.pebbleblueprint` file on the
+  other end adds it to that player's blueprints (as `castle-2` if they have
+  a `castle`), ready for `//load`.
+- **They survive updates.** A blueprint stores block and item names, not
+  numbers, the same way worlds do, so one saved now still loads after
+  Pebble adds or reorders blocks; anything a version doesn't have is left
+  out, and `//load` says what.
+- **The Tools menu's Edit tab** lists each blueprint as a **Load …** entry.
+- In a LAN game only the host can save and load blueprints, as with the
+  clipboard.
+- **Development:** Systems/Blueprints.swift (format `pebble-blueprint-1`:
+  "PBP1", the JSON's length, then zlib JSON with the size, base64 cells,
+  block entities and the palette). Files live in `blueprints/` beside
+  pebble.db. Both apps declare `net.stonekitty.pebble.blueprint`, and
+  `GameRuntime.openFile` takes it. 5 new checks (946).
+
+## 1.10.0 — 2026-10-17 — share a world
+
+- **Share a world.** In Singleplayer, select a world and click **Share**:
+  the system share sheet sends it with AirDrop, Messages, Mail or any app
+  that takes files. On the Mac it also has **Save to File…**; on iPad and
+  iPhone, **Save to Files**. The world travels as one `.pebbleworld` file
+  holding everything saved for it: the land you've visited and changed,
+  chests and signs, your inventory and position, LAN guests' too, and
+  advancements.
+- **Open a shared world** by opening its file: double-click it in Finder,
+  accept it from AirDrop, or tap it in Messages or Files and choose Pebble.
+  Or click **Import** in Singleplayer and pick it. It's added to your worlds,
+  selected and ready to play, with "Added …" under the list. Opened while
+  you're playing, it's added and the action bar says so.
+- **It's always a copy:** a new world beside your others, never replacing
+  one. A world whose name you already have comes in as "Name (2)".
+- A file that isn't a Pebble world, or is from a newer Pebble's format, is
+  refused with a message, and nothing is added.
+- **Development:** `SaveDB.exportWorld` / `importWorld` copy one world's rows
+  through an attached SQLite file (format `pebble-world-1` in its `share`
+  table); the palette goes along, so another build's block ids remap on load.
+  New `PlatformHooks`: `canShareFiles`, `shareFile`, `pickFile`; the shells
+  declare the `net.stonekitty.pebble.world` type and pass opened files to
+  `GameRuntime.openFile`. `PEBBLE_OPEN=path` opens one in a scripted run.
+  6 new checks (941).
+
+## 1.9.0 — 2026-10-17 — the alicorn and the griffin
+
+- **Two more flying mounts.**
+  - **The alicorn,** a winged unicorn with a lilac coat, a purple mane and a
+    gold spiral horn. Hold attack while riding and its horn casts magic bolts,
+    about three a second, at whatever your crosshair is on, up to 32 blocks away.
+    Each bolt hurts the first creature it meets and stops at the first block.
+  - **The griffin,** an eagle's white head, hooked beak, brown wings and
+    yellow talons on a lion's body. It's the fastest flyer. Hold attack and
+    it screeches: every creature within 10 blocks is thrown back and runs
+    for six seconds, and a monster forgets it was after you.
+  - Neither power touches you or your tamed pets, and the screech spares
+    other players and the bosses. Neither breaks or burns blocks.
+- **Getting them** works like the pegasus and dragon: spawn eggs, `/summon`,
+  `/spawn` and the Tools menu bring one tamed and saddled. Wild alicorns live
+  in flower forests and sunflower plains (tame with golden apples or
+  glistering melon slices); wild griffins in windswept hills and savanna
+  plateaus (tame with raw meat).
+- On touch screens, press-and-hold while riding uses the power, and LAN
+  guests can use the powers too.
+- **Development:** the dragon's fire is now one of three mount powers
+  (`FlyingMount.hasPower` / `usePower`); `Player.breathHeld` is
+  `powerHeld`. A scared mob (`Mob.scare`) drops its target and runs. 10 new
+  checks (935). The item snapshot's enchantment `applies` and enchantability
+  hashes moved (two more spawn eggs lengthen the item list); nothing else did.
+
+## 1.8.1 — 2026-10-17 — tap to ride on touch screens
+
+- **On iPad and iPhone, tapping a creature now uses your hand on it** when
+  that does something: climb onto a saddled mount, put on a saddle, feed an
+  animal, board a boat, trade with a villager. Otherwise the tap still hits
+  it, and press-and-hold still attacks. Until now a tap always attacked, and
+  a hold only fed an animal (because food is used by holding), so on a touch
+  screen there was no way to ride anything, saddle a mount or trade.
+- Five new checks (925): a tap climbs onto a saddled pegasus, saddles a tamed
+  one and feeds a cow with wheat, and still hits a cow when the hand is empty
+  or holds something it has no use for.
+
+## 1.8.0 — 2026-10-17 — flying mounts
+
+- **Ride a pegasus or a dragon through the sky.** Both are new creatures you
+  saddle and fly. Climb on with an empty hand, then fly the way creative
+  flight works: W flies where you're looking, Space takes off and climbs,
+  Shift descends, and sprint flies faster. On the ground they walk like a
+  horse. On iPad and iPhone the jump and sneak buttons do the same.
+- **Getting one.** From the Tools menu's Creatures tab (they're at the top),
+  a spawn egg, `/summon` or `/spawn`, a pegasus or dragon arrives tamed and
+  saddled, ready to ride. Wild pegasi live in meadows and cherry groves, and
+  wild dragons on mountain peaks; they take short flights of their own and fly
+  off when hit. Tame a wild one by feeding it (golden carrots or golden apples
+  for a pegasus, raw meat or fish for a dragon — each try has a one-in-three
+  chance), then put a saddle on it. Tamed ones heal and breed on the same food.
+- **The dragon breathes fire.** Hold attack while riding one: everything
+  living in a cone ahead of it, up to 10 blocks, catches fire, except you and
+  your tamed pets. It doesn't set blocks alight, so builds are safe. Fire and
+  lava can't hurt a dragon.
+- **Shift gets you off any mount.** There was no way to get off a horse,
+  pig, strider or camel yourself; a fresh Shift press on the ground now steps
+  you off beside it. On a flying mount Shift descends instead, so land, let
+  go and press it again.
+- **Riding is smooth.** The camera used to jump along with the mount 20 times
+  a second; it now glides with it. In third person (F5) it sits further back
+  on a big mount, so the dragon's wings and head stay in view.
+- **LAN guests can ride, fly and breathe fire** too.
+- **Fixed: many particles were invisible.** Flames, smoke, hearts, crits,
+  rain and snow splashes, petals and notes drew only an empty corner of their
+  picture. They all show now.
+- Snapshots moved: the biome spot checks (the new spawns) and the item
+  snapshot's enchantment `applies` and enchantability hashes (two new spawn
+  eggs lengthen the item list). Nothing else changed.
+
+## 1.7.3 — 2026-10-15 — Tools menu tooltips
+
+- **The Tools menu's tooltips no longer cover what you're pointing at.**
+  The description used to pop up right at the pointer, on top of the entry
+  and its neighbours. It now appears just below the entry (above it near the
+  bottom of the screen), so the name stays readable.
+
 ## 1.7.2 — 2026-10-15 — spawn crash fix
 
 - **Fixed a crash when spawning lots of creatures with the Blight among

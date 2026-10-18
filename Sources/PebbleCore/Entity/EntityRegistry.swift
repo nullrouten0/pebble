@@ -72,6 +72,9 @@ private let registerAllEntitiesOnce: Void = {
     regLate("rocket") { Rocket(world: $0) }; regLate("void_bomb") { VoidBomb(world: $0) }
     // placed only (eggs, /summon), never spawned naturally
     for s in ANIME_ANIMALS { regLate(s.id) { AnimeAnimal(world: $0, s) } }
+    // flying mounts (FlyingMounts.swift): wild in a few biomes, or placed
+    regLate("pegasus") { Pegasus(world: $0) }; regLate("dragon") { Dragon(world: $0) }
+    regLate("alicorn") { Alicorn(world: $0) }; regLate("griffin") { Griffin(world: $0) }
 
     bindSpawnMob(spawnMob)
 }()
@@ -83,7 +86,9 @@ public func createEntity(_ type: String, _ world: World) -> Entity? {
 public func entityTypes() -> [String] { FACTORIES.map { $0.0 } }
 /// every mob /summon and the photo booth offer: the natural roster, then the
 /// anime animals (placed only)
-public func summonableMobs() -> [String] { spawnableMobs() + ANIME_ANIMALS.map { $0.id } }
+public func summonableMobs() -> [String] { spawnableMobs() + ANIME_ANIMALS.map { $0.id } + FLYING_MOUNTS }
+/// the creatures you can saddle and fly
+public let FLYING_MOUNTS = ["pegasus", "dragon", "alicorn", "griffin"]
 
 /// named groups of creatures for /spawn: every anime animal at once, so far
 public let MOB_GROUPS: [(name: String, mobs: () -> [String])] = [
@@ -113,7 +118,7 @@ public func spawnGroup(_ w: World, _ mobs: [String], ahead p: Entity) -> [Entity
             y = Double(gy)
             break
         }
-        if let e = spawnMob(w, mob, x, y, z, SpawnOpts(persistent: true)) {
+        if let e = spawnMob(w, mob, x, y, z, SpawnOpts(persistent: true, ready: true)) {
             e.yaw = p.yaw + .pi   // facing you
             out.append(e)
         }
@@ -143,6 +148,7 @@ public func spawnMob(_ world: World, _ type: String, _ x: Double, _ y: Double, _
         if data.baby { e.data.baby = true }
         if data.persistent { e.data.persistent = true }
         if let s = data.size { e.data.size = s }
+        if data.ready && !data.baby { (e as? FlyingMount)?.makeReady() }
     }
     world.addEntity(e)
     return e

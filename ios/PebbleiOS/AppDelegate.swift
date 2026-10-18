@@ -23,9 +23,17 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let ws = scene as? UIWindowScene else { return }
         let w = UIWindow(windowScene: ws)
-        w.rootViewController = GameViewController()
+        let game = GameViewController()
+        w.rootViewController = game
         w.makeKeyAndVisible()
         window = w
+        // launched by opening a shared world
+        for ctx in connectionOptions.urlContexts { game.open(ctx.url) }
+    }
+
+    /// a shared world opened with Pebble while it's running
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        for ctx in URLContexts { game?.open(ctx.url) }
     }
 
     /// Control Center, an incoming call, the app switcher: stop drawing,

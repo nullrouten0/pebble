@@ -43,7 +43,7 @@ private func blockedUntil(_ e: Entity, _ y: Double) -> Double? {
 }
 
 /// where a rider sits on its vehicle (GameCore's player tick uses the same)
-@inline(__always) func riderOffset(_ v: Entity) -> Double { v.height * 0.6 }
+@inline(__always) func riderOffset(_ v: Entity) -> Double { v.seatHeight }
 
 /// whether `e` is clear of every block's collision shape where it stands
 public func entityFits(_ e: Entity) -> Bool { blockedUntil(e, e.y) == nil }

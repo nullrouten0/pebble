@@ -33,6 +33,14 @@ public struct EntityData: Codable, Equatable {
     public var deathCause: String?
     public var deathAttacker: String?
     public var swimTarget: [Double]?
+    /// flying mounts (FlyingMounts.swift): tamed, saddle on, airborne under its
+    /// own wings, how far the wings are spread (0 folded … 1 open), using its
+    /// power (breathing fire, casting bolts, screeching: the mouth or horn shows it)
+    public var tamed: Bool?
+    public var saddled: Bool?
+    public var flying: Bool?
+    public var wings: Double?
+    public var breathing: Bool?
 
     public init() {}
 }
@@ -93,6 +101,8 @@ open class Entity: EntityRef {
         return AABB(x - hw, y, z - hw, x + hw, y + height, z + hw)
     }
     public func eyeY() -> Double { y + height * 0.85 }
+    /// how far above this entity's feet a rider sits
+    open var seatHeight: Double { height * 0.6 }
     /// unit vector along the view (yaw 0 faces +z, positive pitch looks down)
     public func lookDir() -> (Double, Double, Double) {
         (-detSin(yaw) * detCos(pitch), -detSin(pitch), detCos(yaw) * detCos(pitch))

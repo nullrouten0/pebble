@@ -354,6 +354,11 @@ private let registerAllItemsOnce: Void = {
 
     HEADLAMP_ID = iid("headlamp")
 
+    // flying mounts (Entity/FlyingMounts.swift): an egg's mount comes saddled
+    for m in FLYING_MOUNTS {
+        registerItem("\(m)_spawn_egg", display: "\(prettify(m)) Spawn Egg", category: "spawn_eggs", icon: "spawn_egg")
+    }
+
     // post-registration fixups
     itemDefs[iid("cake")].maxStack = 1
 }()

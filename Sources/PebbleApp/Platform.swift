@@ -56,6 +56,17 @@ public protocol PlatformHooks: AnyObject {
 
     /// open a web page in the system browser (the texture credit's link)
     func openURL(_ url: String)
+
+    /// the system can send a file to other apps and devices, and let the
+    /// player pick one to open (World Select's Share and Import)
+    var canShareFiles: Bool { get }
+    /// offer a file: the system share sheet (AirDrop, Messages, Mail, Save to
+    /// Files…). `from` is the button it came from, in drawable pixels: an
+    /// iPad's popover points there
+    func shareFile(_ path: String, from rect: (x: Double, y: Double, w: Double, h: Double))
+    /// let the player pick a file with one of `extensions`; nil if cancelled.
+    /// The path is readable until `done` returns
+    func pickFile(extensions: [String], _ done: @escaping (String?) -> Void)
 }
 
 public extension PlatformHooks {
@@ -74,6 +85,9 @@ public extension PlatformHooks {
     func setKeepAwake(_ on: Bool) {}
     var battery: (level: Double, charging: Bool)? { nil }
     func setBatteryMonitoring(_ on: Bool) {}
+    var canShareFiles: Bool { false }
+    func shareFile(_ path: String, from rect: (x: Double, y: Double, w: Double, h: Double)) {}
+    func pickFile(extensions: [String], _ done: @escaping (String?) -> Void) { done(nil) }
 }
 
 /// where debug hooks (bot logs, photo booth, scripted shots) drop files: /tmp

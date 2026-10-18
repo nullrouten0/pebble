@@ -416,6 +416,54 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         lastFrame = now
     }
 
+    /// a file opened with Pebble (Finder, Files, AirDrop, Messages): a shared
+    /// world is added to the world list, which opens to show it unless a
+    /// world is being played; a blueprint joins the blueprints folder.
+    /// Returns false for files it doesn't take.
+    @discardableResult
+    public func openFile(_ path: String) -> Bool {
+        guard let game, let ui else { return false }
+        let lower = path.lowercased()
+        if lower.hasSuffix("." + BLUEPRINT_EXTENSION) {
+            let msg: String
+            do {
+                let name = try importBlueprint(URL(fileURLWithPath: path))
+                msg = "§aAdded blueprint \(name)§7 - //load \(name) in a world, then //paste"
+            } catch {
+                msg = "§c\(error)"
+            }
+            if game.hasWorld() {
+                host.showActionBar(msg, 120)
+            } else {
+                let list = (ui.current() as? WorldSelectScreen).flatMap { $0.hosting ? nil : $0 } ?? {
+                    let s = WorldSelectScreen()
+                    ui.open(s, game)
+                    return s
+                }()
+                list.say(msg)
+            }
+            return true
+        }
+        guard lower.hasSuffix("." + SaveDB.shareExtension) else { return false }
+        let result = game.importWorld(URL(fileURLWithPath: path))
+        if game.hasWorld() {
+            switch result {
+            case .success(let rec): host.showActionBar("§aAdded \(rec.name) to your worlds", 100)
+            case .failure(let e): host.showActionBar("§c\(e.message)", 100)
+            }
+            return true
+        }
+        let list: WorldSelectScreen
+        if let open = ui.current() as? WorldSelectScreen, !open.hosting {
+            list = open
+        } else {
+            list = WorldSelectScreen()
+            ui.open(list, game)
+        }
+        list.imported(result, game)
+        return true
+    }
+
     /// pasted text into the focused screen field — the UI fields are
     /// canvas-drawn, so no system text path ever reaches them
     public func paste(_ s: String) {
@@ -646,8 +694,17 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         return menu || powerSaving || saver ? min(game.settings.maxFps, 30) : game.settings.maxFps
     }
 
+    /// test hook: PEBBLE_OPEN=path opens a file at the title screen, as if
+    /// the system handed it to Pebble (a shared world from Finder or AirDrop)
+    private var pendingOpen = ProcessInfo.processInfo.environment["PEBBLE_OPEN"]
+
     /// PEBBLE_MENU / PEBBLE_CMD / PEBBLE_SHOT, advanced once per frame
     private func runTestHooks() {
+        if let path = pendingOpen, ui.hasScreen() {
+            pendingOpen = nil
+            print("[open] \(path) → \(openFile(path) ? "taken" : "not a Pebble file")")
+            fflush(stdout)
+        }
         if !pendingMenu.isEmpty {
             pendingMenuDelay += 1
             if pendingMenuDelay > 30 {
@@ -719,6 +776,23 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                         }
                         continue
                     }
+                    // "#hover X Y" puts the pointer at UI units X Y (tooltip checks)
+                    if c.hasPrefix("#hover ") {
+                        let a = c.split(separator: " ").compactMap { Double($0) }
+                        if a.count == 2 { ui.mouseX = a[0]; ui.mouseY = a[1] }
+                        continue
+                    }
+                    // "#col X Z Y0 Y1" prints the blocks in a column, top down (save checks)
+                    if c.hasPrefix("#col ") {
+                        let a = c.split(separator: " ").compactMap { Int($0) }
+                        if a.count == 4 {
+                            let names = stride(from: a[3], through: a[2], by: -1).map { y in
+                                "\(y):\(blockDefs[game.world.getBlockId(a[0], y, a[1])].name)"
+                            }
+                            print("[col] \(a[0]) \(a[1]) " + names.joined(separator: " "))
+                        }
+                        continue
+                    }
                     // "#pos" prints the player's position and look (scripted movement tests)
                     // "#mem" prints the process footprint and mesh arena size
                     if c == "#mem" {
@@ -732,6 +806,34 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                         if let b = game.targetedBlock {
                             print("[pos] target \(blockDefs[b.cell >> 4].name) at \(b.x) \(b.y) \(b.z), breaking \(p.breakingProgress)")
                         }
+                        if let v = p.vehicle {
+                            print(String(format: "[pos] riding %@ at %.3f %.3f %.3f%@%@, input fwd %.2f jump %d sneak %d",
+                                         v.type, v.x, v.y, v.z, (v as? FlyingMount)?.flying == true ? " flying" : "",
+                                         v.data.breathing == true ? " breathing" : "",
+                                         p.moveForward, p.jumping ? 1 : 0, p.sneaking ? 1 : 0))
+                            print("[pos] particles \(renderer.particles.count)")
+                        }
+                        continue
+                    }
+                    // "#face TYPE" turns to look at the nearest entity of that type
+                    // (so a scripted click lands on a creature that wanders)
+                    if c.hasPrefix("#face ") {
+                        let want = String(c.dropFirst(6)).trimmingCharacters(in: .whitespaces)
+                        let ey = p.eyeY()
+                        let near = game.world.entities.compactMap { $0 as? Entity }
+                            .filter { $0.type == want && !$0.dead && $0 !== p }
+                            .min { hypot($0.x - p.x, $0.z - p.z) < hypot($1.x - p.x, $1.z - p.z) }
+                        if let e = near {
+                            let dx = e.x - p.x, dy = e.y + e.height / 2 - ey, dz = e.z - p.z
+                            p.yaw = atan2(-dx, dz)
+                            p.pitch = -atan2(dy, hypot(dx, dz))
+                        }
+                        continue
+                    }
+                    // "#keydown Code" / "#keyup Code" hold a game key across frames
+                    if c.hasPrefix("#keydown ") || c.hasPrefix("#keyup ") {
+                        let code = String(c.split(separator: " ").last ?? "")
+                        if c.hasPrefix("#keydown") { game.keyDown(code, now: CACurrentMediaTime() * 1000) } else { game.keyUp(code) }
                         continue
                     }
                     if c.hasPrefix("#key") {

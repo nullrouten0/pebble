@@ -1000,7 +1000,7 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
     }
     if name.hasSuffix("_spawn_egg") {
         let mob = String(name.dropLast(10))
-        _ = spawnMob(world, mob, Double(tx) + 0.5, Double(ty), Double(tz) + 0.5, SpawnOpts())
+        _ = spawnMob(world, mob, Double(tx) + 0.5, Double(ty), Double(tz) + 0.5, SpawnOpts(ready: true))
         if player.gameMode != GameMode.creative { player.consumeHeld(1) }
         return true
     }

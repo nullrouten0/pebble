@@ -54,9 +54,8 @@ public func toolEntries(_ tab: ToolTab, layout: Int = 0) -> [ToolEntry] {
             ToolEntry(title: $0.name == "anime_zoo" ? "All Anime Animals" : prettify($0.name), icon: nil,
                       command: "/spawn \($0.name)", detail: "\($0.mobs().count) creatures in rows")
         }
-        let anime = Set(ANIME_ANIMALS.map { $0.id })
-        let mobs = ANIME_ANIMALS.map { $0.id }
-            + summonableMobs().filter { !anime.contains($0) && !NOT_CREATURES.contains($0) }.sorted()
+        let first = FLYING_MOUNTS + ANIME_ANIMALS.map { $0.id }
+        let mobs = first + summonableMobs().filter { !first.contains($0) && !NOT_CREATURES.contains($0) }.sorted()
         return groups + mobs.map { m in
             ToolEntry(title: prettify(m), icon: iidOpt("\(m)_spawn_egg") != nil ? "\(m)_spawn_egg" : nil,
                       command: "/spawn \(m)", detail: nil)
@@ -72,6 +71,10 @@ public func toolEntries(_ tab: ToolTab, layout: Int = 0) -> [ToolEntry] {
             ToolEntry(title: "Paste", icon: nil, command: "//paste", detail: "Pastes where you're looking"),
             ToolEntry(title: "Paste, Skip Air", icon: nil, command: "//paste -a", detail: "Leaves blocks where the copy has air"),
             ToolEntry(title: "Clear Selection", icon: nil, command: "//desel", detail: nil),
-        ]
+        ] + listBlueprints().map {
+            // saved with //save <name>: load one, then Paste
+            ToolEntry(title: "Load \(prettify($0.name))", icon: nil, command: "//load \($0.name)",
+                      detail: "A saved blueprint: puts it on your clipboard to paste")
+        }
     }
 }

@@ -464,6 +464,7 @@ public final class NetClient {
         if p.wingsuitFlying { flags |= GuestState.WINGSUIT }
         if p.usingItem { flags |= GuestState.USING }
         if p.jumping { flags |= GuestState.JUMPING }
+        if p.powerHeld { flags |= GuestState.POWER }
         if p.dead || p.deathTime > 0 { flags |= GuestState.DEAD }
         w.u16(flags)
         w.f32(p.limbSwing); w.f32(p.limbAmp); w.f32(p.attackAnim)

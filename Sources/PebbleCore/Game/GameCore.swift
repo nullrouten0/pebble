@@ -260,6 +260,8 @@ public final class GameCore {
     // input
     private var keys = Set<String>()
     private var leftDown = false
+    /// sneak was held last tick (a fresh press gets off a mount)
+    private var sneakWasDown = false
     private var rightDown = false
     private var useCooldown = 0
     private var breakCooldown = 0
@@ -540,9 +542,7 @@ public final class GameCore {
                 seed = seed &* 31 &+ Int32(unit)
             }
         }
-        let ms = Int(Date().timeIntervalSince1970 * 1000)
-        let id = "w" + String(ms, radix: 36) + String(Int.random(in: 0..<1_000_000), radix: 36)
-        var rec = WorldRecord(id: id, name: name, seed: seed, gameMode: mode, difficulty: difficulty)
+        var rec = WorldRecord(id: newWorldId(), name: name, seed: seed, gameMode: mode, difficulty: difficulty)
         // pick a spawn: walk outward for a land biome
         let gen = overworldGen(UInt32(bitPattern: seed))
         var sx = 8, sz = 8
@@ -580,6 +580,24 @@ public final class GameCore {
 
     public func deleteWorld(_ id: String) {
         db.deleteWorld(id)
+    }
+
+    /// world `id` as a shared-world file in a temporary folder, named after
+    /// the world (for the share sheet or a save panel); nil if it failed
+    public func exportWorld(_ id: String) -> URL? {
+        guard let rec = db.getWorld(id) else { return nil }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shared-worlds", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var name = rec.name.components(separatedBy: CharacterSet(charactersIn: "/\\:?*\"<>|")).joined(separator: "-")
+            .trimmingCharacters(in: .whitespaces)
+        if name.isEmpty || name.hasPrefix(".") { name = "World" + name }
+        let url = dir.appendingPathComponent("\(name).\(SaveDB.shareExtension)")
+        return db.exportWorld(id, to: url) ? url : nil
+    }
+
+    /// add a shared world file as a new world
+    public func importWorld(_ url: URL) -> Result<WorldRecord, ShareError> {
+        db.importWorld(from: url)
     }
 
     // ===========================================================================
@@ -693,6 +711,7 @@ public final class GameCore {
             self.requestChunk(w, cx, cz)
         }
         hooks.onPlayerMovedByTool = { [weak self] p in self?.netHost?.movedByTool(p) }
+        hooks.tellPlayer = { [weak self] p, msg in self?.tell(p, msg) }
         w.hooks = hooks
     }
 
@@ -1897,6 +1916,13 @@ public final class GameCore {
             }
             p.jumping = k("jump")
             p.sneaking = k("sneak") && !p.flying
+            // a fresh sneak press gets off a mount — unless it's flying,
+            // where sneak descends (land, then press again)
+            if p.sneaking && !sneakWasDown, let v = p.vehicle, !((v as? FlyingMount)?.flying ?? false) {
+                getOff(p)
+            }
+            sneakWasDown = p.sneaking
+            p.powerHeld = leftDown && ridesPowerMount(p)
             let wantSprint = (k("sprint") || sprintHeld) && p.moveForward > 0 && p.hunger > 6 && !p.sneaking
             if wantSprint && !p.sprinting && p.moveForward > 0 { p.sprinting = true }
             if !wantSprint || p.moveForward <= 0 || p.horizontalCollision { p.sprinting = false }
@@ -1916,6 +1942,7 @@ public final class GameCore {
             p.moveStrafe = 0
             p.jumping = false
             p.sprinting = false
+            p.powerHeld = false
         }
 
         // ---- player physics & state ----
@@ -1945,7 +1972,7 @@ public final class GameCore {
             }
             p.tick()
             if let v = p.vehicle {
-                p.setPos(v.x, v.y + v.height * 0.6, v.z)
+                p.setPos(v.x, v.y + v.seatHeight, v.z)
                 p.fallDistance = 0
                 p.vx = 0; p.vy = 0; p.vz = 0
             } else if p.flying {
@@ -2019,6 +2046,13 @@ public final class GameCore {
             raidManager.tick(w)
             if w.time % 1200 == 0 && dim == .overworld { tryPatrolSpawn(w, living, &w.rng) }
             raidManager.tryStartRaid(w, p)
+        }
+        // a rider sits where the mount ended up this tick, carrying its
+        // previous spot too so the camera glides along with it
+        if let v = p.vehicle, !p.dead {
+            let s = v.seatHeight
+            p.x = v.x; p.y = v.y + s; p.z = v.z
+            p.prevX = v.prevX; p.prevY = v.prevY + s; p.prevZ = v.prevZ
         }
         tickWeatherEffects()
         if guest {
@@ -2277,7 +2311,7 @@ public final class GameCore {
     private func tickMining() {
         let p = player!
         // the wand never digs, even if the button went down with a pickaxe in hand
-        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) || holdsWand(p) {
+        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) || holdsWand(p) || ridesPowerMount(p) {
             p.breakingProgress = -1
             return
         }
@@ -2641,6 +2675,8 @@ public final class GameCore {
             }
             leftDown = true
             player?.breakingProgress = -1   // a fresh press starts a fresh crack
+            // on a mount with a power, attack uses it for as long as it's held
+            if let p = player, ridesPowerMount(p) { return }
             doAttack()
         } else if button == 1 {
             pickBlock()
@@ -2651,12 +2687,37 @@ public final class GameCore {
         }
     }
 
+    /// riding a mount whose power attack runs (dragon, alicorn, griffin)
+    func ridesPowerMount(_ p: Player) -> Bool {
+        (p.vehicle as? FlyingMount)?.hasPower ?? false
+    }
+
     public func mouseUp(_ button: Int) {
         if button == 0 { leftDown = false }
         if button == 2 {
             rightDown = false
             if player?.usingItem == true { releaseUse(interactCtx()) }
         }
+    }
+
+    /// touch: a quick tap into the world. On a creature it uses the hand on it
+    /// when that does something (feed, saddle, mount, shear, trade), else hits
+    /// it; anywhere else it's a use/place. Touch has no second button, so
+    /// without this nothing could be mounted or traded with.
+    public func tap() {
+        guard inWorld, !(host?.hasScreen() ?? false), let p = player else { return }
+        guard crosshairOnEntity else { mouseDown(2); mouseUp(2); return }
+        if !p.dead, p.deathTime == 0, !p.sneaking, !holdsWand(p),
+           let target = crosshairEntity(REACH_SURVIVAL - 1), target !== p.vehicle {
+            p.useItemHand = .main
+            // a guest predicts here, the same as a right-click, and the host replays it
+            if target.interact(p, p.mainHand) {
+                p.attackAnim = 0.6
+                netClient?.sendUse(target, nil)
+                return
+            }
+        }
+        mouseDown(0); mouseUp(0)
     }
 
     public func mouseDelta(_ dx: Double, _ dy: Double) {
@@ -2732,7 +2793,7 @@ public final class GameCore {
             }
             // double-space → toggle creative flight
             if code == keybinds["jump"] {
-                if now - lastJumpPress < 280 && p.gameMode == GameMode.creative {
+                if now - lastJumpPress < 280 && p.gameMode == GameMode.creative && p.vehicle == nil {
                     p.flying = !p.flying
                     if p.flying { p.vy = 0 }
                 }
@@ -2828,6 +2889,21 @@ public final class GameCore {
         w.hooks.addParticles("explosion", p.x, p.y + 1, p.z, 60, 6, 0)
         let line = "§c\(p === player ? playerName : p.name) fired an Infinity Wipe (\(Int(radius)) blocks)"
         if let nh = netHost { nh.broadcastChat(line) } else { host?.pushChat(line) }
+    }
+
+    /// step off a mount onto the ground beside it (either side, then behind),
+    /// or on top of it when there's no room
+    private func getOff(_ p: Player) {
+        guard let v = p.vehicle else { return }
+        p.dismount()
+        let fx = -detSin(v.yaw), fz = detCos(v.yaw)
+        let side = v.width / 2 + 0.6, back = v.width / 2 + 0.9
+        for (ox, oz) in [(fz * side, -fx * side), (-fz * side, fx * side), (-fx * back, -fz * back)] {
+            p.setPos(v.x + ox, v.y + 0.01, v.z + oz)
+            if entityFits(p) { break }
+            p.setPos(v.x, v.y + v.height + 0.01, v.z)
+        }
+        p.fallDistance = 0
     }
 
     /// a note for one player: the local one's action bar, or a guest's chat
@@ -3151,7 +3227,7 @@ public final class GameCore {
         let ix = p.prevX + (p.x - p.prevX) * partial
         let iy = p.prevY + (p.y - p.prevY) * partial
         let iz = p.prevZ + (p.z - p.prevZ) * partial
-        var eyeY = iy + (p.sneaking ? 1.27 : PLAYER_EYE)
+        var eyeY = iy + (p.sneaking && p.vehicle == nil ? 1.27 : PLAYER_EYE)
         var cx = ix, cz = iz
         // view bobbing — phase/amp advance in tickViewBob (20Hz), interpolate here
         // View bob is a first-person camera effect. Applying the same lateral
@@ -3177,7 +3253,8 @@ public final class GameCore {
         }
         // third person: pull camera back along the view ray, clipped by blocks
         if perspective > 0 {
-            let back = 4.0
+            // further back on a big mount, so its head and wings are in view
+            let back = 4.0 + max(0, (p.vehicle?.width ?? 0) - 1) * 2.5
             let dx = detSin(yaw) * detCos(pitch)
             let dy = detSin(pitch)
             let dz = -detCos(yaw) * detCos(pitch)

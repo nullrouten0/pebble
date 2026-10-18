@@ -10,14 +10,18 @@ public struct SpawnOpts {
     public var persistent = false
     public var captain = false
     public var variant: Int? = nil
+    /// placed by a player (spawn egg, /summon, /spawn, the Tools menu): a
+    /// mount arrives tamed and saddled, ready to ride
+    public var ready = false
 
     public init(baby: Bool = false, size: Int? = nil, persistent: Bool = false,
-                captain: Bool = false, variant: Int? = nil) {
+                captain: Bool = false, variant: Int? = nil, ready: Bool = false) {
         self.baby = baby
         self.size = size
         self.persistent = persistent
         self.captain = captain
         self.variant = variant
+        self.ready = ready
     }
 }
 

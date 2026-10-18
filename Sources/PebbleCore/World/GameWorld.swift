@@ -64,6 +64,9 @@ public struct WorldHooks {
     /// a building tool or undo moved a player (liftOutOfBlocks): the LAN host
     /// sends that guest's client a teleport at once
     public var onPlayerMovedByTool: ((Player) -> Void)?
+    /// a note for one player (a mount that won't carry them yet): the local
+    /// player's action bar, or a LAN guest's chat
+    public var tellPlayer: ((Player, String) -> Void)?
 
     public init() {}
 }

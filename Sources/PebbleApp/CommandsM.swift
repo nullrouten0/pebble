@@ -56,6 +56,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         ok("LAN: host [port], join <address[:port]>, leave, list, name <name>")
         ok("Selection: //pos1 [x y z], //pos2 [x y z], //desel (or use the selection_wand)")
         ok("Clipboard: //copy, //cut, //paste [-a to skip air], //undo, //redo")
+        ok("Blueprints: //save <name>, //load <name>, //blueprints [delete|share <name>]")
     case "give":
         guard let itemName = arg(0) else { return fail("Usage: /give <item> [count]") }
         let count = arg(1).flatMap(Int.init) ?? 1
@@ -143,7 +144,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         let x = arg(1).map { parseCoord($0, p.x) } ?? p.x
         let y = arg(2).map { parseCoord($0, p.y) } ?? p.y
         let z = arg(3).map { parseCoord($0, p.z) } ?? p.z
-        if spawnMob(world, mob, x, y, z, nil) != nil {
+        if spawnMob(world, mob, x, y, z, SpawnOpts(ready: true)) != nil {
             ok("Summoned \(mob)")
         }
     case "spawn":
@@ -243,6 +244,64 @@ func runCommand(_ game: GameCore, _ raw: String) {
             }
         } catch {
             fail("\(error)")
+        }
+    case "/save", "/load":
+        // blueprints go through the clipboard, which only the host has for now
+        if game.netClient != nil { return fail("In a LAN game only the host can save and load blueprints for now") }
+        guard let raw = arg(0), args.count == 1 else {
+            return fail(cmd == "/save" ? "Usage: //save <name>  (saves your clipboard, or your selection if you haven't copied)"
+                                       : "Usage: //load <name>  (//blueprints lists them)")
+        }
+        guard let name = blueprintName(raw) else { return fail("\(cmd == "/save" ? BlueprintError.badName : BlueprintError.notFound(raw))") }
+        do {
+            if cmd == "/save" {
+                if p.clipboard == nil {
+                    // nothing copied yet: take the selection
+                    do { try copySelection(p, cut: false) } catch ClipboardError.noSelection {
+                        return fail("Nothing to save: //copy a build first, or mark a selection")
+                    }
+                }
+                guard let clip = p.clipboard else { return }
+                let existed = FileManager.default.fileExists(atPath: blueprintURL(name).path)
+                try saveBlueprint(clip, name: name)
+                ok("\(existed ? "Replaced" : "Saved") blueprint \(name) (\(clip.w)×\(clip.h)×\(clip.l)) - //load \(name) brings it back, in any world")
+            } else {
+                let url = blueprintURL(name)
+                guard FileManager.default.fileExists(atPath: url.path) else { throw BlueprintError.notFound(name) }
+                let (clip, dropped) = try loadBlueprint(url)
+                p.clipboard = clip
+                ok("Loaded \(name) (\(clip.w)×\(clip.h)×\(clip.l)) - //paste to place it")
+                if !dropped.isEmpty { fail("Not in this version, so left out: \(dropped.prefix(6).joined(separator: ", "))\(dropped.count > 6 ? "…" : "")") }
+            }
+        } catch {
+            fail("\(error)")
+        }
+    case "/blueprints":
+        let all = listBlueprints()
+        switch arg(0) {
+        case nil:
+            if all.isEmpty { return ok("No blueprints yet - //copy a build, then //save <name>") }
+            ok("Blueprints (\(all.count)): " + all.map(\.name).joined(separator: ", "))
+            ok("//load <name> to paste one; //blueprints delete|share <name>")
+        case "delete", "share":
+            guard let raw = arg(1), let name = blueprintName(raw), let bp = all.first(where: { $0.name == name }) else {
+                return fail(arg(1).map { "\(BlueprintError.notFound($0))" } ?? "Usage: //blueprints \(arg(0)!) <name>")
+            }
+            if arg(0) == "delete" {
+                do { try FileManager.default.removeItem(at: bp.url) } catch { return fail("Couldn't delete \(name)") }
+                ok("Deleted blueprint \(name)")
+            } else {
+                guard let platform = gRuntime?.platform, platform.canShareFiles else { return fail("Sharing files isn't available here") }
+                // pause first, so the pointer is free for the share sheet; no
+                // button to point at, so the middle of the screen
+                if let ui = gRuntime?.ui, !ui.hasScreen() { ui.open(PauseScreen(), game) }
+                let (w, h) = (gRuntime?.ui.width ?? 0, gRuntime?.ui.height ?? 0)
+                let s = gRuntime?.ui.scale ?? 1
+                platform.shareFile(bp.url.path, from: (w / 2 * s - 1, h / 2 * s - 1, 2, 2))
+                ok("Sharing \(name)…")
+            }
+        default:
+            fail("Usage: //blueprints [delete|share <name>]")
         }
     case "locate":
         guard let target = arg(0) else { return fail("Usage: /locate <structure>") }

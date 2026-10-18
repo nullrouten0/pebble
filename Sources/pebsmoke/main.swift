@@ -3,6 +3,7 @@
 // bit-for-bit so worldgen seeds carry over across releases.
 
 import Foundation
+import Compression
 import simd
 import PebbleCore
 
@@ -2466,6 +2467,182 @@ do {
         check("selection wand world loads", false)
     }
 
+    // touch tap on a creature: use the hand on it when that does something
+    // (mount, saddle, feed), else hit it — touch has no right button
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        let px = Int(floor(p.x)), py = Int(floor(p.y)), pz = Int(floor(p.z))
+        for dy in 0...3 { for dz in 0...5 { for dx in -2...2 { w.setBlock(px + dx, py + dy, pz + dz, 0) } } }
+        /// a fresh creature 2.5 ahead (+z), aimed at, then one tap
+        func tapOn(_ type: String, ready: Bool = false, holding item: String? = nil) -> Mob? {
+            guard let m = spawnMob(w, type, p.x, p.y, p.z + 2.5, SpawnOpts(ready: ready)) as? Mob else { return nil }
+            p.yaw = 0
+            p.pitch = atan2(p.eyeY() - (m.y + m.height / 2), 2.5)
+            p.inventory[p.selectedSlot] = item.map { ItemStack(iid($0), 1) }
+            g.tap()
+            return m
+        }
+        let peg = tapOn("pegasus", ready: true)
+        check("tapping a saddled pegasus with an empty hand climbs on, unhurt",
+              peg != nil && p.vehicle === peg && peg?.health == peg?.maxHealth)
+        p.dismount()
+        peg?.dead = true
+        if let m = spawnMob(w, "pegasus", p.x, p.y, p.z + 2.5, SpawnOpts()) as? Pegasus {
+            m.tamed = true
+            p.inventory[p.selectedSlot] = ItemStack(iid("saddle"), 1)
+            g.tap()
+            check("tapping a tamed pegasus with a saddle saddles it", m.saddled && p.vehicle == nil && m.health == m.maxHealth)
+            m.dead = true
+        }
+        let fed = tapOn("cow", holding: "wheat")
+        check("tapping a cow with wheat feeds it instead of hitting it",
+              fed?.loveTicks ?? 0 > 0 && fed?.health == fed?.maxHealth)
+        fed?.dead = true
+        let hit = tapOn("cow")
+        check("tapping a cow with an empty hand hits it", hit.map { $0.health < $0.maxHealth || $0.dead } == true && hit?.loveTicks == 0)
+        hit?.dead = true
+        let stick = tapOn("cow", holding: "stick")
+        check("tapping with an item it has no use for hits it too", stick.map { $0.health < $0.maxHealth || $0.dead } == true)
+        g.exitToTitle()
+    } else {
+        check("touch tap world loads", false)
+    }
+
+    // sharing a world: export it to a file, import it back as a new world
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        let id = g.worldRec!.id, seed = g.worldRec!.seed
+        let mx = Int(floor(p.x)) + 2, my = Int(floor(p.y)), mz = Int(floor(p.z))
+        w.setBlock(mx, my, mz, Int(cell(B.gold_block)))
+        p.inventory[4] = ItemStack(iid("diamond"), 7)
+        g.exitToTitle()
+        let file = g.exportWorld(id)
+        let before = g.db.chunkCoords(id).count
+        check("a world exports to a .pebbleworld file named after it",
+              file?.lastPathComponent == "smoke.pebbleworld" && file.map { FileManager.default.fileExists(atPath: $0.path) } == true)
+        if let file, case .success(let copy) = g.importWorld(file) {
+            check("importing adds it as a new world, renamed beside the original",
+                  copy.id != id && copy.name == "smoke (2)" && copy.seed == seed
+                  && g.listWorlds().contains { $0.id == copy.id } && g.listWorlds().contains { $0.id == id })
+            check("with every saved chunk, the player and the palette",
+                  g.db.chunkCoords(copy.id).count == before && before > 0
+                  && g.db.getPlayer(copy.id) != nil && g.db.getPalette(copy.id) != nil)
+            if case .success(let third) = g.importWorld(file) {
+                check("importing again makes another copy", third.name == "smoke (3)" && third.id != copy.id)
+                g.deleteWorld(third.id)
+            }
+            g.deleteWorld(id)
+            g.loadWorld(copy.id)
+            var t = 0
+            while t < 600 && (g.world.getChunk(floorDiv(mx, 16), floorDiv(mz, 16)) == nil || !g.player.onGround) {
+                _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.005)); t += 1
+            }
+            check("the copy plays the same, after the original is deleted: the block placed, the inventory",
+                  g.world.getBlockId(mx, my, mz) == Int(B.gold_block) && g.player.inventory[4]?.id == iid("diamond")
+                  && g.player.inventory[4]?.count == 7, "block \(g.world.getBlockId(mx, my, mz))")
+            g.exitToTitle()
+            g.deleteWorld(copy.id)
+        } else {
+            check("the exported world imports", false)
+        }
+        // what isn't a world is refused, and leaves no world behind
+        let junk = URL(fileURLWithPath: home).appendingPathComponent("junk.pebbleworld")
+        try? Data("not a database".utf8).write(to: junk)
+        let count = g.listWorlds().count
+        var refused = false
+        if case .failure(.notAWorld) = g.importWorld(junk) { refused = true }
+        var missing = false
+        if case .failure(.unreadable) = g.importWorld(URL(fileURLWithPath: home + "/nope.pebbleworld")) { missing = true }
+        check("a file that isn't a world, or isn't there, is refused", refused && missing && g.listWorlds().count == count)
+    } else {
+        check("world sharing world loads", false)
+    }
+
+    // blueprints: a clipboard saved by name, loaded back, pasted elsewhere
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        let dir = URL(fileURLWithPath: home).appendingPathComponent("bp-test", isDirectory: true)
+        let bx = ifloor(p.x) + 4, by = ifloor(p.y) + 10, bz = ifloor(p.z)
+        let brick = Int(cell(B.bricks)), chestCell = Int(cell(B.chest))
+        for dz in 0..<3 { for dx in 0..<3 { w.setBlock(bx + dx, by, bz + dz, brick) } }
+        w.setBlock(bx + 1, by + 1, bz + 1, chestCell)
+        let chest = makeContainerBE(bx + 1, by + 1, bz + 1, 27)
+        chest.items![3] = ItemStack(iid("emerald"), 9)
+        w.setBlockEntity(chest)
+        p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 2, by + 1, bz + 2))
+        check("blueprint names: letters, digits, - and _, lowercased",
+              blueprintName("Castle_2") == "castle_2" && blueprintName("a b") == nil && blueprintName("../x") == nil
+              && blueprintName("") == nil && blueprintName(String(repeating: "x", count: 41)) == nil)
+        if let clip = try? copySelection(p, cut: false), let url = try? saveBlueprint(clip, name: "Hut", in: dir) {
+            check("//save writes <name>.pebbleblueprint, listed by name",
+                  url.lastPathComponent == "hut.pebbleblueprint" && listBlueprints(in: dir).map(\.name) == ["hut"])
+            p.clipboard = nil
+            if let (back, dropped) = try? loadBlueprint(url) {
+                p.clipboard = back
+                let r = try? pasteClipboard(p, skipAir: false, at: BlockPos(bx, by, bz + 6))
+                let be = w.getBlockEntity(bx + 1, by + 1, bz + 7)
+                check("//load brings it back to paste anywhere: blocks, and the chest with its items",
+                      dropped.isEmpty && back.w == 3 && back.h == 2 && back.l == 3 && r != nil
+                      && w.getBlock(bx, by, bz + 6) == brick && w.getBlock(bx + 2, by, bz + 8) == brick
+                      && w.getBlock(bx + 1, by + 1, bz + 7) == chestCell
+                      && be?.items?[3]?.id == iid("emerald") && be?.items?[3]?.count == 9 && be !== chest)
+            } else {
+                check("a saved blueprint loads", false)
+            }
+            // a blueprint from a build with other ids: names decide, not numbers
+            if let raw = try? Data(contentsOf: url), raw.count > 8 {
+                let len = Int(raw[4]) | Int(raw[5]) << 8 | Int(raw[6]) << 16 | Int(raw[7]) << 24
+                var json = Data(count: len)
+                let got = json.withUnsafeMutableBytes { d in raw.subdata(in: 8..<raw.count).withUnsafeBytes { s in
+                    compression_decode_buffer(d.bindMemory(to: UInt8.self).baseAddress!, len,
+                                              s.bindMemory(to: UInt8.self).baseAddress!, s.count, nil, COMPRESSION_ZLIB) } }
+                if got == len, var doc = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any],
+                   var pal = doc["palette"] as? [String: Any], var blocks = pal["blocks"] as? [String],
+                   var items = pal["items"] as? [String] {
+                    // that build called bricks "gold_block", and had no emeralds
+                    blocks[Int(B.bricks)] = "gold_block"
+                    blocks[Int(B.gold_block)] = "bricks"
+                    items[iid("emerald")] = "emerald_from_the_future"
+                    pal["blocks"] = blocks; pal["items"] = items; doc["palette"] = pal
+                    let j2 = try! JSONSerialization.data(withJSONObject: doc)
+                    var packed = Data(count: j2.count + 4096)
+                    let n = packed.withUnsafeMutableBytes { d in j2.withUnsafeBytes { s in
+                        compression_encode_buffer(d.bindMemory(to: UInt8.self).baseAddress!, j2.count + 4096,
+                                                  s.bindMemory(to: UInt8.self).baseAddress!, j2.count, nil, COMPRESSION_ZLIB) } }
+                    packed.count = n
+                    var out = raw.prefix(4)
+                    for k in 0..<4 { out.append(UInt8((j2.count >> (8 * k)) & 255)) }
+                    out.append(packed)
+                    let other = dir.appendingPathComponent("other.\(BLUEPRINT_EXTENSION)")
+                    try? out.write(to: other)
+                    if let (clip2, dropped) = try? loadBlueprint(other) {
+                        let chestIdx = clip2.cells.firstIndex { Int($0) == chestCell }
+                        check("a blueprint from another build reads its blocks by name, and drops what this one lacks",
+                              Int(clip2.cells[0]) == Int(cell(B.gold_block)) && chestIdx != nil
+                              && dropped == ["emerald_from_the_future"])
+                    } else { check("a remapped blueprint loads", false) }
+                }
+            }
+            // a blueprint shared with you joins the folder under its own name
+            let shared = URL(fileURLWithPath: home).appendingPathComponent("My Hut.\(BLUEPRINT_EXTENSION)")
+            try? FileManager.default.removeItem(at: shared)
+            try? FileManager.default.copyItem(at: url, to: shared)
+            let n1 = try? importBlueprint(shared, into: dir), n2 = try? importBlueprint(shared, into: dir)
+            let junk = URL(fileURLWithPath: home).appendingPathComponent("junk.\(BLUEPRINT_EXTENSION)")
+            try? Data("nope".utf8).write(to: junk)
+            var refused = false
+            do { _ = try importBlueprint(junk, into: dir) } catch BlueprintError.notABlueprint { refused = true } catch {}
+            check("an opened blueprint is added as my_hut, then my_hut-2; junk is refused",
+                  n1 == "my_hut" && n2 == "my_hut-2" && refused && !listBlueprints(in: dir).contains { $0.name == "junk" })
+        } else {
+            check("a blueprint saves", false)
+        }
+        try? FileManager.default.removeItem(at: dir)
+        g.exitToTitle()
+    } else {
+        check("blueprint world loads", false)
+    }
+
     // clipboard: //copy, //cut and //paste (each one undo step)
     if let g = settled() {
         let p = g.player!, w = g.world
@@ -3743,6 +3920,248 @@ do {
           && pebbleName("eye_of_" + "ender") == "rift_eye" && pebbleName("oak_log") == "oak_log")
     check("a world saved before palettes is translated to this build's names",
           db.migratePalette("prepalette") != nil && db.getPalette("prepalette") == Palette.current())
+}
+
+section("flying mounts (pegasus, dragon, alicorn, griffin)")
+do {
+    // flat stone, ground at y 64 (feet at 65)
+    let w = World(dim: .overworld, seed: 3)
+    for cz in -3...3 {
+        for cx in -3...3 {
+            let c = Chunk(cx: cx, cz: cz, minY: GEN_MIN_Y, height: WORLD_H)
+            var blocks = [UInt16](repeating: 0, count: 16 * 16 * WORLD_H)
+            for y in 0...(64 - GEN_MIN_Y) { for i in 0..<256 { blocks[y * 256 + i] = cell(B.stone) } }
+            c.blocks = blocks
+            c.skyLight = [UInt8](repeating: 15, count: blocks.count)
+            c.blockLight = [UInt8](repeating: 0, count: blocks.count)
+            c.buildHeightmap()
+            c.scanSpecials()
+            c.status = .lit
+            w.setChunk(c)
+        }
+    }
+    let gy = 65.0
+    let p = Player(world: w)
+    p.setPos(0.5, gy, 0.5)
+    w.addEntity(p)
+    var told: [String] = []
+    w.hooks.tellPlayer = { _, m in told.append(m) }
+
+    let placed = spawnMob(w, "pegasus", 0.5, gy, 4.5, SpawnOpts(persistent: true, ready: true)) as? Pegasus
+    let wildOpt = spawnMob(w, "pegasus", 8.5, gy, 4.5, SpawnOpts()) as? Pegasus
+    check("a placed pegasus comes tamed and saddled; a wild one is neither",
+          placed?.tamed == true && placed?.saddled == true && placed?.persistent == true
+          && wildOpt?.tamed == false && wildOpt?.saddled == false)
+    check("each flying mount has a spawn egg, and they lead the Tools menu's creatures",
+          FLYING_MOUNTS.allSatisfy { iidOpt("\($0)_spawn_egg") != nil }
+          && toolEntries(.creatures).dropFirst(MOB_GROUPS.count).prefix(4).map { $0.command }
+             == ["/spawn pegasus", "/spawn dragon", "/spawn alicorn", "/spawn griffin"])
+    func livesIn(_ mob: String, _ biomes: [Biome]) -> Bool {
+        biomes.allSatisfy { BIOMES[Int($0.rawValue)]?.creatures.contains { $0.mob == mob } == true }
+    }
+    check("wild pegasi live in meadows and cherry groves, dragons on the peaks, alicorns among flowers, griffins on windswept heights",
+          livesIn("pegasus", [.meadow, .cherryGrove]) && livesIn("dragon", [.jaggedPeaks, .stonyPeaks])
+          && livesIn("alicorn", [.flowerForest, .sunflowerPlains]) && livesIn("griffin", [.windsweptHills, .savannaPlateau]))
+
+    if let wild = wildOpt, let peg = placed {
+        // a wild one won't carry you; golden carrots tame it, then it needs a saddle
+        _ = wild.interact(p, nil)
+        check("a wild pegasus won't let you on, and says how to tame it",
+              p.vehicle == nil && told.last?.contains("golden carrot") == true, "\(told)")
+        p.inventory[0] = ItemStack(iid("wheat"), 5)
+        let wheat = wild.interact(p, p.mainHand)
+        p.inventory[0] = ItemStack(iid("golden_carrot"), 64)
+        var fed = 0
+        while !wild.tamed && fed < 40 { _ = wild.interact(p, p.mainHand); fed += 1 }
+        check("golden carrots tame it in a few tries, each one eaten (wheat does nothing)",
+              !wheat && wild.tamed && wild.persistent && p.mainHand?.count == 64 - fed, "\(fed) carrots")
+        p.inventory[0] = nil
+        _ = wild.interact(p, nil)
+        check("tamed but bare, it still won't carry you: it needs a saddle",
+              p.vehicle == nil && told.last?.contains("saddle") == true)
+        p.inventory[0] = ItemStack(iid("saddle"), 1)
+        _ = wild.interact(p, p.mainHand)
+        check("a saddle goes on, and is used up", wild.saddled && p.mainHand == nil)
+        let back = loadEntity(w, wild.save()) as? Pegasus
+        check("tamed and saddled survive a reload", back?.tamed == true && back?.saddled == true && back?.data.saddled == true)
+        back?.remove()
+
+        // a wild one in trouble takes to the air, then comes back down unhurt
+        let shy = spawnMob(w, "pegasus", -8.5, gy, -8.5, SpawnOpts()) as? Pegasus
+        _ = shy?.hurt(1, .player, p)
+        var rose = 0.0, flew = false
+        for _ in 0..<1200 {
+            shy?.tick()
+            if shy?.flying == true { flew = true; rose = max(rose, (shy?.y ?? gy) - gy) }
+            if flew && shy?.flying == false { break }
+        }
+        check("a wild pegasus that's hit flies off, then lands with no fall damage",
+              flew && rose > 4 && shy?.flying == false && shy?.onGround == true && shy?.health == (shy?.maxHealth ?? 0) - 1,
+              "rose \(rose), health \(String(describing: shy?.health))")
+        shy?.remove()
+        wild.remove()
+
+        // riding: the rider's input flies it like creative flight
+        p.inventory[0] = nil
+        p.yaw = 0; p.pitch = 0
+        _ = peg.interact(p, nil)
+        check("an empty hand gets on a ready pegasus", p.vehicle === peg)
+        func ride(_ n: Int, fwd: Double = 0, jump: Bool = false, sneak: Bool = false, sprint: Bool = false) {
+            for _ in 0..<n {
+                p.moveForward = fwd; p.jumping = jump; p.sneaking = sneak; p.sprinting = sprint
+                peg.tick()
+            }
+        }
+        ride(10)
+        check("left alone it stands on the ground", !peg.flying && peg.onGround && abs(peg.y - gy) < 0.01)
+        ride(20, jump: true)
+        check("jump takes off and climbs", peg.flying && peg.y - gy > 4, "climbed \(peg.y - gy)")
+        ride(20, fwd: 1)   // (the climb carries on a moment after jump is let go)
+        let hold = peg.y
+        ride(40, fwd: 1)
+        let z0 = peg.z
+        ride(1, fwd: 1)
+        let cruise = peg.z - z0
+        check("forward flies where the rider faces, at its cruising speed, holding height",
+              abs(cruise - peg.flyThrust / (1 - MOUNT_DRAG)) < 0.03 && abs(peg.y - hold) < 0.05 && abs(peg.x - 0.5) < 0.01,
+              "speed \(cruise), height change \(peg.y - hold)")
+        ride(40, fwd: 1, sprint: true)
+        let z1 = peg.z
+        ride(1, fwd: 1, sprint: true)
+        check("sprinting flies faster", peg.z - z1 > cruise * 1.5, "\(peg.z - z1) vs \(cruise)")
+        // (back over the middle of the test land: it's only 112 blocks across)
+        peg.setPos(0.5, peg.y, 0.5)
+        p.yaw = .pi / 2
+        ride(30, fwd: 1)
+        let x1 = peg.x
+        ride(1, fwd: 1)
+        check("it turns with the rider's view", peg.x < x1 && abs(peg.yaw - .pi / 2) < 1e-9)
+        peg.setPos(0.5, peg.y, 0.5)
+        var landed = false
+        for _ in 0..<400 where !landed {
+            ride(1, sneak: true)
+            landed = !peg.flying
+        }
+        check("sneak descends, and it lands on the ground and walks again, unhurt",
+              landed && peg.onGround && abs(peg.y - gy) < 0.01 && peg.health == peg.maxHealth)
+        ride(20, jump: true)
+        peg.setPos(0.5, peg.y, 0.5)
+        let aloft = peg.save()
+        p.dismount()
+        var glided = 0
+        while peg.flying && glided < 600 { peg.tick(); glided += 1 }
+        check("with no rider in the air it glides down and lands, unhurt",
+              !peg.flying && peg.onGround && peg.health == peg.maxHealth, "\(glided) ticks")
+        check("a mount saved in the air loads still flying", (loadEntity(w, aloft) as? Pegasus)?.flying == true)
+    } else { check("pegasus spawns", false) }
+
+    // the dragon: fire in a cone ahead while the rider holds attack
+    if let dragon = spawnMob(w, "dragon", 20.5, gy, 0.5, SpawnOpts(ready: true)) as? Dragon,
+       let ahead = spawnMob(w, "pig", 20.5, gy, 7.5) as? LivingEntity,
+       let behind = spawnMob(w, "pig", 20.5, gy, -7.5) as? LivingEntity,
+       let pet = spawnMob(w, "wolf", 21.5, gy, 6.5) as? Mob {
+        pet.ownerId = p.id
+        p.setPos(20.5, gy, 0.5)
+        p.yaw = 0; p.pitch = 0
+        p.mount(dragon)
+        p.powerHeld = true
+        for _ in 0..<20 { p.moveForward = 0; dragon.tick() }
+        check("held attack on a dragon sets what's ahead on fire",
+              dragon.data.breathing == true && ahead.fireTicks > 0 && ahead.health < ahead.maxHealth,
+              "fire \(ahead.fireTicks) health \(ahead.health)")
+        check("but not what's behind, its rider, or the rider's pets",
+              behind.fireTicks == 0 && p.fireTicks == 0 && pet.fireTicks == 0 && pet.health == pet.maxHealth)
+        p.powerHeld = false
+        dragon.tick()
+        check("letting go stops the fire", dragon.data.breathing == nil)
+        let hp = dragon.health
+        check("fire can't hurt a dragon", dragon.hurt(5, .fire) == false && dragon.hurt(5, .lava) == false && dragon.health == hp)
+        p.dismount()
+    } else { check("dragon and targets spawn", false) }
+
+    // the alicorn: held attack casts bolts from its horn along the rider's view
+    if let ali = spawnMob(w, "alicorn", -20.5, gy, 0.5, SpawnOpts(ready: true)) as? Alicorn,
+       let target = spawnMob(w, "pig", -20.5, gy, 10.5) as? LivingEntity,
+       let pet = spawnMob(w, "wolf", -20.5, gy, 5.5) as? Mob,
+       let aside = spawnMob(w, "pig", -26.5, gy, 10.5) as? LivingEntity {
+        pet.ownerId = p.id
+        p.setPos(-20.5, gy, 0.5)
+        p.mount(ali)
+        ali.tick()
+        // aim at the pig's middle (bolts leave the horn for the crosshair)
+        p.yaw = 0
+        p.pitch = atan2(p.eyeY() - (target.y + target.height / 2), target.z - p.z)
+        p.powerHeld = true
+        var cast = 0
+        for _ in 0..<30 {
+            p.moveForward = 0
+            ali.tick()
+            if ali.boltCooldown == ALICORN_BOLT_EVERY - 1 { cast += 1 }   // (just cast, then a tick off)
+        }
+        p.powerHeld = false
+        for _ in 0..<30 { ali.tick() }
+        check("held attack on an alicorn casts a bolt every \(ALICORN_BOLT_EVERY) ticks that hurts what it's aimed at",
+              cast == 30 / ALICORN_BOLT_EVERY && target.health < target.maxHealth && ali.data.breathing == nil,
+              "\(cast) bolts, health \(target.health)")
+        check("bolts pass through the rider's pets, miss what's off the line, and never hurt the rider",
+              pet.health == pet.maxHealth && aside.health == aside.maxHealth && p.health == p.maxHealth)
+        check("bolts stop: none left flying once attack is let go", ali.boltsInFlight == 0)
+        // a bolt into a wall stops there
+        w.setBlock(-21, 66, 4, Int(cell(B.stone)))
+        let hp = target.health
+        p.pitch = 0
+        p.powerHeld = true
+        ali.setPos(-20.5, gy, 0.5)
+        for _ in 0..<12 { ali.tick() }
+        p.powerHeld = false
+        for _ in 0..<30 { ali.tick() }
+        check("a bolt stops at the first block in its way", target.health == hp && ali.boltsInFlight == 0)
+        p.dismount()
+    } else { check("alicorn and targets spawn", false) }
+
+    // the griffin: held attack screeches, throwing creatures back and sending them running
+    if let gr = spawnMob(w, "griffin", 30.5, gy, -20.5, SpawnOpts(ready: true)) as? Griffin,
+       let near = spawnMob(w, "pig", 33.5, gy, -20.5) as? Mob,
+       let far = spawnMob(w, "pig", 30.5, gy, -5.5) as? Mob,
+       let pet = spawnMob(w, "wolf", 28.5, gy, -20.5) as? Mob,
+       let zombie = spawnMob(w, "zombie", 30.5, gy, -24.5) as? Mob {
+        pet.ownerId = p.id
+        p.setPos(30.5, gy, -20.5)
+        p.mount(gr)
+        zombie.target = p
+        p.powerHeld = true
+        gr.tick()
+        p.powerHeld = false
+        check("a griffin's screech throws nearby creatures back from it",
+              near.vx > 0.5 && near.vy > 0.2 && zombie.vz < -0.5, "pig \(near.vx), zombie \(zombie.vz)")
+        check("and sends them running: a zombie forgets you",
+              near.scaredTicks > 0 && zombie.scaredTicks > 0 && zombie.target == nil)
+        check("but not what's out of range, the rider, or the rider's pets",
+              far.vx == 0 && far.vz == 0 && far.scaredTicks == 0 && pet.scaredTicks == 0 && abs(pet.vx) < 0.1 && p.health == p.maxHealth)
+        for _ in 0..<60 { zombie.tick(); near.tick(); gr.tick() }
+        check("scared creatures keep running from where it screeched",
+              detHyp(zombie.x - 30.5, zombie.z + 20.5) > 8 && detHyp(near.x - 30.5, near.z + 20.5) > 8 && zombie.target == nil,
+              "zombie \(detHyp(zombie.x - 30.5, zombie.z + 20.5)), pig \(detHyp(near.x - 30.5, near.z + 20.5))")
+        let fastest = FLYING_MOUNTS.compactMap { createEntity($0, w) as? FlyingMount }.max { $0.flyThrust < $1.flyThrust }
+        check("the griffin is the fastest flyer", fastest?.type == "griffin")
+        p.dismount()
+    } else { check("griffin and targets spawn", false) }
+
+    // taming foods
+    if let a = spawnMob(w, "alicorn", -40.5, gy, 0.5, SpawnOpts()) as? Alicorn,
+       let g = spawnMob(w, "griffin", -40.5, gy, 8.5, SpawnOpts()) as? Griffin {
+        func tames(_ m: FlyingMount, _ food: String) -> Bool {
+            for _ in 0..<40 where !m.tamed {
+                p.inventory[0] = ItemStack(iid(food), 1)
+                _ = m.interact(p, p.mainHand)
+            }
+            return m.tamed
+        }
+        check("alicorns tame with golden apples or glistering melon, griffins with raw meat",
+              tames(a, "glistering_melon_slice") && tames(g, "rabbit")
+              && a.tameFoods.contains("golden_apple") && !g.tameFoods.contains("golden_apple"))
+        p.inventory[0] = nil
+    } else { check("wild alicorn and griffin spawn", false) }
 }
 
 print("\n\(passed) passed, \(failed) failed")
