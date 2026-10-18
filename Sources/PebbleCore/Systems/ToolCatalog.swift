@@ -71,6 +71,10 @@ public func toolEntries(_ tab: ToolTab, layout: Int = 0) -> [ToolEntry] {
             ToolEntry(title: "Paste", icon: nil, command: "//paste", detail: "Pastes where you're looking"),
             ToolEntry(title: "Paste, Skip Air", icon: nil, command: "//paste -a", detail: "Leaves blocks where the copy has air"),
             ToolEntry(title: "Clear Selection", icon: nil, command: "//desel", detail: nil),
-        ]
+        ] + listBlueprints().map {
+            // saved with //save <name>: load one, then Paste
+            ToolEntry(title: "Load \(prettify($0.name))", icon: nil, command: "//load \($0.name)",
+                      detail: "A saved blueprint: puts it on your clipboard to paste")
+        }
     }
 }

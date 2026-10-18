@@ -3,6 +3,30 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.11.0 — 2026-10-17 — blueprints
+
+- **Save a build as a blueprint and use it again anywhere.** `//copy` it (or
+  just mark a selection), then `//save castle`. In any world, `//load castle`
+  puts it on your clipboard and `//paste` places it, as many times as you
+  like. Chests keep their contents and signs their text.
+- **`//blueprints`** lists them; `//blueprints delete castle` removes one.
+- **Share one:** `//blueprints share castle` opens the share sheet (AirDrop,
+  Messages, Mail, Save to File). Opening a `.pebbleblueprint` file on the
+  other end adds it to that player's blueprints (as `castle-2` if they have
+  a `castle`), ready for `//load`.
+- **They survive updates.** A blueprint stores block and item names, not
+  numbers, the same way worlds do, so one saved now still loads after
+  Pebble adds or reorders blocks; anything a version doesn't have is left
+  out, and `//load` says what.
+- **The Tools menu's Edit tab** lists each blueprint as a **Load …** entry.
+- In a LAN game only the host can save and load blueprints, as with the
+  clipboard.
+- **Development:** Systems/Blueprints.swift (format `pebble-blueprint-1`:
+  "PBP1", the JSON's length, then zlib JSON with the size, base64 cells,
+  block entities and the palette). Files live in `blueprints/` beside
+  pebble.db. Both apps declare `net.stonekitty.pebble.blueprint`, and
+  `GameRuntime.openFile` takes it. 5 new checks (946).
+
 ## 1.10.0 — 2026-10-17 — share a world
 
 - **Share a world.** In Singleplayer, select a world and click **Share**:

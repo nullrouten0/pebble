@@ -25,7 +25,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-> **Pebble 1.10 is a beta.** The engine is covered by 941 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.11 is a beta.** The engine is covered by 946 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
@@ -39,7 +39,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 114 (65+ mobs with full AI, including 10 anime-style animals and 4 flying mounts; vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 941, all green (`pebble test`) |
+| Regression checks | 946, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by Faithful (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -64,6 +64,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full, and [docs/releases](docs/releases) has the release notes.
 
+- **1.11.0** (Oct 17, 2026): [blueprints](#creative-tools): `//save castle` keeps your clipboard as a file, `//load castle` brings it back in any world, and `//blueprints share castle` sends it to a friend. [Release notes](docs/releases/1.11.md).
 - **1.10.0** (Oct 17, 2026): [share a world](#sharing-worlds) with AirDrop, Messages or Mail, or save it as a file; open one and it's added to your worlds. [Release notes](docs/releases/1.10.md).
 - **1.9.0** (Oct 17, 2026): two more [flying mounts](#flying-mounts): the alicorn, a winged unicorn whose horn casts magic bolts, and the griffin, the fastest flyer, whose screech throws creatures back and sends them running. [Release notes](docs/releases/1.9.md).
 - **1.8.0–1.8.1** (Oct 17, 2026): [flying mounts](#flying-mounts) — saddle a pegasus or a dragon and fly it like creative flight; the dragon breathes fire. Shift now gets you off any mount, riding is smooth, and particles that never showed (flames, smoke, hearts, splashes) now do, and on touch screens a tap on a creature feeds, saddles or mounts it. [Release notes](docs/releases/1.8.md).
@@ -92,7 +93,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the test suite (941 checks)
+pebble test         run the test suite (946 checks)
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -179,7 +180,7 @@ On iPad and iPhone, tap a mount to climb on; the jump and sneak buttons climb an
 
 ## Creative tools
 
-Fast building and demolition for creative play, for LAN guests too. Sneak while using a tool for the alternate size.
+Fast building and demolition for creative play, for LAN guests too (except the clipboard and blueprints, which only the host has for now). Sneak while using a tool for the alternate size.
 
 **The Creative Tools menu** (G on a keyboard, or the toolbox button on touch screens; creative mode only) does all of this without typing. Its four tabs are: **Tools** (puts a tool in your hand), **Structures** (places one in front of you, with a choice of layout), **Creatures** (every creature, or all ten anime animals at once, in front of you) and **Edit** (undo, redo, selection corners, copy, cut and paste). Each entry runs the command shown in its tooltip, and what that command reports shows at the bottom of the menu. Typing works as before: get a tool with `/give <id>`.
 
@@ -195,6 +196,8 @@ Fast building and demolition for creative play, for LAN guests too. Sneak while 
 | `infinity_wipe` | Erases the land for 320 blocks around you. Use once to arm, again within 3 seconds to fire. **Can't be undone.** | 1000 blocks |
 | `selection_wand` | Left-click a block for corner 1, right-click for corner 2. `//pos1` and `//pos2` mark your feet; `//desel` clears | — |
 | `//copy`, `//cut`, `//paste [-a]` | Copy the selection (with chest contents); paste it onto the block you're looking at, like placing a block. `-a` skips air | — |
+| `//save <name>`, `//load <name>` | Save your clipboard as a blueprint (or your selection, if you haven't copied); load one back onto the clipboard, in any world, to `//paste` | — |
+| `//blueprints [delete\|share <name>]` | List your blueprints, delete one, or send one with AirDrop, Messages or Mail | — |
 | `/undo [n]`, `/redo [n]` | Undo or redo your last *n* edits (also Cmd+Z / Cmd+Shift+Z) | — |
 
 **Structures you can place:**
@@ -207,6 +210,8 @@ Fast building and demolition for creative play, for LAN guests too. Sneak while 
 - Every worldgen structure, such as villages, strongholds and end cities
 
 For `city`, `mountain` and worldgen structures, a different `variant` number gives a different layout. Underground structures get a lit ladder shaft down from a flag pole, and `/place` prints a `/tp` to it.
+
+**Blueprints** keep a build to use again: `//copy` it, `//save castle`, then in any world `//load castle` and `//paste`. They keep chest contents and sign text, and store blocks by name, so they still load after an update. The Tools menu's Edit tab lists them as **Load …** entries. `//blueprints share castle` sends one to a friend; opening a `.pebbleblueprint` file adds it to your blueprints.
 
 **Builders** snap to a grid the size of the build, so walls and boxes line up edge to edge; click the top of a build to stack on it. They build with the block in your off hand, otherwise the block in the hotbar slot just right of the builder, otherwise stone bricks.
 
@@ -233,6 +238,7 @@ On the Mac, everything is in `~/Library/Application Support/Pebble/`:
 |---|---|
 | `pebble.db` | All worlds, chunks, players and advancements in one SQLite database, including LAN guests who visited your worlds |
 | `settings.json`, `keybinds.json` | Settings (including your LAN name) and keybinds |
+| `blueprints/` | Your saved blueprints, one `.pebbleblueprint` file each (`//save`) |
 | `resourcepacks/` | Texture packs, including the default Faithful 32x (kept as shipped: give your own packs their own file names) |
 
 A LAN guest stores nothing about the host's world. On iPad and iPhone the same files live inside the app, and deleting the app deletes them.
@@ -256,7 +262,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     test harness (941 checks; snapshots in goldens/*.json)
+Sources/pebsmoke/     test harness (946 checks; snapshots in goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              snapshot files the harness compares against
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -271,7 +277,7 @@ Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (p
 
 Your worlds are safe across updates. Every chunk you've visited is saved, so a change to world generation only affects land nobody has seen yet. Worlds also record the names behind their block and item ids, so a build that adds, moves or removes blocks opens them correctly. Worlds created before 1.5 keep their original generator.
 
-`pebble test` runs 941 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
+`pebble test` runs 946 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -286,7 +292,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `941 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `946 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

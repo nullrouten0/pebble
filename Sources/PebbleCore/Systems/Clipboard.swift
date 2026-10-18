@@ -15,7 +15,7 @@ public final class Clipboard {
     /// width (x), height (y), length (z)
     public let w: Int, h: Int, l: Int
     /// cells, x fastest, then z, then y
-    let cells: [UInt16]
+    public let cells: [UInt16]
     /// block entities by cell index, positions relative to the box's min corner
     let blockEntities: [Int: BlockEntityData]
 

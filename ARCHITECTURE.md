@@ -95,6 +95,8 @@ Block and item ids follow registration order, which may change between builds. E
 
 A shared world (`.pebbleworld`, UTI `net.stonekitty.pebble.world`) is a SQLite file with the same five tables holding one world's rows, plus `share(key, value)` naming the format (`pebble-world-1`) and the exporting version. `SaveDB.exportWorld` attaches a new file and copies the rows across; `importWorld` attaches one read-only (a `file:…?mode=ro` URI) and copies its rows in under a fresh world id (renaming guests' `<old id>#guest:` rows to match) and a name that doesn't clash. The palette travels with the world, so the usual migration covers another build's ids. The shells reach it through `PlatformHooks.shareFile`/`pickFile` and `GameRuntime.openFile`.
 
+A blueprint (`.pebbleblueprint`, Systems/Blueprints.swift) is a saved clipboard: "PBP1", the JSON's length, then zlib-compressed JSON with the box size, the cells as base64 u16s, the block entities and the full `Palette`, read back through `PaletteRemap` like an older world. They live in `blueprints/` under the support folder.
+
 ## The test harness (pebsmoke)
 
 About 900 checks, run with `pebble test`:

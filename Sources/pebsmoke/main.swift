@@ -3,6 +3,7 @@
 // bit-for-bit so worldgen seeds carry over across releases.
 
 import Foundation
+import Compression
 import simd
 import PebbleCore
 
@@ -2555,6 +2556,91 @@ do {
         check("a file that isn't a world, or isn't there, is refused", refused && missing && g.listWorlds().count == count)
     } else {
         check("world sharing world loads", false)
+    }
+
+    // blueprints: a clipboard saved by name, loaded back, pasted elsewhere
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        let dir = URL(fileURLWithPath: home).appendingPathComponent("bp-test", isDirectory: true)
+        let bx = ifloor(p.x) + 4, by = ifloor(p.y) + 10, bz = ifloor(p.z)
+        let brick = Int(cell(B.bricks)), chestCell = Int(cell(B.chest))
+        for dz in 0..<3 { for dx in 0..<3 { w.setBlock(bx + dx, by, bz + dz, brick) } }
+        w.setBlock(bx + 1, by + 1, bz + 1, chestCell)
+        let chest = makeContainerBE(bx + 1, by + 1, bz + 1, 27)
+        chest.items![3] = ItemStack(iid("emerald"), 9)
+        w.setBlockEntity(chest)
+        p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 2, by + 1, bz + 2))
+        check("blueprint names: letters, digits, - and _, lowercased",
+              blueprintName("Castle_2") == "castle_2" && blueprintName("a b") == nil && blueprintName("../x") == nil
+              && blueprintName("") == nil && blueprintName(String(repeating: "x", count: 41)) == nil)
+        if let clip = try? copySelection(p, cut: false), let url = try? saveBlueprint(clip, name: "Hut", in: dir) {
+            check("//save writes <name>.pebbleblueprint, listed by name",
+                  url.lastPathComponent == "hut.pebbleblueprint" && listBlueprints(in: dir).map(\.name) == ["hut"])
+            p.clipboard = nil
+            if let (back, dropped) = try? loadBlueprint(url) {
+                p.clipboard = back
+                let r = try? pasteClipboard(p, skipAir: false, at: BlockPos(bx, by, bz + 6))
+                let be = w.getBlockEntity(bx + 1, by + 1, bz + 7)
+                check("//load brings it back to paste anywhere: blocks, and the chest with its items",
+                      dropped.isEmpty && back.w == 3 && back.h == 2 && back.l == 3 && r != nil
+                      && w.getBlock(bx, by, bz + 6) == brick && w.getBlock(bx + 2, by, bz + 8) == brick
+                      && w.getBlock(bx + 1, by + 1, bz + 7) == chestCell
+                      && be?.items?[3]?.id == iid("emerald") && be?.items?[3]?.count == 9 && be !== chest)
+            } else {
+                check("a saved blueprint loads", false)
+            }
+            // a blueprint from a build with other ids: names decide, not numbers
+            if let raw = try? Data(contentsOf: url), raw.count > 8 {
+                let len = Int(raw[4]) | Int(raw[5]) << 8 | Int(raw[6]) << 16 | Int(raw[7]) << 24
+                var json = Data(count: len)
+                let got = json.withUnsafeMutableBytes { d in raw.subdata(in: 8..<raw.count).withUnsafeBytes { s in
+                    compression_decode_buffer(d.bindMemory(to: UInt8.self).baseAddress!, len,
+                                              s.bindMemory(to: UInt8.self).baseAddress!, s.count, nil, COMPRESSION_ZLIB) } }
+                if got == len, var doc = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any],
+                   var pal = doc["palette"] as? [String: Any], var blocks = pal["blocks"] as? [String],
+                   var items = pal["items"] as? [String] {
+                    // that build called bricks "gold_block", and had no emeralds
+                    blocks[Int(B.bricks)] = "gold_block"
+                    blocks[Int(B.gold_block)] = "bricks"
+                    items[iid("emerald")] = "emerald_from_the_future"
+                    pal["blocks"] = blocks; pal["items"] = items; doc["palette"] = pal
+                    let j2 = try! JSONSerialization.data(withJSONObject: doc)
+                    var packed = Data(count: j2.count + 4096)
+                    let n = packed.withUnsafeMutableBytes { d in j2.withUnsafeBytes { s in
+                        compression_encode_buffer(d.bindMemory(to: UInt8.self).baseAddress!, j2.count + 4096,
+                                                  s.bindMemory(to: UInt8.self).baseAddress!, j2.count, nil, COMPRESSION_ZLIB) } }
+                    packed.count = n
+                    var out = raw.prefix(4)
+                    for k in 0..<4 { out.append(UInt8((j2.count >> (8 * k)) & 255)) }
+                    out.append(packed)
+                    let other = dir.appendingPathComponent("other.\(BLUEPRINT_EXTENSION)")
+                    try? out.write(to: other)
+                    if let (clip2, dropped) = try? loadBlueprint(other) {
+                        let chestIdx = clip2.cells.firstIndex { Int($0) == chestCell }
+                        check("a blueprint from another build reads its blocks by name, and drops what this one lacks",
+                              Int(clip2.cells[0]) == Int(cell(B.gold_block)) && chestIdx != nil
+                              && dropped == ["emerald_from_the_future"])
+                    } else { check("a remapped blueprint loads", false) }
+                }
+            }
+            // a blueprint shared with you joins the folder under its own name
+            let shared = URL(fileURLWithPath: home).appendingPathComponent("My Hut.\(BLUEPRINT_EXTENSION)")
+            try? FileManager.default.removeItem(at: shared)
+            try? FileManager.default.copyItem(at: url, to: shared)
+            let n1 = try? importBlueprint(shared, into: dir), n2 = try? importBlueprint(shared, into: dir)
+            let junk = URL(fileURLWithPath: home).appendingPathComponent("junk.\(BLUEPRINT_EXTENSION)")
+            try? Data("nope".utf8).write(to: junk)
+            var refused = false
+            do { _ = try importBlueprint(junk, into: dir) } catch BlueprintError.notABlueprint { refused = true } catch {}
+            check("an opened blueprint is added as my_hut, then my_hut-2; junk is refused",
+                  n1 == "my_hut" && n2 == "my_hut-2" && refused && !listBlueprints(in: dir).contains { $0.name == "junk" })
+        } else {
+            check("a blueprint saves", false)
+        }
+        try? FileManager.default.removeItem(at: dir)
+        g.exitToTitle()
+    } else {
+        check("blueprint world loads", false)
     }
 
     // clipboard: //copy, //cut and //paste (each one undo step)

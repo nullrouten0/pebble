@@ -418,10 +418,33 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
 
     /// a file opened with Pebble (Finder, Files, AirDrop, Messages): a shared
     /// world is added to the world list, which opens to show it unless a
-    /// world is being played. Returns false for files it doesn't take.
+    /// world is being played; a blueprint joins the blueprints folder.
+    /// Returns false for files it doesn't take.
     @discardableResult
     public func openFile(_ path: String) -> Bool {
-        guard let game, let ui, path.lowercased().hasSuffix("." + SaveDB.shareExtension) else { return false }
+        guard let game, let ui else { return false }
+        let lower = path.lowercased()
+        if lower.hasSuffix("." + BLUEPRINT_EXTENSION) {
+            let msg: String
+            do {
+                let name = try importBlueprint(URL(fileURLWithPath: path))
+                msg = "§aAdded blueprint \(name)§7 - //load \(name) in a world, then //paste"
+            } catch {
+                msg = "§c\(error)"
+            }
+            if game.hasWorld() {
+                host.showActionBar(msg, 120)
+            } else {
+                let list = (ui.current() as? WorldSelectScreen).flatMap { $0.hosting ? nil : $0 } ?? {
+                    let s = WorldSelectScreen()
+                    ui.open(s, game)
+                    return s
+                }()
+                list.say(msg)
+            }
+            return true
+        }
+        guard lower.hasSuffix("." + SaveDB.shareExtension) else { return false }
         let result = game.importWorld(URL(fileURLWithPath: path))
         if game.hasWorld() {
             switch result {

@@ -34,7 +34,7 @@ public struct DimState: Codable {
 /// overlay and save records all read this (Info.plist is bumped separately
 /// at packaging time). major.minor.revision: a new minor adds features, a
 /// new revision is a small feature or a fix.
-public let PEBBLE_VERSION = "1.10.0"
+public let PEBBLE_VERSION = "1.11.0"
 
 /// the commit this build came from: 8 hex digits, "+" when built with
 /// uncommitted changes. Stamped into the app's Info.plist at build time
