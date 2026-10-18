@@ -25,13 +25,13 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-> **Pebble 1.7 is a beta.** The engine is covered by 920 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.8 is a beta.** The engine is covered by 920 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
 | | |
 |---|---|
-| Lines of Swift | ~56,600 across 109 files |
+| Lines of Swift | ~59,400 across 114 files |
 | External dependencies | **0** (Apple frameworks only) |
 | Blocks | 879 |
 | Items | 1,209 |
@@ -50,20 +50,21 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 - **Worldgen** — multi-noise climate sampling through spline-driven terrain, 3D density caves (cheese/spaghetti/noodle), ravines, aquifers, layered ore distribution, and 63 biomes including lush caves, dripstone caves and the deep dark.
 - **Three dimensions** — overworld, nether (fortresses, bastions, all five nether biomes) and the end (dragon fight, end cities, gateways), connected by working portals.
 - **Structures** — villages with working trades, strongholds, mineshafts, temples, igloos, witch huts, ocean monuments and ruins, shipwrecks, buried treasure, ruined portals, woodland mansions, trail ruins, ancient cities.
-- **Mobs & AI** — 55+ mobs with A* pathfinding, goal-based AI (breeding, taming, fleeing, pack hunting), villager gossip, snouter bartering, raids with Hero of the Village, and the Rift Dragon, Blight and Warden.
+- **Mobs & AI** — 65+ mobs with A* pathfinding, goal-based AI (breeding, taming, fleeing, pack hunting), villager gossip, snouter bartering, raids with Hero of the Village, and the Rift Dragon, Blight and Warden.
 - **Sparkstone** — 0–15 power wire, repeaters with locking, comparators, pistons with quasi-connectivity and slime/honey, observers, dispensers, hoppers, rails, hush sensors.
 - **Items & systems** — crafting, three furnace types, brewing, 39 enchantments, anvils, grindstones, smithing with armor trims, loot tables with fortune/looting, fishing, archaeology, advancements.
 - **Precise player physics** — walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks, plus water, lava, wingsuit, ice, soul sand and honey, verified by independent-derivation tests.
+- **Flying mounts** — tame and saddle a pegasus or a fire-breathing dragon and fly it; see [Flying mounts](#flying-mounts).
 - **LAN multiplayer** and a **creative toolkit** — see [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
 - **Ultra graphics** — SSAO, volumetric god rays, Poisson soft shadows and ACES tonemapping, behind one toggle in Options → Video.
 - **Synthesized audio** — no audio files: music, jukebox discs and every sound effect are built from oscillator and noise recipes, with positional stereo, underwater lowpass and cave reverb.
 
 ## What's new
 
-The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full.
+The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full, and [docs/releases](docs/releases) has the release notes.
 
-- **1.8.0** (Oct 17, 2026): [flying mounts](#creative-tools) — saddle a pegasus or a dragon and fly it like creative flight; the dragon breathes fire. Shift now gets you off any mount.
-- **1.7.0** (Oct 15, 2026): a [Creative Tools menu](#creative-tools) (G, or the toolbox button on touch screens) that gives every tool, places every structure, spawns every creature and runs undo, redo and the clipboard, without typing.
+- **1.8.0** (Oct 17, 2026): [flying mounts](#flying-mounts) — saddle a pegasus or a dragon and fly it like creative flight; the dragon breathes fire. Shift now gets you off any mount, riding is smooth, and particles that never showed (flames, smoke, hearts, splashes) now do. [Release notes](docs/releases/1.8.0.md).
+- **1.7.0–1.7.3** (Oct 15, 2026): a [Creative Tools menu](#creative-tools) (G, or the toolbox button on touch screens) that gives every tool, places every structure, spawns every creature and runs undo, redo and the clipboard, without typing; real icons for the building tools; a fix for a crash spawning many creatures with the Blight.
 - **1.6.0** (Oct 13, 2026): ten [anime-style animals](#creative-tools) you place with spawn eggs or `/summon`, each with its own body, voice and favourite food; the built-in Faithful 32x pack is updated to Faithful's September 2026 release, under the Faithful License v4.
 - **1.5.3–1.5.5** (Oct 13, 2026): world-editing tools: a selection wand, then `//copy`, `//cut` and `//paste` (pasting where you look), each one undo step and keeping chest contents.
 - **1.5.0–1.5.2** (Oct 13, 2026): worlds that survive updates (every visited chunk is saved, and each world remembers what its block and item ids mean); Pebble's own names for its creatures, blocks and items; texture credits linking to faithfulpack.net.
@@ -110,7 +111,7 @@ For LAN play, everyone needs the same Pebble version.
 
 ## Controls
 
-**Mac:** WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shift to sneak (or get off a mount), Ctrl (or double-tap forward) to sprint, E for inventory, Q to drop, F to swap hands, T to chat, `/` for a command, F5 to change perspective, G for the Creative Tools menu, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen. Cmd+Z / Cmd+Shift+Z undo and redo large edits. Game keys are rebindable in Options → Controls.
+**Mac:** WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shift to sneak (or get off a mount; see [Flying mounts](#flying-mounts) for flying), Ctrl (or double-tap forward) to sprint, E for inventory, Q to drop, F to swap hands, T to chat, `/` for a command, F5 to change perspective, G for the Creative Tools menu, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen. Cmd+Z / Cmd+Shift+Z undo and redo large edits. Game keys are rebindable in Options → Controls.
 
 **iPad and iPhone:** a move stick, drag to look, tap to place, hold to dig. In creative, the toolbox button (marked G) at the top opens the Creative Tools menu. A hardware keyboard and mouse or a game controller also work.
 
@@ -141,6 +142,26 @@ Good to know:
 - **Some things stay local to a guest for now:** villager trade limits and anvil wear. If two people edit the same chest at the same moment, the last edit wins.
 - **Your system may ask first** to allow incoming connections (host) or to find devices on the local network (guest). Click Allow.
 - **Your network is trusted.** LAN games have no password or encryption, and the host trusts guests' actions. Only host on networks where you'd let everyone in.
+
+## Flying mounts
+
+A pegasus and a dragon you saddle and fly, in survival or creative.
+
+**Getting one.** Placed ones come tamed and saddled, ready to ride: use their spawn eggs, `/summon pegasus`, `/spawn dragon`, or the top of the Creative Tools menu's Creatures tab. Wild pegasi live in meadows and cherry groves, and wild dragons on mountain peaks; they take short flights of their own and fly off when hit. To tame a wild one, feed it golden carrots or golden apples (pegasus) or raw meat or fish (dragon). Each feeding has a one-in-three chance, and hearts mean it worked. Then put a saddle on it. Tamed ones heal on the same food. Click a wild or unsaddled one and it tells you what it needs.
+
+**Riding.** Climb on with an empty hand. On the ground they walk like a horse; in the air they fly like creative flight, and landing never hurts.
+
+| Key | While riding |
+|---|---|
+| W | Fly where you're looking |
+| Space | Take off and climb |
+| Shift | Descend; on the ground, get off (hold it through a landing to stay on, then press again) |
+| Sprint | Fly faster |
+| Attack (hold) | Dragon only: breathe fire |
+
+On iPad and iPhone the jump and sneak buttons climb and descend. LAN guests can ride, fly and breathe fire too.
+
+**Fire breath** sets everything living in a cone ahead of the dragon alight, up to 10 blocks away, except you and your tamed pets. It never burns blocks, so builds are safe. Fire and lava can't hurt a dragon.
 
 ## Creative tools
 
@@ -178,8 +199,6 @@ For `city`, `mountain` and worldgen structures, a different `variant` number giv
 **Infinity Wipe** sends a shockwave out from where you stand. Every column loses whatever stands on the natural ground plus the top 12 blocks of the ground itself, so hills stay hills, just bare and lower. It never cuts below sea level, eases off toward the edge, and covers chunks beyond your view distance as they load. Overworld only.
 
 **Undo** covers every tool above except the Infinity Wipe, plus `/fill`, and restores chest contents. It keeps your last 64 edits until you quit. Blocks you mine or place by hand aren't tracked, and killed mobs and dropped items don't come back.
-
-**Flying mounts.** A pegasus and a dragon you saddle and fly. Placed ones (their spawn eggs, `/summon`, `/spawn`, or the top of the Tools menu's Creatures tab) come tamed and saddled. Wild ones live in meadows and cherry groves (pegasi) and on mountain peaks (dragons); feed one golden carrots or golden apples (pegasus) or raw meat or fish (dragon) until it's tamed, then saddle it. Riding: W flies where you look, Space takes off and climbs, Shift descends, sprint goes faster, and Shift on the ground gets off. Hold attack on a dragon to breathe fire at the creatures ahead of it; it never burns blocks.
 
 **Anime-style animals.** Ten chibi critters with big heads, sparkly eyes and blush: `mochi_bunny`, `kitsune_kit`, `bell_neko`, `leaf_tanuki`, `bao_panda`, `puff_shiba`, `scarf_penguin`, `hamu_hamster`, `momiji_red_panda` and `piyo_chick`. They never spawn on their own: place one with its spawn egg (`/give mochi_bunny_spawn_egg`, or the Spawn Eggs tab in creative) or `/summon mochi_bunny`, or bring all ten at once with `/spawn anime_zoo`. `/spawn <creature>` brings one, in front of you. Each has a favourite food that it follows you for and breeds with (carrots for the bunny, berries for the kitsune, fish for the neko and penguin, bamboo for the pandas, seeds for the hamster and chick, apples for the tanuki, bones for the shiba).
 
