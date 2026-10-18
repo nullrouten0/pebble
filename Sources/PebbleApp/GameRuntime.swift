@@ -198,6 +198,8 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
     // test hook: PEBBLE_CMD="/tp 0 120 0;/time set 1000" runs once the world is up
     private var pendingCmds = ProcessInfo.processInfo.environment["PEBBLE_CMD"]
     private var pendingCmdDelay = 0
+    /// the last chat line "#chat" printed (by its time)
+    private var chatPrintedTo = 0.0
     private var hostLANPending = ProcessInfo.processInfo.environment["PEBBLE_HOSTLAN"] != nil
     // test hook: PEBBLE_MENU="Host LAN Game>Create New>Create & Host" clicks
     // menu buttons by label, one every half second (menu-flow testing)
@@ -798,6 +800,13 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
                     if c == "#mem" {
                         print("[draws] \(renderer.drawCalls) scene, \(renderer.shadowDraws) of \(renderer.shadowCandidates) shadow candidates")
                         print("[mem] footprint \(processFootprintMB()) MB, mesh arena \(renderer.arena.residentBytes >> 20) MB, \(renderer.sections.count) sections")
+                        continue
+                    }
+                    // "#chat" prints the chat since the last #chat, with what a LAN
+                    // host answered a guest's command (that comes after its [cmd] line)
+                    if c == "#chat" {
+                        for m in chatLog where m.time > chatPrintedTo { print("[chat] \(m.text)") }
+                        chatPrintedTo = chatLog.last?.time ?? chatPrintedTo
                         continue
                     }
                     if c == "#pos" {

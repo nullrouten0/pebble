@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/nullrouten0
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `946 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `948 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 
@@ -21,7 +21,7 @@ Even better than a report is a PR with the fix — the rest of this file tells y
 xcode-select --install        # Swift toolchain (Swift 6, macOS 14+ SDK)
 git clone https://github.com/nullrouten0/pebble.git && cd pebble
 swift build                   # debug build, ~35s clean
-swift run -c release pebsmoke # the test suite — must print "946 passed, 0 failed"
+swift run -c release pebsmoke # the test suite — must print "948 passed, 0 failed"
 ./pebble install              # optional: build + install the real app
 ```
 
@@ -148,6 +148,7 @@ Scripted steps you can mix into `PEBBLE_CMD`:
 | `#type text` / `#uikey Key` | type into / press a key on the open screen (e.g. a sign) |
 | `#tdown ID X Y` / `#tmove ID X Y` / `#tup ID X Y` | drive the touch controls (UI units) |
 | `#pos` | print the player's position, the block under the crosshair (with its break progress) and what they're riding |
+| `#chat` | print the chat lines since the last `#chat`, including what a LAN host answered a guest's command |
 | `#mem` | print draw counts, memory footprint and mesh arena size |
 
 ## Scope & conduct

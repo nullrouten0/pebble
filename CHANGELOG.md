@@ -3,6 +3,32 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.12.0 — 2026-10-18 — copy, paste and blueprints for LAN guests
+
+- **LAN guests can copy, cut and paste.** A guest marks a box with the
+  selection wand (or `//pos1` and `//pos2`), then `//copy`, `//cut` and
+  `//paste` work as they do for the host. Each player has their own
+  selection and clipboard, and `//undo` takes back only your own paste.
+- **And use blueprints.** A guest's `//save castle` keeps the blueprint on
+  the guest's own device, in their blueprints, and `//load castle` loads one
+  of theirs, ready to `//paste` in the host's world. `//blueprints`, and the
+  Tools menu's Edit tab, list the guest's own.
+- A guest's clipboard lasts while they're in the game; it's empty again when
+  they rejoin, as it is after a restart.
+- Both players need Pebble 1.12. With an older host, a guest's copy and
+  paste report nothing to copy or paste, and `//load` gets no answer.
+- **Development:** a guest's clipboard lives on its stand-in player on the
+  host, so `//copy`, `//cut`, `//paste` and `//save` joined `HOST_COMMANDS`.
+  New guest → host messages: `selection` (sent ahead of every command; the
+  host clamps the corners to the world, `clampedCorner`) and `loadBlueprint`
+  (the file's bytes); new host → guest `savedBlueprint` (the file, written
+  only under a name the guest asked to `//save`). Blueprints.swift gained
+  `encodeBlueprint`/`decodeBlueprint`/`writeBlueprint` and drops unknown
+  items from loaded block entities. The `#chat` script step prints chat as
+  it arrives, for a guest's answers from the host. 2 new checks (948); a
+  scripted host + guest run on one Mac covered copy, paste, save, load and
+  undo.
+
 ## 1.11.0 — 2026-10-17 — blueprints
 
 - **Save a build as a blueprint and use it again anywhere.** `//copy` it (or

@@ -4,9 +4,11 @@
 import Foundation
 import PebbleCore
 
-/// commands that change the shared world — a LAN guest asks the host to run them
+/// commands that change the shared world — a LAN guest asks the host to run
+/// them. A guest's clipboard lives on the host too, with its //save.
 let HOST_COMMANDS: Set<String> = [
     "time", "weather", "summon", "spawn", "setblock", "fill", "place", "undo", "redo", "/undo", "/redo", "difficulty", "gamerule",
+    "/copy", "/cut", "/paste", "/save",
 ]
 
 /// run a LAN guest's command on the host as that guest's player; returns what it printed
@@ -31,6 +33,10 @@ func runCommand(_ game: GameCore, _ raw: String) {
     let cmd = parts.first?.lowercased() ?? ""
     let args = Array(parts.dropFirst())
     if let nc = game.netClient, HOST_COMMANDS.contains(cmd) {
+        // the host's copy of our player copies from our selection
+        nc.sendSelection(game.player?.selection)
+        // a //save comes back from the host to be kept here
+        if cmd == "/save", args.count == 1, let name = blueprintName(args[0]) { nc.expectBlueprint(name) }
         nc.sendCommand(raw)
         return
     }
@@ -223,9 +229,7 @@ func runCommand(_ game: GameCore, _ raw: String) {
         p.selection = nil
         ok("Selection cleared")
     case "/copy", "/cut", "/paste":
-        // a guest's paste would change only its own copy of the world; LAN
-        // clipboards come with the host running these for guests
-        if game.netClient != nil { return fail("In a LAN game only the host can copy and paste for now") }
+        // for a LAN guest these run on the host (HOST_COMMANDS), on its clipboard there
         do {
             if cmd == "/paste" {
                 if let bad = args.first(where: { $0 != "-a" }) {
@@ -246,8 +250,8 @@ func runCommand(_ game: GameCore, _ raw: String) {
             fail("\(error)")
         }
     case "/save", "/load":
-        // blueprints go through the clipboard, which only the host has for now
-        if game.netClient != nil { return fail("In a LAN game only the host can save and load blueprints for now") }
+        // a LAN guest's //save runs on the host, where its clipboard is, and
+        // the file comes back; its //load sends the file there
         guard let raw = arg(0), args.count == 1 else {
             return fail(cmd == "/save" ? "Usage: //save <name>  (saves your clipboard, or your selection if you haven't copied)"
                                        : "Usage: //load <name>  (//blueprints lists them)")
@@ -262,16 +266,26 @@ func runCommand(_ game: GameCore, _ raw: String) {
                     }
                 }
                 guard let clip = p.clipboard else { return }
+                if p.isNetProxy {
+                    // the guest keeps it, and says so when it's written
+                    game.netHost?.sendSavedBlueprint(to: p, name: name, try encodeBlueprint(clip, name: name))
+                    return
+                }
                 let existed = FileManager.default.fileExists(atPath: blueprintURL(name).path)
                 try saveBlueprint(clip, name: name)
-                ok("\(existed ? "Replaced" : "Saved") blueprint \(name) (\(clip.w)×\(clip.h)×\(clip.l)) - //load \(name) brings it back, in any world")
+                pushChat(blueprintSavedLine(name, clip, replaced: existed))
             } else {
                 let url = blueprintURL(name)
                 guard FileManager.default.fileExists(atPath: url.path) else { throw BlueprintError.notFound(name) }
+                if let nc = game.netClient {
+                    // the host loads it onto our clipboard there and answers
+                    guard let data = try? Data(contentsOf: url) else { throw BlueprintError.unreadable }
+                    if !nc.sendBlueprint(name, data) { fail("\(name) is too big to send to the host") }
+                    return
+                }
                 let (clip, dropped) = try loadBlueprint(url)
                 p.clipboard = clip
-                ok("Loaded \(name) (\(clip.w)×\(clip.h)×\(clip.l)) - //paste to place it")
-                if !dropped.isEmpty { fail("Not in this version, so left out: \(dropped.prefix(6).joined(separator: ", "))\(dropped.count > 6 ? "…" : "")") }
+                blueprintLoadedLines(name, clip, dropped).forEach(pushChat)
             }
         } catch {
             fail("\(error)")

@@ -28,6 +28,10 @@ enum NetMsg: UInt8 {
     case spawnXP
     case actBrush
     case bye
+    /// the guest's selection, ahead of a command (//copy and //cut read it)
+    case selection
+    /// a guest's //load: its blueprint file, for its clipboard on the host
+    case loadBlueprint
 
     // host → guest
     case welcome = 64
@@ -56,6 +60,8 @@ enum NetMsg: UInt8 {
     case wake
     case gameMode
     case blasts
+    /// a guest's //save: the blueprint file, for the guest to keep
+    case savedBlueprint
 }
 
 enum NetError: Error { case truncated, badFrame }

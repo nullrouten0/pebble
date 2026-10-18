@@ -2570,6 +2570,16 @@ do {
         chest.items![3] = ItemStack(iid("emerald"), 9)
         w.setBlockEntity(chest)
         p.selection = Selection(dim: w.dim, a: BlockPos(bx, by, bz), b: BlockPos(bx + 2, by + 1, bz + 2))
+        // a corner far past the border (a LAN guest's corners arrive as raw
+        // numbers) is pulled back inside, so the box's size can't overflow
+        let selWas = p.selection
+        p.selection = nil
+        setSelectionCorner(p, 1, BlockPos(Int.max / 2, 10_000, Int.min / 2))
+        let far = p.selection?.a
+        check("a selection corner stays inside the world border and build height",
+              far.map { Double($0.x) == WORLD_COORD_LIMIT && Double($0.z) == -WORLD_COORD_LIMIT
+                  && $0.y == w.info.minY + w.info.height - 1 } ?? false, "\(String(describing: far))")
+        p.selection = selWas
         check("blueprint names: letters, digits, - and _, lowercased",
               blueprintName("Castle_2") == "castle_2" && blueprintName("a b") == nil && blueprintName("../x") == nil
               && blueprintName("") == nil && blueprintName(String(repeating: "x", count: 41)) == nil)
@@ -2634,6 +2644,20 @@ do {
             do { _ = try importBlueprint(junk, into: dir) } catch BlueprintError.notABlueprint { refused = true } catch {}
             check("an opened blueprint is added as my_hut, then my_hut-2; junk is refused",
                   n1 == "my_hut" && n2 == "my_hut-2" && refused && !listBlueprints(in: dir).contains { $0.name == "junk" })
+            // a LAN guest's blueprints travel as file bytes: //save from the
+            // host to the guest, //load from the guest to the host
+            if let clip = p.clipboard, let bytes = try? encodeBlueprint(clip, name: "tower"),
+               let (back, dropped) = try? decodeBlueprint(bytes), let kept = try? writeBlueprint(bytes, name: "Tower", in: dir) {
+                var badName = false, junkBytes = false
+                do { try writeBlueprint(bytes, name: "../tower", in: dir) } catch BlueprintError.badName { badName = true } catch {}
+                do { _ = try decodeBlueprint(Data("PBP1nope".utf8)) } catch BlueprintError.notABlueprint { junkBytes = true } catch {}
+                check("a blueprint's bytes load as sent and keep as a file; a bad name or junk is refused",
+                      dropped.isEmpty && back.cells == clip.cells && back.blockEntityCount == clip.blockEntityCount
+                      && kept.lastPathComponent == "tower.pebbleblueprint" && (try? loadBlueprint(kept))?.clip.cells == clip.cells
+                      && badName && junkBytes && !FileManager.default.fileExists(atPath: dir.deletingLastPathComponent().appendingPathComponent("tower.\(BLUEPRINT_EXTENSION)").path))
+            } else {
+                check("a blueprint's bytes load as sent", false)
+            }
         } else {
             check("a blueprint saves", false)
         }

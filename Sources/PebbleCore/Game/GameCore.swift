@@ -2856,7 +2856,8 @@ public final class GameCore {
 
     /// selection wand: the clicked block becomes corner 1 or 2. A LAN guest's
     /// right-click (corner 2) replays here on the host too; its left-click
-    /// (corner 1) stays on the guest, which is fine while only the host can copy
+    /// (corner 1) stays on the guest, which sends its whole selection to the
+    /// host ahead of each command anyway
     private func markCorner(_ p: Player, _ corner: Int, _ hit: RaycastHit) {
         let line = setSelectionCorner(p, corner, BlockPos(hit.x, hit.y, hit.z))
         guard p === player else { return }

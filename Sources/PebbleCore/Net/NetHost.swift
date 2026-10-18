@@ -413,6 +413,29 @@ public final class NetHost {
             let text = try r.str()
             let lines = withActor(c, echo: true) { game.netCommandRunner?(c.proxy, text) ?? ["§cThe host can't run commands"] }
             for l in lines { sendChat(c, l) }
+        case .selection:
+            // the guest's selection, ahead of a command: //copy and //cut run here
+            let p = c.proxy!
+            guard try r.bool() else { p.selection = nil; return }
+            guard let dim = Dim(rawValue: try r.u8()) else { throw NetError.badFrame }
+            var corners: [BlockPos?] = []
+            for _ in 0..<2 {
+                guard try r.bool() else { corners.append(nil); continue }
+                let x = try r.i32(), y = try r.i32(), z = try r.i32()
+                corners.append(clampedCorner(p.world.info, BlockPos(x, y, z)))
+            }
+            p.selection = Selection(dim: dim, a: corners[0], b: corners[1])
+        case .loadBlueprint:
+            // a guest's //load: the file is theirs, their clipboard lives here
+            let name = blueprintName(try r.str()) ?? "blueprint"
+            let data = try r.blob()
+            do {
+                let (clip, dropped) = try decodeBlueprint(data)
+                c.proxy.clipboard = clip
+                for l in blueprintLoadedLines(name, clip, dropped) { sendChat(c, l) }
+            } catch {
+                sendChat(c, "§c\(error)")
+            }
         case .blockEntity:
             guard let be = try r.decodable(BlockEntityData.self) else { return }
             be.dropUnknownItems()
@@ -969,6 +992,17 @@ public final class NetHost {
         var m = ByteWriter()
         m.str(line)
         c.queue(.chatLine, m)
+    }
+    /// a guest's //save, run here where its clipboard is: the file goes to the
+    /// guest, who keeps it. False if `proxy` isn't a guest's player.
+    @discardableResult
+    public func sendSavedBlueprint(to proxy: Player, name: String, _ data: Data) -> Bool {
+        guard let c = clients.first(where: { $0.joined && $0.proxy === proxy }) else { return false }
+        var m = ByteWriter(capacity: data.count + 64)
+        m.str(name)
+        m.blob(data)
+        c.queue(.savedBlueprint, m)
+        return true
     }
     /// to every guest and the host's own chat
     func broadcastChat(_ line: String) {

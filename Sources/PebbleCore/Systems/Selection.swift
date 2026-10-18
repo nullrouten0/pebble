@@ -1,7 +1,9 @@
 // The selection wand: left-click a block for corner 1, right-click for corner 2
 // (or //pos1, //pos2 at your feet). The box between them is what the
 // clipboard commands work on. Corners live on the Player, belong to one
-// dimension, and aren't saved.
+// dimension, and aren't saved. A LAN guest sends its selection to the host
+// ahead of each command (NetClient.sendSelection), since //copy and //cut run
+// there.
 
 import Foundation
 
@@ -27,12 +29,19 @@ public struct Selection {
     }
 }
 
+/// `pos` kept inside the world: within the border and the build height, so
+/// a box between two corners never overflows when its size is multiplied out
+func clampedCorner(_ info: DimInfo, _ pos: BlockPos) -> BlockPos {
+    let lim = Int(WORLD_COORD_LIMIT)
+    return BlockPos(max(-lim, min(lim, pos.x)), max(info.minY, min(info.minY + info.height - 1, pos.y)),
+                    max(-lim, min(lim, pos.z)))
+}
+
 /// set corner 1 or 2 of `p`'s selection; a corner in another dimension
 /// starts a fresh selection. Returns the line to show the player.
 @discardableResult
 public func setSelectionCorner(_ p: Player, _ corner: Int, _ pos: BlockPos) -> String {
-    let info = p.world.info
-    let pos = BlockPos(pos.x, max(info.minY, min(info.minY + info.height - 1, pos.y)), pos.z)
+    let pos = clampedCorner(p.world.info, pos)
     let dim = p.world.dim
     var s = p.selection?.dim == dim ? p.selection! : Selection(dim: dim)
     if corner == 1 { s.a = pos } else { s.b = pos }

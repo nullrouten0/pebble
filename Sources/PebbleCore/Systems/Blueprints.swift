@@ -8,6 +8,10 @@
 // entities (chests keep their items, signs their text) and the palette of
 // block and item names behind the ids, so a build with other ids reads it
 // the way it reads an older world (PaletteRemap).
+//
+// A LAN guest's clipboard lives on the host, but its blueprints stay on the
+// guest's own device, so the file's bytes travel: a guest's //save comes back
+// from the host to be written there, and its //load is sent to the host.
 
 import Foundation
 import Compression
@@ -62,6 +66,12 @@ public func blueprintURL(_ name: String, in dir: URL = blueprintsDir()) -> URL {
 @discardableResult
 public func saveBlueprint(_ clip: Clipboard, name: String, in dir: URL = blueprintsDir()) throws -> URL {
     guard let name = blueprintName(name) else { throw BlueprintError.badName }
+    return try writeBlueprint(try encodeBlueprint(clip, name: name), name: name, in: dir)
+}
+
+/// `clip` as the bytes of a blueprint file. A LAN guest's //save travels as
+/// these, from the host (where its clipboard lives) to the guest, who keeps it.
+public func encodeBlueprint(_ clip: Clipboard, name: String) throws -> Data {
     var cells = Data(capacity: clip.cells.count * 2)
     for c in clip.cells {
         cells.append(UInt8(c & 0xff))
@@ -86,9 +96,16 @@ public func saveBlueprint(_ clip: Clipboard, name: String, in dir: URL = bluepri
     var len = UInt32(json.count).littleEndian
     withUnsafeBytes(of: &len) { out.append(contentsOf: $0) }
     out.append(packed)
+    return out
+}
+
+/// save a blueprint file's bytes as blueprint `name` (replacing one by that name)
+@discardableResult
+public func writeBlueprint(_ data: Data, name: String, in dir: URL = blueprintsDir()) throws -> URL {
+    guard let name = blueprintName(name) else { throw BlueprintError.badName }
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let url = blueprintURL(name, in: dir)
-    do { try out.write(to: url, options: .atomic) } catch { throw BlueprintError.writeFailed }
+    do { try data.write(to: url, options: .atomic) } catch { throw BlueprintError.writeFailed }
     return url
 }
 
@@ -96,6 +113,12 @@ public func saveBlueprint(_ clip: Clipboard, name: String, in dir: URL = bluepri
 /// this build doesn't have (they come out as air, or empty slots)
 public func loadBlueprint(_ url: URL) throws -> (clip: Clipboard, dropped: [String]) {
     guard let data = try? Data(contentsOf: url) else { throw BlueprintError.unreadable }
+    return try decodeBlueprint(data)
+}
+
+/// a blueprint file's bytes as a clipboard, as loadBlueprint. A LAN guest's
+/// //load sends the host these, so they're checked like any file.
+public func decodeBlueprint(_ data: Data) throws -> (clip: Clipboard, dropped: [String]) {
     guard data.count > 8, data.prefix(4) == Data("PBP1".utf8) else { throw BlueprintError.notABlueprint }
     let len = Int(UInt32(data[4]) | UInt32(data[5]) << 8 | UInt32(data[6]) << 16 | UInt32(data[7]) << 24)
     guard len > 0, len <= BLUEPRINT_MAX_JSON, let json = zlib(data.subdata(in: 8..<data.count), compress: false, size: len),
@@ -123,10 +146,25 @@ public func loadBlueprint(_ url: URL) throws -> (clip: Clipboard, dropped: [Stri
         let fixed = remap?.json(obj) ?? obj
         guard let enc = try? JSONSerialization.data(withJSONObject: fixed),
               let be = try? JSONDecoder().decode(BlockEntityData.self, from: enc) else { continue }
+        be.dropUnknownItems()
         bes[i] = be
     }
     let dropped = (remap?.droppedBlocks ?? []) + (remap?.droppedItems ?? [])
     return (Clipboard(w: size[0], h: size[1], l: size[2], cells: cells, blockEntities: bes), dropped)
+}
+
+/// what //save says once blueprint `name` is written
+public func blueprintSavedLine(_ name: String, _ clip: Clipboard, replaced: Bool) -> String {
+    "§7\(replaced ? "Replaced" : "Saved") blueprint \(name) (\(clip.w)×\(clip.h)×\(clip.l)) - //load \(name) brings it back, in any world"
+}
+
+/// what //load says: that it's on the clipboard, then what this build left out
+public func blueprintLoadedLines(_ name: String, _ clip: Clipboard, _ dropped: [String]) -> [String] {
+    var lines = ["§7Loaded \(name) (\(clip.w)×\(clip.h)×\(clip.l)) - //paste to place it"]
+    if !dropped.isEmpty {
+        lines.append("§cNot in this version, so left out: \(dropped.prefix(6).joined(separator: ", "))\(dropped.count > 6 ? "…" : "")")
+    }
+    return lines
 }
 
 /// copy a blueprint file shared with you into the blueprints folder, under

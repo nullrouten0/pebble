@@ -288,6 +288,18 @@ public final class NetClient {
         case .gameMode:
             game.applyGameMode(try r.u8())
             game.host?.pushChat("§7Game mode set to \(game.player.gameMode == GameMode.creative ? "Creative" : "Survival")")
+        case .savedBlueprint:
+            let raw = try r.str(), data = try r.blob()
+            // only a //save we asked for, under a name that stays in the folder
+            guard let name = blueprintName(raw), savesAsked.remove(name) != nil else { return }
+            do {
+                let (clip, _) = try decodeBlueprint(data)
+                let replaced = FileManager.default.fileExists(atPath: blueprintURL(name).path)
+                try writeBlueprint(data, name: name)
+                game.host?.pushChat(blueprintSavedLine(name, clip, replaced: replaced))
+            } catch {
+                game.host?.pushChat("§c\(error)")
+            }
         default:
             break
         }
@@ -596,5 +608,36 @@ public final class NetClient {
         var w = ByteWriter()
         w.str(text)
         send(.command, w)
+    }
+
+    /// our selection, for the host's copy of our player: //copy and //cut run
+    /// there. Sent ahead of each command.
+    public func sendSelection(_ s: Selection?) {
+        var w = ByteWriter()
+        w.bool(s != nil)
+        if let s {
+            w.u8(s.dim.rawValue)
+            for corner in [s.a, s.b] {
+                w.bool(corner != nil)
+                if let corner { w.i32(corner.x); w.i32(corner.y); w.i32(corner.z) }
+            }
+        }
+        send(.selection, w)
+    }
+
+    /// blueprints we've asked the host to //save; it sends each one back to
+    /// keep here, and nothing else gets written
+    private var savesAsked = Set<String>()
+    public func expectBlueprint(_ name: String) { savesAsked.insert(name) }
+
+    /// //load: one of our blueprint files, for our clipboard on the host.
+    /// False if it's too big to send.
+    public func sendBlueprint(_ name: String, _ data: Data) -> Bool {
+        guard data.count < NET_MAX_FRAME - 4096 else { return false }
+        var w = ByteWriter(capacity: data.count + 64)
+        w.str(name)
+        w.blob(data)
+        send(.loadBlueprint, w)
+        return true
     }
 }
