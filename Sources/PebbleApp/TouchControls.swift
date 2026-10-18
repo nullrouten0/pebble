@@ -3,8 +3,9 @@
 //
 // In-world (crosshair-style, so the engine's aim ray is unchanged):
 //   left side    floating move stick; past the outer ring sprints
-//   right side   drag to look; tap = use/place (attack if a mob is under the
-//                crosshair); press and hold still ~¼ s = break/attack (or
+//   right side   drag to look; tap = use/place (on a creature: use the hand
+//                on it if that does something, such as feed, saddle, mount
+//                or trade, else attack); press and hold still ~¼ s = break/attack (or
 //                use, for food, bows, shields…). Only a fresh
 //                press digs: steering away stops the dig, and the finger must
 //                lift and press again (a held use keeps going, so bows aim)
@@ -418,10 +419,8 @@ public final class TouchControls {
             if let b = l.holding {
                 game.mouseUp(b)
             } else if !l.moved && !cancelled && now() - l.startT < 0.3 && !ui.hasScreen() {
-                // tap: hit what's under the crosshair, else use/place
-                let b = game.crosshairOnEntity ? 0 : 2
-                game.mouseDown(b)
-                game.mouseUp(b)
+                // tap: feed/saddle/mount/trade or hit a creature, else use/place
+                game.tap()
             }
         case .button(let b):
             releaseButton(b)

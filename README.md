@@ -25,7 +25,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-> **Pebble 1.8 is a beta.** The engine is covered by 920 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.8 is a beta.** The engine is covered by 925 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
@@ -39,7 +39,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 112 (65+ mobs with full AI, including 10 anime-style animals and 2 flying mounts; vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 920, all green (`pebble test`) |
+| Regression checks | 925, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by Faithful (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -63,7 +63,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full, and [docs/releases](docs/releases) has the release notes.
 
-- **1.8.0** (Oct 17, 2026): [flying mounts](#flying-mounts) — saddle a pegasus or a dragon and fly it like creative flight; the dragon breathes fire. Shift now gets you off any mount, riding is smooth, and particles that never showed (flames, smoke, hearts, splashes) now do. [Release notes](docs/releases/1.8.0.md).
+- **1.8.0–1.8.1** (Oct 17, 2026): [flying mounts](#flying-mounts) — saddle a pegasus or a dragon and fly it like creative flight; the dragon breathes fire. Shift now gets you off any mount, riding is smooth, and particles that never showed (flames, smoke, hearts, splashes) now do, and on touch screens a tap on a creature feeds, saddles or mounts it. [Release notes](docs/releases/1.8.md).
 - **1.7.0–1.7.3** (Oct 15, 2026): a [Creative Tools menu](#creative-tools) (G, or the toolbox button on touch screens) that gives every tool, places every structure, spawns every creature and runs undo, redo and the clipboard, without typing; real icons for the building tools; a fix for a crash spawning many creatures with the Blight.
 - **1.6.0** (Oct 13, 2026): ten [anime-style animals](#creative-tools) you place with spawn eggs or `/summon`, each with its own body, voice and favourite food; the built-in Faithful 32x pack is updated to Faithful's September 2026 release, under the Faithful License v4.
 - **1.5.3–1.5.5** (Oct 13, 2026): world-editing tools: a selection wand, then `//copy`, `//cut` and `//paste` (pasting where you look), each one undo step and keeping chest contents.
@@ -89,7 +89,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the test suite (920 checks)
+pebble test         run the test suite (925 checks)
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -113,7 +113,7 @@ For LAN play, everyone needs the same Pebble version.
 
 **Mac:** WASD to move, mouse to look, Space to jump (double-tap in creative to fly), Shift to sneak (or get off a mount; see [Flying mounts](#flying-mounts) for flying), Ctrl (or double-tap forward) to sprint, E for inventory, Q to drop, F to swap hands, T to chat, `/` for a command, F5 to change perspective, G for the Creative Tools menu, Esc to pause. F1 hides the GUI, F3 toggles the debug overlay, F11 toggles fullscreen. Cmd+Z / Cmd+Shift+Z undo and redo large edits. Game keys are rebindable in Options → Controls.
 
-**iPad and iPhone:** a move stick, drag to look, tap to place, hold to dig. In creative, the toolbox button (marked G) at the top opens the Creative Tools menu. A hardware keyboard and mouse or a game controller also work.
+**iPad and iPhone:** a move stick, drag to look, tap to place, hold to dig. Tap a creature to feed it, saddle it, climb on or trade (or to hit it, when it has no use for what you're holding); hold to attack. In creative, the toolbox button (marked G) at the top opens the Creative Tools menu. A hardware keyboard and mouse or a game controller also work.
 
 ## Multiplayer (LAN)
 
@@ -149,7 +149,7 @@ A pegasus and a dragon you saddle and fly, in survival or creative.
 
 **Getting one.** Placed ones come tamed and saddled, ready to ride: use their spawn eggs, `/summon pegasus`, `/spawn dragon`, or the top of the Creative Tools menu's Creatures tab. Wild pegasi live in meadows and cherry groves, and wild dragons on mountain peaks; they take short flights of their own and fly off when hit. To tame a wild one, feed it golden carrots or golden apples (pegasus) or raw meat or fish (dragon). Each feeding has a one-in-three chance, and hearts mean it worked. Then put a saddle on it. Tamed ones heal on the same food. Click a wild or unsaddled one and it tells you what it needs.
 
-**Riding.** Climb on with an empty hand. On the ground they walk like a horse; in the air they fly like creative flight, and landing never hurts.
+**Riding.** Right-click a saddled one to climb on (tap it on a touch screen). On the ground they walk like a horse; in the air they fly like creative flight, and landing never hurts.
 
 | Key | While riding |
 |---|---|
@@ -159,7 +159,7 @@ A pegasus and a dragon you saddle and fly, in survival or creative.
 | Sprint | Fly faster |
 | Attack (hold) | Dragon only: breathe fire |
 
-On iPad and iPhone the jump and sneak buttons climb and descend. LAN guests can ride, fly and breathe fire too.
+On iPad and iPhone, tap a mount to climb on; the jump and sneak buttons climb and descend, and press-and-hold breathes fire. LAN guests can ride, fly and breathe fire too.
 
 **Fire breath** sets everything living in a cone ahead of the dragon alight, up to 10 blocks away, except you and your tamed pets. It never burns blocks, so builds are safe. Fire and lava can't hurt a dragon.
 
@@ -233,7 +233,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     test harness (920 checks; snapshots in goldens/*.json)
+Sources/pebsmoke/     test harness (925 checks; snapshots in goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              snapshot files the harness compares against
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -248,7 +248,7 @@ Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (p
 
 Your worlds are safe across updates. Every chunk you've visited is saved, so a change to world generation only affects land nobody has seen yet. Worlds also record the names behind their block and item ids, so a build that adds, moves or removes blocks opens them correctly. Worlds created before 1.5 keep their original generator.
 
-`pebble test` runs 920 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
+`pebble test` runs 925 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -263,7 +263,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `920 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `925 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

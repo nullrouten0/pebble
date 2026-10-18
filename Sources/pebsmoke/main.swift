@@ -2466,6 +2466,47 @@ do {
         check("selection wand world loads", false)
     }
 
+    // touch tap on a creature: use the hand on it when that does something
+    // (mount, saddle, feed), else hit it — touch has no right button
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        let px = Int(floor(p.x)), py = Int(floor(p.y)), pz = Int(floor(p.z))
+        for dy in 0...3 { for dz in 0...5 { for dx in -2...2 { w.setBlock(px + dx, py + dy, pz + dz, 0) } } }
+        /// a fresh creature 2.5 ahead (+z), aimed at, then one tap
+        func tapOn(_ type: String, ready: Bool = false, holding item: String? = nil) -> Mob? {
+            guard let m = spawnMob(w, type, p.x, p.y, p.z + 2.5, SpawnOpts(ready: ready)) as? Mob else { return nil }
+            p.yaw = 0
+            p.pitch = atan2(p.eyeY() - (m.y + m.height / 2), 2.5)
+            p.inventory[p.selectedSlot] = item.map { ItemStack(iid($0), 1) }
+            g.tap()
+            return m
+        }
+        let peg = tapOn("pegasus", ready: true)
+        check("tapping a saddled pegasus with an empty hand climbs on, unhurt",
+              peg != nil && p.vehicle === peg && peg?.health == peg?.maxHealth)
+        p.dismount()
+        peg?.dead = true
+        if let m = spawnMob(w, "pegasus", p.x, p.y, p.z + 2.5, SpawnOpts()) as? Pegasus {
+            m.tamed = true
+            p.inventory[p.selectedSlot] = ItemStack(iid("saddle"), 1)
+            g.tap()
+            check("tapping a tamed pegasus with a saddle saddles it", m.saddled && p.vehicle == nil && m.health == m.maxHealth)
+            m.dead = true
+        }
+        let fed = tapOn("cow", holding: "wheat")
+        check("tapping a cow with wheat feeds it instead of hitting it",
+              fed?.loveTicks ?? 0 > 0 && fed?.health == fed?.maxHealth)
+        fed?.dead = true
+        let hit = tapOn("cow")
+        check("tapping a cow with an empty hand hits it", hit.map { $0.health < $0.maxHealth || $0.dead } == true && hit?.loveTicks == 0)
+        hit?.dead = true
+        let stick = tapOn("cow", holding: "stick")
+        check("tapping with an item it has no use for hits it too", stick.map { $0.health < $0.maxHealth || $0.dead } == true)
+        g.exitToTitle()
+    } else {
+        check("touch tap world loads", false)
+    }
+
     // clipboard: //copy, //cut and //paste (each one undo step)
     if let g = settled() {
         let p = g.player!, w = g.world

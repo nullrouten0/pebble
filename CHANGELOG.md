@@ -3,6 +3,18 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.8.1 — 2026-10-17 — tap to ride on touch screens
+
+- **On iPad and iPhone, tapping a creature now uses your hand on it** when
+  that does something: climb onto a saddled mount, put on a saddle, feed an
+  animal, board a boat, trade with a villager. Otherwise the tap still hits
+  it, and press-and-hold still attacks. Until now a tap always attacked, and
+  a hold only fed an animal (because food is used by holding), so on a touch
+  screen there was no way to ride anything, saddle a mount or trade.
+- Five new checks (925): a tap climbs onto a saddled pegasus, saddles a tamed
+  one and feeds a cow with wheat, and still hits a cow when the hand is empty
+  or holds something it has no use for.
+
 ## 1.8.0 — 2026-10-17 — flying mounts
 
 - **Ride a pegasus or a dragon through the sky.** Both are new creatures you

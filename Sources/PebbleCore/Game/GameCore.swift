@@ -2679,6 +2679,26 @@ public final class GameCore {
         }
     }
 
+    /// touch: a quick tap into the world. On a creature it uses the hand on it
+    /// when that does something (feed, saddle, mount, shear, trade), else hits
+    /// it; anywhere else it's a use/place. Touch has no second button, so
+    /// without this nothing could be mounted or traded with.
+    public func tap() {
+        guard inWorld, !(host?.hasScreen() ?? false), let p = player else { return }
+        guard crosshairOnEntity else { mouseDown(2); mouseUp(2); return }
+        if !p.dead, p.deathTime == 0, !p.sneaking, !holdsWand(p),
+           let target = crosshairEntity(REACH_SURVIVAL - 1), target !== p.vehicle {
+            p.useItemHand = .main
+            // a guest predicts here, the same as a right-click, and the host replays it
+            if target.interact(p, p.mainHand) {
+                p.attackAnim = 0.6
+                netClient?.sendUse(target, nil)
+                return
+            }
+        }
+        mouseDown(0); mouseUp(0)
+    }
+
     public func mouseDelta(_ dx: Double, _ dy: Double) {
         guard inWorld, !(host?.hasScreen() ?? false), let p = player else { return }
         let sens = 0.0008 + settings.sensitivity * 0.004
