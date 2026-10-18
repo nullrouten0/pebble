@@ -11,7 +11,7 @@ Bug reports mean the world to us. [Open an issue](https://github.com/nullrouten0
 3. **Steps**: what you did, what happened, what you expected
 4. **World context** for in-world bugs: seed, dimension, coordinates (all on the F3 overlay)
 5. **Settings**: render distance, ultra graphics on/off
-6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `935 passed, 0 failed`)
+6. **Evidence**: screenshots/video for visual bugs; `~/Library/Logs/DiagnosticReports` for crashes; the tail of `pebble test` if the engine seems wrong (expected: `941 passed, 0 failed`)
 
 Even better than a report is a PR with the fix — the rest of this file tells you how to make one that lands.
 
@@ -21,7 +21,7 @@ Even better than a report is a PR with the fix — the rest of this file tells y
 xcode-select --install        # Swift toolchain (Swift 6, macOS 14+ SDK)
 git clone https://github.com/nullrouten0/pebble.git && cd pebble
 swift build                   # debug build, ~35s clean
-swift run -c release pebsmoke # the test suite — must print "935 passed, 0 failed"
+swift run -c release pebsmoke # the test suite — must print "941 passed, 0 failed"
 ./pebble install              # optional: build + install the real app
 ```
 
@@ -118,6 +118,7 @@ These are not style preferences. Violating them corrupts worlds or breaks determ
 | `PEBBLE_MULTIPLAYER=1` | jump straight to the Join LAN Game screen |
 | `PEBBLE_MENU="Host LAN Game>Create New>Create & Host"` | click menu buttons by label, one every half second |
 | `PEBBLE_HOSTLAN=1` | open the world to LAN as soon as it loads and print the address |
+| `PEBBLE_OPEN=path` | open a file at the title screen as if the system handed it to Pebble (a shared `.pebbleworld`); prints `[open] … → taken` |
 | `PEBBLE_JOIN=127.0.0.1[:port]` | join a LAN game at launch |
 | `PEBBLE_NAME=Bob` | play as Bob in LAN games (not saved to settings) |
 | `PEBBLE_WINDOWED=1` | start in a window instead of fullscreen, and don't auto-pause in the background; `PEBBLE_WINSIZE=900x506` and `PEBBLE_WINPOS=0,0` place it (side-by-side LAN testing) |

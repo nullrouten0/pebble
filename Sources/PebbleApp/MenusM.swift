@@ -143,6 +143,10 @@ final class WorldSelectScreen: Screen {
     var selected = -1
     var playBtn: Button!
     var deleteBtn: Button!
+    var shareBtn: Button?
+    /// a line under the title for a few seconds (what Share or Import did)
+    var notice = ""
+    var noticeUntil = 0.0
     /// "Host LAN Game": the chosen world opens to LAN as soon as it loads
     let hosting: Bool
     let nameField = TextField(0, 0, 200, 16, "Your name")
@@ -196,10 +200,49 @@ final class WorldSelectScreen: Screen {
             if self.hosting { savePlayerName(game, self.nameField) }
             ui.open(WorldCreateScreen(hosting: self.hosting), game)
         }))
-        buttons.append(Button(cx - 100, by + 24, 200, 20, "Back", { [weak ui, weak game] in
+        // share a world with another device or person, or add one shared with you
+        let sharing = !hosting && (gRuntime?.platform.canShareFiles ?? false)
+        if sharing {
+            let share = Button(cx - 154, by + 24, 100, 20, "Share", {})
+            share.onClick = { [weak self, weak ui, weak game, weak share] in
+                guard let self, let ui, let game, let share, self.selected >= 0 else { return }
+                let w = self.worlds[self.selected]
+                guard let file = game.exportWorld(w.id) else { return self.say("§cCouldn't package \(w.name)") }
+                let s = ui.scale
+                gRuntime?.platform.shareFile(file.path, from: (share.x * s, share.y * s, share.w * s, share.h * s))
+            }
+            shareBtn = share
+            buttons.append(share)
+            buttons.append(Button(cx - 50, by + 24, 100, 20, "Import", { [weak self, weak game] in
+                guard let self, let game else { return }
+                gRuntime?.platform.pickFile(extensions: [SaveDB.shareExtension]) { [weak self] path in
+                    guard let path else { return }
+                    self?.imported(game.importWorld(URL(fileURLWithPath: path)), game)
+                }
+            }))
+        }
+        buttons.append(Button(sharing ? cx + 54 : cx - 100, by + 24, sharing ? 100 : 200, 20, "Back", { [weak ui, weak game] in
             guard let ui, let game else { return }
             ui.closeTop(game)
         }))
+    }
+
+    func say(_ text: String) {
+        notice = text
+        noticeUntil = Date().timeIntervalSince1970 + 5
+    }
+
+    /// a shared world was added (or refused): list it, selected, and say so
+    func imported(_ result: Result<WorldRecord, ShareError>, _ game: GameCore) {
+        switch result {
+        case .success(let rec):
+            worlds = game.listWorlds().sorted { $0.lastPlayed > $1.lastPlayed }
+            selected = worlds.firstIndex { $0.id == rec.id } ?? -1
+            scroll = 0
+            say("§aAdded \(rec.name)")
+        case .failure(let e):
+            say("§c\(e.message)")
+        }
     }
     private var scroll = 0.0
     private var listTop: Double { hosting ? 70 : 30 }
@@ -217,6 +260,10 @@ final class WorldSelectScreen: Screen {
         }
         playBtn.enabled = selected >= 0
         deleteBtn.enabled = selected >= 0
+        shareBtn?.enabled = selected >= 0
+        if !notice.isEmpty && Date().timeIntervalSince1970 < noticeUntil {
+            ui.cv.drawTextCentered(notice, ui.width / 2, ui.height - 64, 1)
+        }
         let listX = (ui.width / 2).rounded(.down) - 130
         if worlds.isEmpty {
             ui.cv.drawTextCentered("No worlds yet - create one!", ui.width / 2, listTop + 30, 1, "#a0a0a0")

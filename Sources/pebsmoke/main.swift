@@ -2507,6 +2507,56 @@ do {
         check("touch tap world loads", false)
     }
 
+    // sharing a world: export it to a file, import it back as a new world
+    if let g = settled() {
+        let p = g.player!, w = g.world
+        let id = g.worldRec!.id, seed = g.worldRec!.seed
+        let mx = Int(floor(p.x)) + 2, my = Int(floor(p.y)), mz = Int(floor(p.z))
+        w.setBlock(mx, my, mz, Int(cell(B.gold_block)))
+        p.inventory[4] = ItemStack(iid("diamond"), 7)
+        g.exitToTitle()
+        let file = g.exportWorld(id)
+        let before = g.db.chunkCoords(id).count
+        check("a world exports to a .pebbleworld file named after it",
+              file?.lastPathComponent == "smoke.pebbleworld" && file.map { FileManager.default.fileExists(atPath: $0.path) } == true)
+        if let file, case .success(let copy) = g.importWorld(file) {
+            check("importing adds it as a new world, renamed beside the original",
+                  copy.id != id && copy.name == "smoke (2)" && copy.seed == seed
+                  && g.listWorlds().contains { $0.id == copy.id } && g.listWorlds().contains { $0.id == id })
+            check("with every saved chunk, the player and the palette",
+                  g.db.chunkCoords(copy.id).count == before && before > 0
+                  && g.db.getPlayer(copy.id) != nil && g.db.getPalette(copy.id) != nil)
+            if case .success(let third) = g.importWorld(file) {
+                check("importing again makes another copy", third.name == "smoke (3)" && third.id != copy.id)
+                g.deleteWorld(third.id)
+            }
+            g.deleteWorld(id)
+            g.loadWorld(copy.id)
+            var t = 0
+            while t < 600 && (g.world.getChunk(floorDiv(mx, 16), floorDiv(mz, 16)) == nil || !g.player.onGround) {
+                _ = g.frame(dtMs: 50); RunLoop.main.run(until: Date().addingTimeInterval(0.005)); t += 1
+            }
+            check("the copy plays the same, after the original is deleted: the block placed, the inventory",
+                  g.world.getBlockId(mx, my, mz) == Int(B.gold_block) && g.player.inventory[4]?.id == iid("diamond")
+                  && g.player.inventory[4]?.count == 7, "block \(g.world.getBlockId(mx, my, mz))")
+            g.exitToTitle()
+            g.deleteWorld(copy.id)
+        } else {
+            check("the exported world imports", false)
+        }
+        // what isn't a world is refused, and leaves no world behind
+        let junk = URL(fileURLWithPath: home).appendingPathComponent("junk.pebbleworld")
+        try? Data("not a database".utf8).write(to: junk)
+        let count = g.listWorlds().count
+        var refused = false
+        if case .failure(.notAWorld) = g.importWorld(junk) { refused = true }
+        var missing = false
+        if case .failure(.unreadable) = g.importWorld(URL(fileURLWithPath: home + "/nope.pebbleworld")) { missing = true }
+        check("a file that isn't a world, or isn't there, is refused", refused && missing && g.listWorlds().count == count)
+    } else {
+        check("world sharing world loads", false)
+    }
+
     // clipboard: //copy, //cut and //paste (each one undo step)
     if let g = settled() {
         let p = g.player!, w = g.world

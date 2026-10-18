@@ -1,8 +1,9 @@
 // PlatformHooks for UIKit: bundle resources, pointer lock, pasteboard,
-// safe area, frame-rate cap.
+// safe area, frame-rate cap, sharing worlds.
 
 import UIKit
 import MetalKit
+import UniformTypeIdentifiers
 import PebbleApp
 
 final class IOSPlatform: PlatformHooks {
@@ -57,5 +58,23 @@ final class IOSPlatform: PlatformHooks {
         guard let view = controller?.mtkView else { return }
         let panel = view.window?.screen.maximumFramesPerSecond ?? 60
         view.preferredFramesPerSecond = maxFps >= 250 ? panel : min(max(30, maxFps), panel)
+    }
+
+    // sharing worlds: the share sheet (AirDrop, Messages, Mail, Save to
+    // Files…) and the Files picker for Import
+    var canShareFiles: Bool { true }
+
+    func shareFile(_ path: String, from rect: (x: Double, y: Double, w: Double, h: Double)) {
+        guard let c = controller, let v = c.mtkView else { return }
+        let sheet = UIActivityViewController(activityItems: [URL(fileURLWithPath: path)], applicationActivities: nil)
+        let s = v.contentScaleFactor
+        sheet.popoverPresentationController?.sourceView = v
+        sheet.popoverPresentationController?.sourceRect = CGRect(x: rect.x / s, y: rect.y / s, width: rect.w / s, height: rect.h / s)
+        c.present(sheet, animated: true)
+    }
+
+    func pickFile(extensions: [String], _ done: @escaping (String?) -> Void) {
+        guard let c = controller else { return done(nil) }
+        c.pickFile(types: extensions.compactMap { UTType(filenameExtension: $0) }, done)
     }
 }

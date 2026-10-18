@@ -34,7 +34,7 @@ public struct DimState: Codable {
 /// overlay and save records all read this (Info.plist is bumped separately
 /// at packaging time). major.minor.revision: a new minor adds features, a
 /// new revision is a small feature or a fix.
-public let PEBBLE_VERSION = "1.9.0"
+public let PEBBLE_VERSION = "1.10.0"
 
 /// the commit this build came from: 8 hex digits, "+" when built with
 /// uncommitted changes. Stamped into the app's Info.plist at build time
@@ -145,6 +145,27 @@ private func sanitizeJSON(_ v: Any) -> Any {
 
 private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
+/// a fresh world id: the time in base 36 and a random tail
+public func newWorldId() -> String {
+    let ms = Int(Date().timeIntervalSince1970 * 1000)
+    return "w" + String(ms, radix: 36) + String(Int.random(in: 0..<1_000_000), radix: 36)
+}
+
+/// why a shared world file couldn't be added
+public enum ShareError: Error, Equatable {
+    case unreadable                 // couldn't open or copy it
+    case notAWorld                  // not a Pebble world file
+    case newerFormat(String)        // made by a newer Pebble (its version)
+
+    public var message: String {
+        switch self {
+        case .unreadable: return "Couldn't read that file"
+        case .notAWorld: return "That isn't a Pebble world"
+        case .newerFormat(let v): return "That world is from a newer Pebble (\(v)); update to open it"
+        }
+    }
+}
+
 public final class SaveDB {
     private var db: OpaquePointer?
     /// chunk-write tallies since launch (updated on the save queue; read for
@@ -167,7 +188,8 @@ public final class SaveDB {
 
     public init() {
         let url = vcSupportDir().appendingPathComponent("pebble.db")
-        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
+        // URI: a shared world is attached read-only ("file:…?mode=ro")
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_URI
         guard sqlite3_open_v2(url.path, &db, flags, nil) == SQLITE_OK else {
             fatalError("pebble.db could not be opened: \(String(cString: sqlite3_errmsg(db)))")
         }
@@ -268,6 +290,95 @@ public final class SaveDB {
         run("DELETE FROM player WHERE world LIKE ?", bind: { self.bindText($0, 1, id + "#guest:%") })
         exec("COMMIT")
         forgetWrites(id)
+    }
+
+    // ---- sharing: one world as a file ------------------------------------------
+    /// A shared world (`.pebbleworld`) is a SQLite file holding one world's
+    /// rows in the same tables as pebble.db (its chunks, players — LAN guests
+    /// too — advancements and palette), plus a `share` table naming the format.
+    /// The palette travels with it, so a build with other block ids remaps it on
+    /// load like any older world.
+    public static let shareExtension = "pebbleworld"
+    static let shareFormat = "pebble-world-1"
+
+    /// write world `id` to a new file at `url` (replacing one there)
+    public func exportWorld(_ id: String, to url: URL) -> Bool {
+        guard getWorld(id) != nil else { return false }
+        try? FileManager.default.removeItem(at: url)
+        guard run("ATTACH DATABASE ? AS shared", bind: { self.bindText($0, 1, url.path) }) else { return false }
+        var ok = exec("BEGIN")
+        for sql in [
+            "CREATE TABLE shared.share(key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+            "CREATE TABLE shared.worlds(id TEXT PRIMARY KEY, json TEXT NOT NULL, lastPlayed REAL NOT NULL DEFAULT 0)",
+            "CREATE TABLE shared.chunks(world TEXT NOT NULL, dim INTEGER NOT NULL, cx INTEGER NOT NULL, cz INTEGER NOT NULL, data BLOB NOT NULL, PRIMARY KEY(world, dim, cx, cz)) WITHOUT ROWID",
+            "CREATE TABLE shared.player(world TEXT PRIMARY KEY, json TEXT NOT NULL)",
+            "CREATE TABLE shared.advancements(world TEXT PRIMARY KEY, json TEXT NOT NULL)",
+            "CREATE TABLE shared.palette(world TEXT PRIMARY KEY, json TEXT NOT NULL)",
+        ] where ok { ok = exec(sql) }
+        if ok {
+            ok = run("INSERT INTO shared.share VALUES('format', ?), ('version', ?)", bind: { stmt in
+                self.bindText(stmt, 1, SaveDB.shareFormat)
+                self.bindText(stmt, 2, PEBBLE_VERSION)
+            })
+        }
+        for (table, cols, filter) in [
+            ("worlds", "id, json, lastPlayed", "id=?1"),
+            ("chunks", "world, dim, cx, cz, data", "world=?1"),
+            ("player", "world, json", "world=?1 OR world LIKE ?2"),
+            ("advancements", "world, json", "world=?1"),
+            ("palette", "world, json", "world=?1"),
+        ] where ok {
+            ok = run("INSERT INTO shared.\(table) SELECT \(cols) FROM main.\(table) WHERE \(filter)", bind: { stmt in
+                self.bindText(stmt, 1, id)
+                if filter.contains("?2") { self.bindText(stmt, 2, id + "#guest:%") }
+            })
+        }
+        exec(ok ? "COMMIT" : "ROLLBACK")
+        exec("DETACH DATABASE shared")
+        if !ok { try? FileManager.default.removeItem(at: url) }
+        return ok
+    }
+
+    /// add the world in the shared file at `url` as a new world (a fresh id,
+    /// and its name with " (2)", " (3)"… if one by that name exists). Returns
+    /// the new record, or why it couldn't
+    public func importWorld(from url: URL) -> Result<WorldRecord, ShareError> {
+        guard FileManager.default.isReadableFile(atPath: url.path) else { return .failure(.unreadable) }
+        guard run("ATTACH DATABASE ? AS shared", bind: { self.bindText($0, 1, url.absoluteString + "?mode=ro") }) else {
+            return .failure(.notAWorld)
+        }
+        defer { exec("DETACH DATABASE shared") }
+        var format: String?, version: String?, worlds: [WorldRecord] = []
+        run("SELECT key, value FROM shared.share", row: { stmt in
+            let k = self.columnText(stmt, 0), v = self.columnText(stmt, 1)
+            if k == "format" { format = v } else if k == "version" { version = v }
+        })
+        guard let format else { return .failure(.notAWorld) }
+        guard format == SaveDB.shareFormat else { return .failure(.newerFormat(version ?? "?")) }
+        run("SELECT json FROM shared.worlds", row: { stmt in
+            if let json = self.columnText(stmt, 0),
+               let rec = try? JSONDecoder().decode(WorldRecord.self, from: Data(json.utf8)) { worlds.append(rec) }
+        })
+        guard worlds.count == 1, var rec = worlds.first else { return .failure(.notAWorld) }
+        let oldId = rec.id
+        let names = Set(listWorlds().map { $0.name })
+        var name = rec.name, n = 2
+        while names.contains(name) { name = "\(rec.name) (\(n))"; n += 1 }
+        rec.id = newWorldId()
+        rec.name = name
+        rec.lastPlayed = Date().timeIntervalSince1970 * 1000
+        var ok = exec("BEGIN")
+        for (table, cols) in [("chunks", "?1, dim, cx, cz, data"),
+                              ("player", "?1 || substr(world, length(?2) + 1), json"),
+                              ("advancements", "?1, json"), ("palette", "?1, json")] where ok {
+            ok = run("INSERT INTO main.\(table) SELECT \(cols) FROM shared.\(table)", bind: { stmt in
+                self.bindText(stmt, 1, rec.id)
+                if cols.contains("?2") { self.bindText(stmt, 2, oldId) }
+            })
+        }
+        if ok { putWorld(rec); ok = getWorld(rec.id) != nil }
+        exec(ok ? "COMMIT" : "ROLLBACK")
+        return ok ? .success(rec) : .failure(.unreadable)
     }
 
     // ---- chunks ---------------------------------------------------------------

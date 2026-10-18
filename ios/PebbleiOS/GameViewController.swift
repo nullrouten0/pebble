@@ -4,6 +4,7 @@
 import UIKit
 import MetalKit
 import GameController
+import UniformTypeIdentifiers
 import PebbleApp
 
 final class GameViewController: UIViewController {
@@ -102,7 +103,33 @@ final class GameViewController: UIViewController {
             started = true
             runtime.start(drawableSize: mtkView.drawableSize)
             platform.applyMaxFps(60)
+            for url in pendingFiles { open(url) }
+            pendingFiles.removeAll()
         }
+    }
+
+    // MARK: shared worlds
+
+    /// a file opened with Pebble (AirDrop, Messages, Files); ones that arrive
+    /// before the game is up wait for it
+    private var pendingFiles: [URL] = []
+    func open(_ url: URL) {
+        guard started else { return pendingFiles.append(url) }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        // iOS hands us a copy in Documents/Inbox: once it's a world, drop it
+        if runtime.openFile(url.path), url.path.contains("/Inbox/") {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    private var pickDone: ((String?) -> Void)?
+    func pickFile(types: [UTType], _ done: @escaping (String?) -> Void) {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        pickDone = done
+        present(picker, animated: true)
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -321,5 +348,19 @@ final class GameViewController: UIViewController {
     private func setModifier(_ m: ModifierKey, _ usage: Int, _ down: Bool) {
         if down { heldModifiers.insert(usage) } else { heldModifiers.remove(usage) }
         if m != .command { runtime.input.modifiers(shift: shiftDown, ctrl: ctrlDown) }
+    }
+}
+
+extension GameViewController: UIDocumentPickerDelegate {
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        let done = pickDone
+        pickDone = nil
+        guard let url = urls.first else { return done?(nil) ?? () }
+        done?(url.path)
+        try? FileManager.default.removeItem(at: url)   // our copy (asCopy)
+    }
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        pickDone?(nil)
+        pickDone = nil
     }
 }

@@ -25,7 +25,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-> **Pebble 1.9 is a beta.** The engine is covered by 935 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.10 is a beta.** The engine is covered by 941 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
@@ -39,7 +39,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 114 (65+ mobs with full AI, including 10 anime-style animals and 4 flying mounts; vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 935, all green (`pebble test`) |
+| Regression checks | 941, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by Faithful (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -55,6 +55,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 - **Items & systems** — crafting, three furnace types, brewing, 39 enchantments, anvils, grindstones, smithing with armor trims, loot tables with fortune/looting, fishing, archaeology, advancements.
 - **Precise player physics** — walk 4.317 b/s, sprint 5.612 b/s, jump apex 1.2522 blocks, plus water, lava, wingsuit, ice, soul sand and honey, verified by independent-derivation tests.
 - **Flying mounts** — tame and saddle a pegasus, dragon, alicorn or griffin and fly it; three of them have a power; see [Flying mounts](#flying-mounts).
+- **Share worlds** — send one to another Mac, iPad or iPhone with AirDrop, Messages or Mail, or save it as a file; see [Sharing worlds](#sharing-worlds).
 - **LAN multiplayer** and a **creative toolkit** — see [Multiplayer (LAN)](#multiplayer-lan) and [Creative tools](#creative-tools).
 - **Ultra graphics** — SSAO, volumetric god rays, Poisson soft shadows and ACES tonemapping, behind one toggle in Options → Video.
 - **Synthesized audio** — no audio files: music, jukebox discs and every sound effect are built from oscillator and noise recipes, with positional stereo, underwater lowpass and cave reverb.
@@ -63,6 +64,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full, and [docs/releases](docs/releases) has the release notes.
 
+- **1.10.0** (Oct 17, 2026): [share a world](#sharing-worlds) with AirDrop, Messages or Mail, or save it as a file; open one and it's added to your worlds. [Release notes](docs/releases/1.10.md).
 - **1.9.0** (Oct 17, 2026): two more [flying mounts](#flying-mounts): the alicorn, a winged unicorn whose horn casts magic bolts, and the griffin, the fastest flyer, whose screech throws creatures back and sends them running. [Release notes](docs/releases/1.9.md).
 - **1.8.0–1.8.1** (Oct 17, 2026): [flying mounts](#flying-mounts) — saddle a pegasus or a dragon and fly it like creative flight; the dragon breathes fire. Shift now gets you off any mount, riding is smooth, and particles that never showed (flames, smoke, hearts, splashes) now do, and on touch screens a tap on a creature feeds, saddles or mounts it. [Release notes](docs/releases/1.8.md).
 - **1.7.0–1.7.3** (Oct 15, 2026): a [Creative Tools menu](#creative-tools) (G, or the toolbox button on touch screens) that gives every tool, places every structure, spawns every creature and runs undo, redo and the clipboard, without typing; real icons for the building tools; a fix for a crash spawning many creatures with the Blight.
@@ -90,7 +92,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the test suite (935 checks)
+pebble test         run the test suite (941 checks)
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -214,6 +216,15 @@ For `city`, `mountain` and worldgen structures, a different `variant` number giv
 
 **Anime-style animals.** Ten chibi critters with big heads, sparkly eyes and blush: `mochi_bunny`, `kitsune_kit`, `bell_neko`, `leaf_tanuki`, `bao_panda`, `puff_shiba`, `scarf_penguin`, `hamu_hamster`, `momiji_red_panda` and `piyo_chick`. They never spawn on their own: place one with its spawn egg (`/give mochi_bunny_spawn_egg`, or the Spawn Eggs tab in creative) or `/summon mochi_bunny`, or bring all ten at once with `/spawn anime_zoo`. `/spawn <creature>` brings one, in front of you. Each has a favourite food that it follows you for and breeds with (carrots for the bunny, berries for the kitsune, fish for the neko and penguin, bamboo for the pandas, seeds for the hamster and chick, apples for the tanuki, bones for the shiba).
 
+## Sharing worlds
+
+Send a world to a friend or to your own iPad, or keep a copy as a file.
+
+- **To share:** in **Singleplayer**, select the world and click **Share**. Pick AirDrop, Messages, Mail or another app; on a Mac **Save to File…** saves a copy, and on iPad and iPhone it's **Save to Files**. The world goes as one `.pebbleworld` file with everything in it: the land you've visited, your builds, chests, your inventory and position, your advancements.
+- **To open one:** open the file on the receiving device (double-click it in Finder, accept it from AirDrop, tap it in Messages or Files and choose Pebble), or click **Import** in Singleplayer and pick it. It's added to your worlds and selected, ready to play.
+- **It's a copy.** Playing it changes neither the sender's world nor the file. A world whose name you already have comes in as "Name (2)", so nothing is overwritten.
+- Both devices need Pebble 1.10 or later. Use the same version where you can: when an older Pebble opens a world from a newer one, blocks and items it doesn't have yet are dropped.
+
 ## Where things live
 
 On the Mac, everything is in `~/Library/Application Support/Pebble/`:
@@ -245,7 +256,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     test harness (935 checks; snapshots in goldens/*.json)
+Sources/pebsmoke/     test harness (941 checks; snapshots in goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              snapshot files the harness compares against
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -260,7 +271,7 @@ Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (p
 
 Your worlds are safe across updates. Every chunk you've visited is saved, so a change to world generation only affects land nobody has seen yet. Worlds also record the names behind their block and item ids, so a build that adds, moves or removes blocks opens them correctly. Worlds created before 1.5 keep their original generator.
 
-`pebble test` runs 935 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
+`pebble test` runs 941 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -275,7 +286,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `935 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `941 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

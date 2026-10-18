@@ -542,9 +542,7 @@ public final class GameCore {
                 seed = seed &* 31 &+ Int32(unit)
             }
         }
-        let ms = Int(Date().timeIntervalSince1970 * 1000)
-        let id = "w" + String(ms, radix: 36) + String(Int.random(in: 0..<1_000_000), radix: 36)
-        var rec = WorldRecord(id: id, name: name, seed: seed, gameMode: mode, difficulty: difficulty)
+        var rec = WorldRecord(id: newWorldId(), name: name, seed: seed, gameMode: mode, difficulty: difficulty)
         // pick a spawn: walk outward for a land biome
         let gen = overworldGen(UInt32(bitPattern: seed))
         var sx = 8, sz = 8
@@ -582,6 +580,24 @@ public final class GameCore {
 
     public func deleteWorld(_ id: String) {
         db.deleteWorld(id)
+    }
+
+    /// world `id` as a shared-world file in a temporary folder, named after
+    /// the world (for the share sheet or a save panel); nil if it failed
+    public func exportWorld(_ id: String) -> URL? {
+        guard let rec = db.getWorld(id) else { return nil }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("shared-worlds", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var name = rec.name.components(separatedBy: CharacterSet(charactersIn: "/\\:?*\"<>|")).joined(separator: "-")
+            .trimmingCharacters(in: .whitespaces)
+        if name.isEmpty || name.hasPrefix(".") { name = "World" + name }
+        let url = dir.appendingPathComponent("\(name).\(SaveDB.shareExtension)")
+        return db.exportWorld(id, to: url) ? url : nil
+    }
+
+    /// add a shared world file as a new world
+    public func importWorld(_ url: URL) -> Result<WorldRecord, ShareError> {
+        db.importWorld(from: url)
     }
 
     // ===========================================================================

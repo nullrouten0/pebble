@@ -3,6 +3,32 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.10.0 — 2026-10-17 — share a world
+
+- **Share a world.** In Singleplayer, select a world and click **Share**:
+  the system share sheet sends it with AirDrop, Messages, Mail or any app
+  that takes files. On the Mac it also has **Save to File…**; on iPad and
+  iPhone, **Save to Files**. The world travels as one `.pebbleworld` file
+  holding everything saved for it: the land you've visited and changed,
+  chests and signs, your inventory and position, LAN guests' too, and
+  advancements.
+- **Open a shared world** by opening its file: double-click it in Finder,
+  accept it from AirDrop, or tap it in Messages or Files and choose Pebble.
+  Or click **Import** in Singleplayer and pick it. It's added to your worlds,
+  selected and ready to play, with "Added …" under the list. Opened while
+  you're playing, it's added and the action bar says so.
+- **It's always a copy:** a new world beside your others, never replacing
+  one. A world whose name you already have comes in as "Name (2)".
+- A file that isn't a Pebble world, or is from a newer Pebble's format, is
+  refused with a message, and nothing is added.
+- **Development:** `SaveDB.exportWorld` / `importWorld` copy one world's rows
+  through an attached SQLite file (format `pebble-world-1` in its `share`
+  table); the palette goes along, so another build's block ids remap on load.
+  New `PlatformHooks`: `canShareFiles`, `shareFile`, `pickFile`; the shells
+  declare the `net.stonekitty.pebble.world` type and pass opened files to
+  `GameRuntime.openFile`. `PEBBLE_OPEN=path` opens one in a scripted run.
+  6 new checks (941).
+
 ## 1.9.0 — 2026-10-17 — the alicorn and the griffin
 
 - **Two more flying mounts.**

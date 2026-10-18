@@ -416,6 +416,31 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         lastFrame = now
     }
 
+    /// a file opened with Pebble (Finder, Files, AirDrop, Messages): a shared
+    /// world is added to the world list, which opens to show it unless a
+    /// world is being played. Returns false for files it doesn't take.
+    @discardableResult
+    public func openFile(_ path: String) -> Bool {
+        guard let game, let ui, path.lowercased().hasSuffix("." + SaveDB.shareExtension) else { return false }
+        let result = game.importWorld(URL(fileURLWithPath: path))
+        if game.hasWorld() {
+            switch result {
+            case .success(let rec): host.showActionBar("§aAdded \(rec.name) to your worlds", 100)
+            case .failure(let e): host.showActionBar("§c\(e.message)", 100)
+            }
+            return true
+        }
+        let list: WorldSelectScreen
+        if let open = ui.current() as? WorldSelectScreen, !open.hosting {
+            list = open
+        } else {
+            list = WorldSelectScreen()
+            ui.open(list, game)
+        }
+        list.imported(result, game)
+        return true
+    }
+
     /// pasted text into the focused screen field — the UI fields are
     /// canvas-drawn, so no system text path ever reaches them
     public func paste(_ s: String) {
@@ -646,8 +671,17 @@ public final class GameRuntime: NSObject, MTKViewDelegate {
         return menu || powerSaving || saver ? min(game.settings.maxFps, 30) : game.settings.maxFps
     }
 
+    /// test hook: PEBBLE_OPEN=path opens a file at the title screen, as if
+    /// the system handed it to Pebble (a shared world from Finder or AirDrop)
+    private var pendingOpen = ProcessInfo.processInfo.environment["PEBBLE_OPEN"]
+
     /// PEBBLE_MENU / PEBBLE_CMD / PEBBLE_SHOT, advanced once per frame
     private func runTestHooks() {
+        if let path = pendingOpen, ui.hasScreen() {
+            pendingOpen = nil
+            print("[open] \(path) → \(openFile(path) ? "taken" : "not a Pebble file")")
+            fflush(stdout)
+        }
         if !pendingMenu.isEmpty {
             pendingMenuDelay += 1
             if pendingMenuDelay > 30 {

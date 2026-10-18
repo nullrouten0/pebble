@@ -7,7 +7,7 @@
     <key>CFBundleName</key><string>Pebble</string>
     <key>CFBundleDisplayName</key><string>Pebble</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.9.0</string>
+    <key>CFBundleShortVersionString</key><string>1.10.0</string>
     <key>CFBundleVersion</key><string>3</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>NSHighResolutionCapable</key><true/>
@@ -15,5 +15,28 @@
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSLocalNetworkUsageDescription</key><string>Pebble finds and joins LAN games on your local network.</string>
     <key>NSBonjourServices</key><array><string>_pebble._tcp</string></array>
+    <!-- a shared world (World Select → Share): opening one adds it to your worlds -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key><string>Pebble World</string>
+            <key>CFBundleTypeRole</key><string>Editor</string>
+            <key>LSHandlerRank</key><string>Owner</string>
+            <key>LSItemContentTypes</key><array><string>net.stonekitty.pebble.world</string></array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key><string>net.stonekitty.pebble.world</string>
+            <key>UTTypeDescription</key><string>Pebble World</string>
+            <key>UTTypeConformsTo</key><array><string>public.data</string><string>public.content</string></array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key><array><string>pebbleworld</string></array>
+                <key>public.mime-type</key><array><string>application/x-pebble-world</string></array>
+            </dict>
+        </dict>
+    </array>
 </dict>
 </plist>

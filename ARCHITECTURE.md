@@ -93,6 +93,8 @@ Every generated chunk is saved in full, blocks included, the first time it's sav
 
 Block and item ids follow registration order, which may change between builds. Each world's `palette` row lists the names behind its ids; `SaveDB.migratePalette` rewrites a world saved under a different palette once, on open (chunk cells, item stacks anywhere in the JSON, `blockCell`/`movedCell`), mapping renames through `BLOCK_ALIASES`/`ITEM_ALIASES` and turning removed blocks into air and removed items into empty slots. Failed batches log and re-mark chunks dirty for retry. Corrupt blobs are clamped (out-of-range block ids → air) rather than trusted. A record that would be written byte-for-byte as last time is skipped (`SaveDB.writtenHashes`); that memory is dropped whenever a world is opened, since another build may have rewritten it meanwhile.
 
+A shared world (`.pebbleworld`, UTI `net.stonekitty.pebble.world`) is a SQLite file with the same five tables holding one world's rows, plus `share(key, value)` naming the format (`pebble-world-1`) and the exporting version. `SaveDB.exportWorld` attaches a new file and copies the rows across; `importWorld` attaches one read-only (a `file:…?mode=ro` URI) and copies its rows in under a fresh world id (renaming guests' `<old id>#guest:` rows to match) and a name that doesn't clash. The palette travels with the world, so the usual migration covers another build's ids. The shells reach it through `PlatformHooks.shareFile`/`pickFile` and `GameRuntime.openFile`.
+
 ## The test harness (pebsmoke)
 
 About 900 checks, run with `pebble test`:
