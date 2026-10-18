@@ -3786,7 +3786,7 @@ do {
           db.migratePalette("prepalette") != nil && db.getPalette("prepalette") == Palette.current())
 }
 
-section("flying mounts (pegasus, dragon)")
+section("flying mounts (pegasus, dragon, alicorn, griffin)")
 do {
     // flat stone, ground at y 64 (feet at 65)
     let w = World(dim: .overworld, seed: 3)
@@ -3818,10 +3818,14 @@ do {
           && wildOpt?.tamed == false && wildOpt?.saddled == false)
     check("each flying mount has a spawn egg, and they lead the Tools menu's creatures",
           FLYING_MOUNTS.allSatisfy { iidOpt("\($0)_spawn_egg") != nil }
-          && toolEntries(.creatures).dropFirst(MOB_GROUPS.count).prefix(2).map { $0.command } == ["/spawn pegasus", "/spawn dragon"])
-    check("wild pegasi live in meadows and cherry groves, dragons on the peaks",
-          [Biome.meadow, .cherryGrove].allSatisfy { BIOMES[Int($0.rawValue)]?.creatures.contains { $0.mob == "pegasus" } == true }
-          && [Biome.jaggedPeaks, .stonyPeaks].allSatisfy { BIOMES[Int($0.rawValue)]?.creatures.contains { $0.mob == "dragon" } == true })
+          && toolEntries(.creatures).dropFirst(MOB_GROUPS.count).prefix(4).map { $0.command }
+             == ["/spawn pegasus", "/spawn dragon", "/spawn alicorn", "/spawn griffin"])
+    func livesIn(_ mob: String, _ biomes: [Biome]) -> Bool {
+        biomes.allSatisfy { BIOMES[Int($0.rawValue)]?.creatures.contains { $0.mob == mob } == true }
+    }
+    check("wild pegasi live in meadows and cherry groves, dragons on the peaks, alicorns among flowers, griffins on windswept heights",
+          livesIn("pegasus", [.meadow, .cherryGrove]) && livesIn("dragon", [.jaggedPeaks, .stonyPeaks])
+          && livesIn("alicorn", [.flowerForest, .sunflowerPlains]) && livesIn("griffin", [.windsweptHills, .savannaPlateau]))
 
     if let wild = wildOpt, let peg = placed {
         // a wild one won't carry you; golden carrots tame it, then it needs a saddle
@@ -3924,20 +3928,104 @@ do {
         p.setPos(20.5, gy, 0.5)
         p.yaw = 0; p.pitch = 0
         p.mount(dragon)
-        p.breathHeld = true
+        p.powerHeld = true
         for _ in 0..<20 { p.moveForward = 0; dragon.tick() }
         check("held attack on a dragon sets what's ahead on fire",
               dragon.data.breathing == true && ahead.fireTicks > 0 && ahead.health < ahead.maxHealth,
               "fire \(ahead.fireTicks) health \(ahead.health)")
         check("but not what's behind, its rider, or the rider's pets",
               behind.fireTicks == 0 && p.fireTicks == 0 && pet.fireTicks == 0 && pet.health == pet.maxHealth)
-        p.breathHeld = false
+        p.powerHeld = false
         dragon.tick()
         check("letting go stops the fire", dragon.data.breathing == nil)
         let hp = dragon.health
         check("fire can't hurt a dragon", dragon.hurt(5, .fire) == false && dragon.hurt(5, .lava) == false && dragon.health == hp)
         p.dismount()
     } else { check("dragon and targets spawn", false) }
+
+    // the alicorn: held attack casts bolts from its horn along the rider's view
+    if let ali = spawnMob(w, "alicorn", -20.5, gy, 0.5, SpawnOpts(ready: true)) as? Alicorn,
+       let target = spawnMob(w, "pig", -20.5, gy, 10.5) as? LivingEntity,
+       let pet = spawnMob(w, "wolf", -20.5, gy, 5.5) as? Mob,
+       let aside = spawnMob(w, "pig", -26.5, gy, 10.5) as? LivingEntity {
+        pet.ownerId = p.id
+        p.setPos(-20.5, gy, 0.5)
+        p.mount(ali)
+        ali.tick()
+        // aim at the pig's middle (bolts leave the horn for the crosshair)
+        p.yaw = 0
+        p.pitch = atan2(p.eyeY() - (target.y + target.height / 2), target.z - p.z)
+        p.powerHeld = true
+        var cast = 0
+        for _ in 0..<30 {
+            p.moveForward = 0
+            ali.tick()
+            if ali.boltCooldown == ALICORN_BOLT_EVERY - 1 { cast += 1 }   // (just cast, then a tick off)
+        }
+        p.powerHeld = false
+        for _ in 0..<30 { ali.tick() }
+        check("held attack on an alicorn casts a bolt every \(ALICORN_BOLT_EVERY) ticks that hurts what it's aimed at",
+              cast == 30 / ALICORN_BOLT_EVERY && target.health < target.maxHealth && ali.data.breathing == nil,
+              "\(cast) bolts, health \(target.health)")
+        check("bolts pass through the rider's pets, miss what's off the line, and never hurt the rider",
+              pet.health == pet.maxHealth && aside.health == aside.maxHealth && p.health == p.maxHealth)
+        check("bolts stop: none left flying once attack is let go", ali.boltsInFlight == 0)
+        // a bolt into a wall stops there
+        w.setBlock(-21, 66, 4, Int(cell(B.stone)))
+        let hp = target.health
+        p.pitch = 0
+        p.powerHeld = true
+        ali.setPos(-20.5, gy, 0.5)
+        for _ in 0..<12 { ali.tick() }
+        p.powerHeld = false
+        for _ in 0..<30 { ali.tick() }
+        check("a bolt stops at the first block in its way", target.health == hp && ali.boltsInFlight == 0)
+        p.dismount()
+    } else { check("alicorn and targets spawn", false) }
+
+    // the griffin: held attack screeches, throwing creatures back and sending them running
+    if let gr = spawnMob(w, "griffin", 30.5, gy, -20.5, SpawnOpts(ready: true)) as? Griffin,
+       let near = spawnMob(w, "pig", 33.5, gy, -20.5) as? Mob,
+       let far = spawnMob(w, "pig", 30.5, gy, -5.5) as? Mob,
+       let pet = spawnMob(w, "wolf", 28.5, gy, -20.5) as? Mob,
+       let zombie = spawnMob(w, "zombie", 30.5, gy, -24.5) as? Mob {
+        pet.ownerId = p.id
+        p.setPos(30.5, gy, -20.5)
+        p.mount(gr)
+        zombie.target = p
+        p.powerHeld = true
+        gr.tick()
+        p.powerHeld = false
+        check("a griffin's screech throws nearby creatures back from it",
+              near.vx > 0.5 && near.vy > 0.2 && zombie.vz < -0.5, "pig \(near.vx), zombie \(zombie.vz)")
+        check("and sends them running: a zombie forgets you",
+              near.scaredTicks > 0 && zombie.scaredTicks > 0 && zombie.target == nil)
+        check("but not what's out of range, the rider, or the rider's pets",
+              far.vx == 0 && far.vz == 0 && far.scaredTicks == 0 && pet.scaredTicks == 0 && abs(pet.vx) < 0.1 && p.health == p.maxHealth)
+        for _ in 0..<60 { zombie.tick(); near.tick(); gr.tick() }
+        check("scared creatures keep running from where it screeched",
+              detHyp(zombie.x - 30.5, zombie.z + 20.5) > 8 && detHyp(near.x - 30.5, near.z + 20.5) > 8 && zombie.target == nil,
+              "zombie \(detHyp(zombie.x - 30.5, zombie.z + 20.5)), pig \(detHyp(near.x - 30.5, near.z + 20.5))")
+        let fastest = FLYING_MOUNTS.compactMap { createEntity($0, w) as? FlyingMount }.max { $0.flyThrust < $1.flyThrust }
+        check("the griffin is the fastest flyer", fastest?.type == "griffin")
+        p.dismount()
+    } else { check("griffin and targets spawn", false) }
+
+    // taming foods
+    if let a = spawnMob(w, "alicorn", -40.5, gy, 0.5, SpawnOpts()) as? Alicorn,
+       let g = spawnMob(w, "griffin", -40.5, gy, 8.5, SpawnOpts()) as? Griffin {
+        func tames(_ m: FlyingMount, _ food: String) -> Bool {
+            for _ in 0..<40 where !m.tamed {
+                p.inventory[0] = ItemStack(iid(food), 1)
+                _ = m.interact(p, p.mainHand)
+            }
+            return m.tamed
+        }
+        check("alicorns tame with golden apples or glistering melon, griffins with raw meat",
+              tames(a, "glistering_melon_slice") && tames(g, "rabbit")
+              && a.tameFoods.contains("golden_apple") && !g.tameFoods.contains("golden_apple"))
+        p.inventory[0] = nil
+    } else { check("wild alicorn and griffin spawn", false) }
 }
 
 print("\n\(passed) passed, \(failed) failed")

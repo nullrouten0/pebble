@@ -74,6 +74,7 @@ private let registerAllEntitiesOnce: Void = {
     for s in ANIME_ANIMALS { regLate(s.id) { AnimeAnimal(world: $0, s) } }
     // flying mounts (FlyingMounts.swift): wild in a few biomes, or placed
     regLate("pegasus") { Pegasus(world: $0) }; regLate("dragon") { Dragon(world: $0) }
+    regLate("alicorn") { Alicorn(world: $0) }; regLate("griffin") { Griffin(world: $0) }
 
     bindSpawnMob(spawnMob)
 }()
@@ -87,7 +88,7 @@ public func entityTypes() -> [String] { FACTORIES.map { $0.0 } }
 /// anime animals (placed only)
 public func summonableMobs() -> [String] { spawnableMobs() + ANIME_ANIMALS.map { $0.id } + FLYING_MOUNTS }
 /// the creatures you can saddle and fly
-public let FLYING_MOUNTS = ["pegasus", "dragon"]
+public let FLYING_MOUNTS = ["pegasus", "dragon", "alicorn", "griffin"]
 
 /// named groups of creatures for /spawn: every anime animal at once, so far
 public let MOB_GROUPS: [(name: String, mobs: () -> [String])] = [

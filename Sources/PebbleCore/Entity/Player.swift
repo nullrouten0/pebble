@@ -49,8 +49,9 @@ public final class Player: LivingEntity {
     public var xpProgress = 0.0  // 0..1
     public var flying = false
     public var wingsuitFlying = false
-    /// riding a dragon with attack held: it breathes fire (synced for LAN guests)
-    public var breathHeld = false
+    /// riding a mount with a power (dragon fire, alicorn bolts, griffin screech)
+    /// with attack held (synced for LAN guests)
+    public var powerHeld = false
     public var sleepTicks = 0
     public var bedPos: (Int, Int, Int)? = nil
     public var spawnPoint: (Int, Int, Int)? = nil

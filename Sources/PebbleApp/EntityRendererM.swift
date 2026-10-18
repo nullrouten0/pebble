@@ -404,7 +404,7 @@ final class EntityRendererM {
                     m = mRotateX(m, Float(pitch))
                     m = mRotateZ(m, Float(p.wingsuitFlying ? -0.08 : -0.18))
                 }
-            case "pegasus", "mount_dragon":
+            case "pegasus", "mount_dragon", "griffin":
                 let dragon = anim == "mount_dragon"
                 let w = p.wings
                 if n == "head" || n == "jaw" {
@@ -429,7 +429,7 @@ final class EntityRendererM {
                     // folded: swept back along the flank with the panel hanging
                     // down; spread: straight out, flapping
                     let side = n == "wingR" ? 1.0 : -1.0
-                    let flap = Foundation.sin(time * (dragon ? 5.5 : 9) + p.x) * (dragon ? 0.65 : 0.75)
+                    let flap = Foundation.sin(time * (dragon ? 5.5 : anim == "griffin" ? 7 : 9) + p.x) * (dragon ? 0.65 : 0.75)
                     m = mRotateY(m, Float(side * 1.5 * (1 - w)))
                     m = mRotateX(m, Float(1.3 * (1 - w)))
                     m = mRotateZ(m, Float(side * (flap * w + 0.08)))

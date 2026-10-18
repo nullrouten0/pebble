@@ -1906,7 +1906,7 @@ public final class GameCore {
                 getOff(p)
             }
             sneakWasDown = p.sneaking
-            p.breathHeld = leftDown && p.vehicle is Dragon
+            p.powerHeld = leftDown && ridesPowerMount(p)
             let wantSprint = (k("sprint") || sprintHeld) && p.moveForward > 0 && p.hunger > 6 && !p.sneaking
             if wantSprint && !p.sprinting && p.moveForward > 0 { p.sprinting = true }
             if !wantSprint || p.moveForward <= 0 || p.horizontalCollision { p.sprinting = false }
@@ -1926,7 +1926,7 @@ public final class GameCore {
             p.moveStrafe = 0
             p.jumping = false
             p.sprinting = false
-            p.breathHeld = false
+            p.powerHeld = false
         }
 
         // ---- player physics & state ----
@@ -2295,7 +2295,7 @@ public final class GameCore {
     private func tickMining() {
         let p = player!
         // the wand never digs, even if the button went down with a pickaxe in hand
-        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) || holdsWand(p) || p.vehicle is Dragon {
+        if !leftDown || p.dead || p.deathTime > 0 || (host?.hasScreen() ?? false) || holdsWand(p) || ridesPowerMount(p) {
             p.breakingProgress = -1
             return
         }
@@ -2659,8 +2659,8 @@ public final class GameCore {
             }
             leftDown = true
             player?.breakingProgress = -1   // a fresh press starts a fresh crack
-            // on a dragon, attack breathes fire for as long as it's held
-            if player?.vehicle is Dragon { return }
+            // on a mount with a power, attack uses it for as long as it's held
+            if let p = player, ridesPowerMount(p) { return }
             doAttack()
         } else if button == 1 {
             pickBlock()
@@ -2669,6 +2669,11 @@ public final class GameCore {
             doUse()
             useCooldown = 4
         }
+    }
+
+    /// riding a mount whose power attack runs (dragon, alicorn, griffin)
+    func ridesPowerMount(_ p: Player) -> Bool {
+        (p.vehicle as? FlyingMount)?.hasPower ?? false
     }
 
     public func mouseUp(_ button: Int) {

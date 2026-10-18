@@ -143,7 +143,7 @@ private let registerAllBiomesOnce: Void = {
           creatures: DEF_CREATURES + [("horse", 5, 2, 6), ("donkey", 1, 1, 3)])
     biome(.sunflowerPlains, "sunflower_plains", temperature: 0.8, downfall: 0.4,
           features: ["patch:sunflower:20", TREES("oak_sparse", 0, 0.05), "flowers:plains:8", GRASS_PATCH],
-          creatures: DEF_CREATURES + [("horse", 5, 2, 6)])
+          creatures: DEF_CREATURES + [("horse", 5, 2, 6), ("alicorn", 1, 1, 1)])
     biome(.snowyPlains, "snowy_plains", temperature: 0.0, downfall: 0.5, grassColor: 0x80b497, foliageColor: 0x60a17b,
           features: [TREES("spruce", 0, 0.08)],
           monsters: DEF_MONSTERS.filter { $0.mob != "skeleton" } + [("skeleton", 20, 4, 4), ("stray", 80, 4, 4)],
@@ -171,7 +171,7 @@ private let registerAllBiomesOnce: Void = {
           creatures: DEF_CREATURES + [("wolf", 5, 4, 4)])
     biome(.flowerForest, "flower_forest", temperature: 0.7, downfall: 0.8,
           features: [TREES("oak_birch", 4), "flowers:flower_forest:40", GRASS_PATCH, RETIRED("bee_nest:oak:20")],
-          creatures: [("rabbit", 8, 2, 3)])
+          creatures: [("rabbit", 8, 2, 3), ("alicorn", 1, 1, 1)])
     biome(.birchForest, "birch_forest", temperature: 0.6, downfall: 0.6, grassColor: 0x88bb67, foliageColor: 0x6ba941,
           features: [TREES("birch", 10), "flowers:forest:4", GRASS_PATCH, RETIRED("bee_nest:birch:80")])
     biome(.oldGrowthBirchForest, "old_growth_birch_forest", temperature: 0.6, downfall: 0.6, grassColor: 0x88bb67, foliageColor: 0x6ba941,
@@ -196,12 +196,12 @@ private let registerAllBiomesOnce: Void = {
           creatures: DEF_CREATURES + [("horse", 1, 2, 6), ("donkey", 1, 1, 1), ("llama", 8, 4, 4)])
     biome(.savannaPlateau, "savanna_plateau", temperature: 1.0, downfall: 0, grassColor: 0xbfb755, foliageColor: 0xaea42a,
           features: [TREES("acacia", 1), "patch:short_grass:40"],
-          creatures: DEF_CREATURES + [("horse", 1, 2, 6), ("llama", 8, 4, 4)])
+          creatures: DEF_CREATURES + [("horse", 1, 2, 6), ("llama", 8, 4, 4), ("griffin", 1, 1, 2)])
     biome(.windsweptSavanna, "windswept_savanna", temperature: 1.1, downfall: 0, grassColor: 0xbfb755, foliageColor: 0xaea42a,
           features: [TREES("acacia", 1), "patch:short_grass:40"])
     biome(.windsweptHills, "windswept_hills", temperature: 0.2, downfall: 0.3,
           features: [TREES("spruce", 0, 0.05), GRASS_PATCH, RETIRED("emerald_ore:1")],
-          creatures: DEF_CREATURES + [("llama", 5, 4, 6)])
+          creatures: DEF_CREATURES + [("llama", 5, 4, 6), ("griffin", 1, 1, 2)])
     biome(.windsweptGravellyHills, "windswept_gravelly_hills", temperature: 0.2, downfall: 0.3, top: gravel, under: gravel,
           features: [TREES("spruce", 0, 0.05), RETIRED("emerald_ore:1")])
     biome(.windsweptForest, "windswept_forest", temperature: 0.2, downfall: 0.3, top: cell(B.coarse_dirt),

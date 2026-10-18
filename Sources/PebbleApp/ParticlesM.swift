@@ -119,6 +119,25 @@ final class ParticleSystemM {
                 p.maxLife = 8 + rand() * 7
                 p.light = 1
                 p.size = 0.2 + rand() * 0.22
+            case "magic_bolt":
+                // an alicorn's bolt (FlyingMounts.swift): glowing pink-violet sparks
+                p.tile = tileId("crit_particle")
+                p.gravity = 0
+                p.vx *= 0.3; p.vy = (rand() - 0.5) * 0.02; p.vz *= 0.3
+                let t = rand()
+                p.r = 0.85 + t * 0.15; p.g = 0.45 + t * 0.35; p.b = 1
+                p.maxLife = 6 + rand() * 6
+                p.light = 1
+                p.size = 0.16 + rand() * 0.16
+            case "screech":
+                // a griffin's screech ring: pale, brief puffs
+                p.tile = tileId("crit_particle")
+                p.gravity = 0
+                p.vx = 0; p.vy = 0.01; p.vz = 0
+                p.r = 1; p.g = 0.97; p.b = 0.8
+                p.maxLife = 5 + rand() * 3
+                p.light = 1
+                p.size = 0.3 + rand() * 0.15
             case "soul_flame":
                 p.tile = tileId("flame_particle")
                 p.r = 0.2; p.g = 0.85; p.b = 0.9

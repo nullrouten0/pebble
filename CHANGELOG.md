@@ -3,6 +3,32 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.9.0 — 2026-10-17 — the alicorn and the griffin
+
+- **Two more flying mounts.**
+  - **The alicorn,** a winged unicorn with a lilac coat, a purple mane and a
+    gold spiral horn. Hold attack while riding and its horn casts magic bolts,
+    about three a second, at whatever your crosshair is on, up to 32 blocks away.
+    Each bolt hurts the first creature it meets and stops at the first block.
+  - **The griffin,** an eagle's white head, hooked beak, brown wings and
+    yellow talons on a lion's body. It's the fastest flyer. Hold attack and
+    it screeches: every creature within 10 blocks is thrown back and runs
+    for six seconds, and a monster forgets it was after you.
+  - Neither power touches you or your tamed pets, and the screech spares
+    other players and the bosses. Neither breaks or burns blocks.
+- **Getting them** works like the pegasus and dragon: spawn eggs, `/summon`,
+  `/spawn` and the Tools menu bring one tamed and saddled. Wild alicorns live
+  in flower forests and sunflower plains (tame with golden apples or
+  glistering melon slices); wild griffins in windswept hills and savanna
+  plateaus (tame with raw meat).
+- On touch screens, press-and-hold while riding uses the power, and LAN
+  guests can use the powers too.
+- **Development:** the dragon's fire is now one of three mount powers
+  (`FlyingMount.hasPower` / `usePower`); `Player.breathHeld` is
+  `powerHeld`. A scared mob (`Mob.scare`) drops its target and runs. 10 new
+  checks (935). The item snapshot's enchantment `applies` and enchantability
+  hashes moved (two more spawn eggs lengthen the item list); nothing else did.
+
 ## 1.8.1 — 2026-10-17 — tap to ride on touch screens
 
 - **On iPad and iPhone, tapping a creature now uses your hand on it** when

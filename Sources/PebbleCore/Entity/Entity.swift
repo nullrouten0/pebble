@@ -34,7 +34,8 @@ public struct EntityData: Codable, Equatable {
     public var deathAttacker: String?
     public var swimTarget: [Double]?
     /// flying mounts (FlyingMounts.swift): tamed, saddle on, airborne under its
-    /// own wings, how far the wings are spread (0 folded … 1 open), breathing fire
+    /// own wings, how far the wings are spread (0 folded … 1 open), using its
+    /// power (breathing fire, casting bolts, screeching: the mouth or horn shows it)
     public var tamed: Bool?
     public var saddled: Bool?
     public var flying: Bool?
