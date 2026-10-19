@@ -1,13 +1,16 @@
-// Fast building tools: the wall builder (a 16×16 wall square to your facing)
-// and the box builder (a 16×16×16 open-topped box). Both snap to a 16-block
-// grid so walls and boxes line up edge to edge, build from the block in your
-// off hand (or the hotbar slot right of the tool, or stone bricks), and are
-// undoable (EditHistory.swift). Sneak for the 8-block versions.
+// Fast building tools: the wall builder (a 16×16 wall square to your facing),
+// the box builder (a 16×16×16 open-topped box) and the floor builder (a floor
+// poured out to the walls around it). Walls and boxes snap to a 16-block grid
+// so they line up edge to edge. All build from the block in your off hand (or
+// the hotbar slot right of the tool, or stone bricks) and are undoable
+// (EditHistory.swift). Sneak for the smaller versions.
 
 import Foundation
 
 public let BUILDER_SIZE = 16
 public let BUILDER_SMALL_SIZE = 8
+/// how far out the floor builder may spread each way (sneak: half)
+public let FLOOR_REACH = 16
 
 /// the cell a builder builds with, and its display name
 func builderMaterial(_ p: Player) -> (Int, String) {
@@ -134,6 +137,53 @@ public func buildWall(_ w: World, _ p: Player, _ hit: RaycastHit) -> Int {
     remember(w, alongX ? s0 : tx, y0, alongX ? tz : s0, x1, y0 + size - 1, z1)
     builderFX(w, alongX ? s0 : tx, y0, alongX ? tz : s0, x1, y0 + size - 1, z1, c)
     b.liftEntities()
+    return b.count
+}
+
+/// a floor, poured like paint into the open cell on the clicked face (where a
+/// placed block would go) and spreading level from there, one open cell to the
+/// next, until something solid stops it: it fills a room out to its walls and
+/// around whatever stands in it. Open means what a placed block replaces (air,
+/// water, grass…); it never replaces anything else. It spreads to the four
+/// sides only: a diagonal step past an open side is two of those anyway, and
+/// one between two solid blocks would leak through a wall whose blocks only
+/// touch at the corners. In the open it stops FLOOR_REACH out each way.
+@discardableResult
+public func buildFloor(_ w: World, _ p: Player, _ hit: RaycastHit) -> Int {
+    let reach = p.sneaking ? FLOOR_REACH / 2 : FLOOR_REACH
+    let (c, _) = builderMaterial(p)
+    // into tall grass or snow (as placing a block would), else on the face
+    let into = blockDefs[hit.cell >> 4].replaceable
+    let sx = into ? hit.x : hit.x + DIR_X[hit.face]
+    let y = into ? hit.y : hit.y + DIR_Y[hit.face]
+    let sz = into ? hit.z : hit.z + DIR_Z[hit.face]
+    guard y >= w.info.minY, y < w.info.minY + w.info.height else { return 0 }
+    func open(_ x: Int, _ z: Int) -> Bool {
+        w.isLoadedAt(x, z) && blockDefs[w.getBlockId(x, y, z)].replaceable
+    }
+    guard open(sx, sz) else { return 0 }
+    let side = 2 * reach + 1
+    var seen = [Bool](repeating: false, count: side * side)
+    func cellIndex(_ x: Int, _ z: Int) -> Int { (z - sz + reach) * side + (x - sx + reach) }
+    var queue = [(sx, sz)]
+    seen[cellIndex(sx, sz)] = true
+    var x0 = sx, x1 = sx, z0 = sz, z1 = sz
+    let b = beginEdit(w, "floor")
+    var i = 0
+    while i < queue.count {
+        let (x, z) = queue[i]
+        i += 1
+        b.set(x, y, z, c)
+        x0 = min(x0, x); x1 = max(x1, x); z0 = min(z0, z); z1 = max(z1, z)
+        for (dx, dz) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let nx = x + dx, nz = z + dz
+            guard abs(nx - sx) <= reach, abs(nz - sz) <= reach, !seen[cellIndex(nx, nz)] else { continue }
+            seen[cellIndex(nx, nz)] = true
+            if open(nx, nz) { queue.append((nx, nz)) }
+        }
+    }
+    builderFX(w, x0, y, z0, x1, y, z1, c)
+    b.liftEntities()   // lays itself at the feet of whoever stands in it
     return b.count
 }
 

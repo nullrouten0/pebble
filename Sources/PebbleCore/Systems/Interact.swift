@@ -695,9 +695,13 @@ public func useItem(_ ctx: InteractCtx, _ hit: RaycastHit?) -> Bool {
     // block destroyers
     if name == "bazooka" { return fireBazooka(world, player) }
     if name == "void_bomb" { return throwVoidBomb(world, player) }
-    if name == "wall_builder" || name == "box_builder" {
+    if name == "wall_builder" || name == "box_builder" || name == "floor_builder" {
         guard let hit else { return false }
-        if name == "wall_builder" { buildWall(world, player, hit) } else { buildBox(world, player, hit) }
+        switch name {
+        case "wall_builder": buildWall(world, player, hit)
+        case "box_builder": buildBox(world, player, hit)
+        default: buildFloor(world, player, hit)
+        }
         return true
     }
     if name == "quarry_charge" {

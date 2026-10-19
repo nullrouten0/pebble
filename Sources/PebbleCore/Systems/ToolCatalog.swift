@@ -27,6 +27,7 @@ public let TOOL_ITEMS: [(name: String, count: Int, detail: String)] = [
     ("quarry_charge", 16, "Place it on a block to dig down to bedrock"),
     ("wall_builder", 1, "Raises a 16-block wall (sneak: 8)"),
     ("box_builder", 1, "Builds a 16-block box (sneak: 8)"),
+    ("floor_builder", 1, "Fills a floor out to the walls around it (sneak: smaller)"),
     ("infinity_wipe", 1, "Use twice to erase the land around you - can't be undone"),
     ("selection_wand", 1, "Marks a box to copy, cut and paste"),
     ("headlamp", 1, "Wear it to light up where you look"),

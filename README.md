@@ -25,7 +25,7 @@
 
 Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. It is **not affiliated with, endorsed by, or connected to Mojang Studios or Microsoft**, and contains no Mojang code or assets. See the [Disclaimer](#disclaimer). Its textures are the built-in [Faithful 32x](https://faithfulpack.net) pack by Faithful.
 
-> **Pebble 1.12 is a beta.** The engine is covered by 948 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
+> **Pebble 1.12 is a beta.** The engine is covered by 951 regression checks, but a game this size has bugs we haven't found yet, and the iOS app and multiplayer are the least battle-tested parts. If you hit one, please [open an issue](https://github.com/nullrouten0/pebble/issues) — or better, send a fix. See [Reporting bugs & contributing](#reporting-bugs--contributing).
 
 ## By the numbers
 
@@ -39,7 +39,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 | Entity types | 114 (65+ mobs with full AI, including 10 anime-style animals and 4 flying mounts; vehicles, projectiles) |
 | Structures | 19 worldgen types (villages, strongholds, bastions, end cities, ancient cities…), plus 18 placeable builds |
 | Multiplayer | LAN: one host, any number of guests, found automatically (Bonjour) |
-| Regression checks | 948, all green (`pebble test`) |
+| Regression checks | 951, all green (`pebble test`) |
 | Textures | [Faithful 32x](https://faithfulpack.net) by Faithful (third-party, fully credited) |
 | Audio assets | 0 — fully synthesized |
 | Performance | 200+ fps at full fancy settings on an Apple-silicon MacBook Air with Max FPS set to Unlimited (the default cap is 120) |
@@ -64,7 +64,7 @@ Pebble is an original fan re-creation inspired by Minecraft: Java Edition 1.20. 
 
 The major changes, newest first. [CHANGELOG.md](CHANGELOG.md) has every release in full, and [docs/releases](docs/releases) has the release notes.
 
-- **1.12.0** (Oct 18, 2026): LAN guests can [copy, cut, paste and use blueprints](#creative-tools) too, each with their own clipboard; a guest's `//save` keeps the blueprint on their own device. [Release notes](docs/releases/1.12.md).
+- **1.12.0–1.12.1** (Oct 18, 2026): a [floor builder](#creative-tools) that pours a floor out to the walls around it like a paint can; LAN guests can [copy, cut, paste and use blueprints](#creative-tools) too, each with their own clipboard; a guest's `//save` keeps the blueprint on their own device. [Release notes](docs/releases/1.12.md).
 - **1.11.0** (Oct 17, 2026): [blueprints](#creative-tools): `//save castle` keeps your clipboard as a file, `//load castle` brings it back in any world, and `//blueprints share castle` sends it to a friend. [Release notes](docs/releases/1.11.md).
 - **1.10.0** (Oct 17, 2026): [share a world](#sharing-worlds) with AirDrop, Messages or Mail, or save it as a file; open one and it's added to your worlds. [Release notes](docs/releases/1.10.md).
 - **1.9.0** (Oct 17, 2026): two more [flying mounts](#flying-mounts): the alicorn, a winged unicorn whose horn casts magic bolts, and the griffin, the fastest flyer, whose screech throws creatures back and sends them running. [Release notes](docs/releases/1.9.md).
@@ -94,7 +94,7 @@ That builds a release `Pebble.app`, installs it to `~/Applications`, and links t
 ```
 pebble update       pull the latest version, rebuild, swap the live app
 pebble run          launch Pebble
-pebble test         run the test suite (948 checks)
+pebble test         run the test suite (951 checks)
 ```
 
 You can also run straight from the checkout with `swift run -c release Pebble`.
@@ -190,6 +190,7 @@ Fast building and demolition for creative play, for LAN guests too. Sneak while 
 | `/place <structure> [<x> <y\|ground> <z>] [variant]` | Places a whole structure, in front of you if you give no coordinates. It clears its footprint and fills a foundation under it. `/place list` shows every option. | — |
 | `wall_builder` | Right-click a block to build a 16×16 wall across your view | 8×8 |
 | `box_builder` | Right-click to build a 16×16×16 box with a solid floor and open top; the inside is cleared | 8×8×8 |
+| `floor_builder` | Right-click a block to pour a floor level with the spot you clicked: it spreads through open space out to the walls around it and around whatever stands in the room, up to 16 blocks each way, and never replaces a block | 8 each way |
 | `bazooka` | Fires a rocket that blows out a crater of radius 9 | — |
 | `mining_laser` | Hold use to bore a tunnel 5 blocks wide, up to 64 blocks long | 9 wide |
 | `void_bomb` | A thrown orb that wipes out a sphere of radius 12 | radius 24 |
@@ -213,6 +214,8 @@ Fast building and demolition for creative play, for LAN guests too. Sneak while 
 For `city`, `mountain` and worldgen structures, a different `variant` number gives a different layout. Underground structures get a lit ladder shaft down from a flag pole, and `/place` prints a `/tp` to it.
 
 **Blueprints** keep a build to use again: `//copy` it, `//save castle`, then in any world `//load castle` and `//paste`. They keep chest contents and sign text, and store blocks by name, so they still load after an update. The Tools menu's Edit tab lists them as **Load …** entries. `//blueprints share castle` sends one to a friend; opening a `.pebbleblueprint` file adds it to your blueprints. In a LAN game everyone has their own selection and clipboard, and a guest's blueprints are saved on and loaded from the guest's own device.
+
+**The floor builder** works like a paint can. It pours into the open space where a block would go if you placed one there, then spreads level from block to open block, around pillars, furniture and corners, until walls stop it. It only fills open space: air, water, lava, grass and the like. It can't squeeze between two blocks that only touch at their corners, so a diagonal wall holds it in. Click the floor of a room to raise it by one, or the side of a wall to lay a ceiling or the next storey at that height. In the open it stops 16 blocks out each way, and one undo takes it all back.
 
 **Builders** snap to a grid the size of the build, so walls and boxes line up edge to edge; click the top of a build to stack on it. They build with the block in your off hand, otherwise the block in the hotbar slot just right of the builder, otherwise stone bricks.
 
@@ -263,7 +266,7 @@ Sources/PebbleCore/   the engine — headless, no UI frameworks, fully testable
 Sources/PebbleApp/    shared by both apps: Metal renderer, UI, audio, input
                       routing, touch and controller input
 Sources/Pebble/       the macOS shell — window, menus, AppKit input
-Sources/pebsmoke/     test harness (948 checks; snapshots in goldens/*.json)
+Sources/pebsmoke/     test harness (951 checks; snapshots in goldens/*.json)
 ios/                  the iPad/iPhone shell (XcodeGen spec + UIKit host)
 goldens/              snapshot files the harness compares against
 packaging/            Info.plist, icon, logo, title art, bundled Faithful textures
@@ -278,7 +281,7 @@ Pebble's engine is **fully deterministic**: a portable fdlibm `sin/cos/atan2` (p
 
 Your worlds are safe across updates. Every chunk you've visited is saved, so a change to world generation only affects land nobody has seen yet. Worlds also record the names behind their block and item ids, so a build that adds, moves or removes blocks opens them correctly. Worlds created before 1.5 keep their original generator.
 
-`pebble test` runs 948 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
+`pebble test` runs 951 checks: those guarantees, rules in plain words (a chicken ignores fall damage, a 40-level anvil job is Too Expensive), 911 transcendental-math probes, independent derivations of the physics constants, and snapshots of terrain, a 55-mob zoo, recipes, loot and a sparkstone timeline that flag any unintended change. How the checks are sorted and kept up to date is in [CONTRIBUTING.md](CONTRIBUTING.md#tests-three-kinds-three-rules).
 
 Multiplayer doesn't depend on it: the LAN host runs the one real simulation and sends guests what happened.
 
@@ -293,7 +296,7 @@ Multiplayer doesn't depend on it: the LAN host runs the one real simulation and 
 - **For LAN bugs:** whether you hosted or joined, how many were playing, and what the others saw.
 - **Settings that matter** (render distance, ultra graphics), and **screenshots or video** for anything visual.
 - **For crashes:** the report from `~/Library/Logs/DiagnosticReports` on a Mac.
-- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `948 passed, 0 failed`.
+- **If the engine seems wrong** (worldgen, physics, sparkstone): the tail of `pebble test`, which should print `951 passed, 0 failed`.
 
 Even better is a pull request with the fix:
 

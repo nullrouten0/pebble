@@ -422,6 +422,24 @@ private func paintSpecific(_ img: inout [UInt8], _ name: String, _ data: StackDa
         for r in 0...3 { fill(7 - r, r, 8 + r, r, r == 0 ? 0xfff0a0 : gold) }
         fill(6, 4, 9, 6, gold); fill(8, 4, 9, 6, goldDk)
         return true
+    case "floor_builder":
+        // a checkered floor in perspective, with a gold arrow spreading both ways
+        for y in 7...14 {
+            let t = Double(y - 7) / 7, half = 4.6 + 3.2 * t
+            for x in 0..<16 {
+                let s = (Double(x) + 0.5 - 8) / half
+                guard abs(s) <= 1 else { continue }
+                let col = Int(((s + 1) * 1.5).rounded(.down)), row = t < 0.45 ? 0 : 1
+                px(x, y, (col + row) % 2 == 0 ? 0xd8a868 : 0x9a6a34)
+            }
+        }
+        fill(0, 15, 15, 15, 0x5e3e1e)   // its front edge
+        let gold = 0xf0c040, goldDk = 0xb08420
+        fill(3, 2, 12, 3, gold); fill(3, 3, 12, 3, goldDk)
+        for r in 0...2 {
+            fill(r, 2 - r, r, 3 + r, gold); fill(15 - r, 2 - r, 15 - r, 3 + r, gold)
+        }
+        return true
     case "box_builder":
         // an open-topped stone box: two outer walls, the hollow inside
         for y in 0..<16 {

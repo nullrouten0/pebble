@@ -23,9 +23,9 @@ let LIGHT_BUDGET_MS = 4.0               // seam-stitch time budget per frame
 
 /// item-billboard projectiles (the app renders these as sprites)
 /// tools that act once per click, never on held-use repeat
-let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "quarry_charge", "infinity_wipe", "selection_wand"]
+let ONE_SHOT_TOOLS: Set<String> = ["wall_builder", "box_builder", "floor_builder", "quarry_charge", "infinity_wipe", "selection_wand"]
 /// heavy world tools a LAN guest doesn't predict locally — the host runs them
-let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder", "infinity_wipe"]
+let HOST_ONLY_TOOLS: Set<String> = ["bazooka", "void_bomb", "quarry_charge", "wall_builder", "box_builder", "floor_builder", "infinity_wipe"]
 
 public let SPRITE_TYPES: Set<String> = [
     "snowball", "egg", "rift_pearl", "xp_bottle", "thrown_potion", "firework",
@@ -2605,7 +2605,8 @@ public final class GameCore {
             }
         }
         let heldName = p.mainHand.map { itemDef($0.id).name }
-        let destroyer = ["bazooka", "mining_laser", "void_bomb", "quarry_charge", "wall_builder", "box_builder"].contains(heldName) // fire, don't open doors/chests
+        let destroyer = ["bazooka", "mining_laser", "void_bomb", "quarry_charge", "wall_builder", "box_builder", "floor_builder"]
+            .contains(heldName) // fire, don't open doors/chests
         if let hit, !destroyer, !p.sneaking || p.mainHand == nil {
             if useBlock(ctx, hit) {
                 p.attackAnim = 0.6

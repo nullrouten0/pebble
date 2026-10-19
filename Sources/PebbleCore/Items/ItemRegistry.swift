@@ -359,6 +359,9 @@ private let registerAllItemsOnce: Void = {
         registerItem("\(m)_spawn_egg", display: "\(prettify(m)) Spawn Egg", category: "spawn_eggs", icon: "spawn_egg")
     }
 
+    // fills a floor out to the walls around it (Systems/Builders.swift)
+    registerItem("floor_builder", display: "Floor Builder", maxStack: 1, category: "tools", rarity: 3)
+
     // post-registration fixups
     itemDefs[iid("cake")].maxStack = 1
 }()

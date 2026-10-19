@@ -3,6 +3,25 @@
 All notable changes to Pebble. Versions follow `MAJOR.MINOR.PATCH`; the
 in-app version string comes from `PEBBLE_VERSION` (PebbleCore/Game/Saves.swift).
 
+## 1.12.1 — 2026-10-18 — the floor builder
+
+- **The floor builder** (`/give floor_builder`, or the Creative Tools menu)
+  pours a floor like a paint can. Right-click a block: the floor starts in
+  the open cell where a placed block would go and spreads level from there,
+  one open cell to the next, until something solid stops it. It fills a room
+  out to its walls and around pillars and furniture, through doorways, and
+  behind things as long as there's a way round. It only fills open space
+  (air, water, lava, grass and other blocks a placed block replaces) and
+  never replaces anything. It spreads to the four sides, so it can't leak
+  between two blocks that only touch at their corners. In the open it stops
+  16 blocks out each way (sneak: 8). It builds with the same block as the
+  other builders, works for LAN guests, and is one undo step.
+- **Development:** `buildFloor` in Systems/Builders.swift (a breadth-first
+  fill bounded by `FLOOR_REACH`; unloaded land counts as solid). The item is
+  registered last, so earlier ids stay put. The items snapshot moved only in
+  the per-item hashes (each enchantment's `applies`, and `enchabilityH`),
+  which list every item. 3 new checks (951).
+
 ## 1.12.0 — 2026-10-18 — copy, paste and blueprints for LAN guests
 
 - **LAN guests can copy, cut and paste.** A guest marks a box with the

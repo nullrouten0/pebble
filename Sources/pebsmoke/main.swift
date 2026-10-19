@@ -2832,6 +2832,59 @@ do {
         check("a box built under your feet leaves you standing on its floor", entityFits(p) && p.y == feetY + 1, "y \(feetY) → \(p.y)")
         clearEditHistory()
 
+        // the floor builder pours a floor into the open cell on the clicked
+        // face and spreads, side to side, out to whatever's solid
+        let floorY = ground + 60, stone = Int(cell(B.stone)), planks = Int(cell(B.oak_planks))
+        let handWas = p.offHand
+        p.offHand = ItemStack(iid("oak_planks"), 64)
+        /// click the top of a block under (x, floorY, z)
+        func pour(_ x: Int, _ z: Int) -> Int {
+            w.setBlock(x, floorY - 1, z, stone)
+            return buildFloor(w, p, RaycastHit(x: x, y: floorY - 1, z: z, face: 1, cell: stone, t: 0,
+                                               px: Double(x) + 0.5, py: Double(floorY), pz: Double(z) + 0.5))
+        }
+        // a 9×9 room split by a wall with a doorway at its end, a pillar and a
+        // torch inside, and grass the floor may cover
+        let rx = mx - 40, rz = mz
+        var walls: [(Int, Int)] = []
+        for i in 0...8 { walls += [(rx + i, rz), (rx + i, rz + 8), (rx, rz + i), (rx + 8, rz + i)] }
+        for i in 1...6 { walls.append((rx + 4, rz + i)) }
+        walls.append((rx + 6, rz + 3))
+        for (x, z) in walls { w.setBlock(x, floorY, z, stone) }
+        w.setBlock(rx + 1, floorY, rz + 6, Int(cell(B.torch)))
+        w.setBlock(rx + 6, floorY, rz + 6, Int(cell(B.short_grass)))
+        let roomLaid = pour(rx + 2, rz + 2)
+        var inside = 0
+        for z in (rz + 1)...(rz + 7) { for x in (rx + 1)...(rx + 7) where w.getBlock(x, floorY, z) == planks { inside += 1 } }
+        check("the floor builder fills a room through its doorway and around what stands in it, covering grass but not the torch",
+              roomLaid == 41 && inside == 41 && w.getBlock(rx + 6, floorY, rz + 6) == planks && w.getBlock(rx + 1, floorY, rz + 6) == Int(cell(B.torch))
+              && walls.allSatisfy { w.getBlock($0.0, floorY, $0.1) == stone } && w.getBlock(rx - 1, floorY, rz + 2) == 0,
+              "laid \(roomLaid), \(inside) inside")
+        // a diamond wall, its blocks touching only at the corners: it holds
+        let dx0 = mx - 20
+        for a in -3...3 { for b in -3...3 where abs(a) + abs(b) == 3 { w.setBlock(dx0 + a, floorY, mz + b, stone) } }
+        let diamondLaid = pour(dx0, mz)
+        check("the floor doesn't leak between blocks that only touch at their corners",
+              diamondLaid == 13 && w.getBlock(dx0 + 2, floorY, mz + 2) == 0 && w.getBlock(dx0 - 2, floorY, mz - 2) == 0, "laid \(diamondLaid)")
+        // in the open it stops FLOOR_REACH out each way (sneak: half), one undo step
+        let open = pour(mx + 30, mz)
+        let undone = undoLastEdit()?.count
+        p.sneaking = true
+        let small = pour(mx + 30, mz)
+        p.sneaking = false
+        let side = 2 * FLOOR_REACH + 1, smallSide = FLOOR_REACH + 1
+        check("in the open the floor stops \(FLOOR_REACH) blocks out each way (sneaking, \(FLOOR_REACH / 2)), and one undo takes it back",
+              open == side * side && undone == open && small == smallSide * smallSide
+              && w.getBlock(mx + 30 + FLOOR_REACH / 2, floorY, mz) == planks && w.getBlock(mx + 30 + FLOOR_REACH / 2 + 1, floorY, mz) == 0,
+              "open \(open), undid \(String(describing: undone)), small \(small)")
+        while undoLastEdit() != nil {}
+        clearEditHistory()
+        for (x, z) in walls { w.setBlock(x, floorY, z, 0) }
+        for a in -3...3 { for b in -3...3 where abs(a) + abs(b) == 3 { w.setBlock(dx0 + a, floorY, mz + b, 0) } }
+        for (x, z) in [(rx + 2, rz + 2), (dx0, mz), (mx + 30, mz)] { w.setBlock(x, floorY - 1, z, 0) }
+        w.setBlock(rx + 1, floorY, rz + 6, 0)
+        p.offHand = handWas
+
         // standing on a slab, under a slab ceiling, isn't being stuck in blocks
         let sy = ifloor(p.y) + 20
         p.setPos(Double(mx) + 0.5, Double(sy) + 0.5, Double(mz) + 0.5)
